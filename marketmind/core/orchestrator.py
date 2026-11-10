@@ -1,15 +1,18 @@
 """Workflow engine: executes agents as a dependency graph (DAG).
 
 Tasks whose dependencies are satisfied run concurrently on a thread pool, so the five analysis
-agents work in parallel once the data is clean. If a critical task fails, everything that
-depends on it is skipped (and reported) instead of crashing the run.
+agents work in parallel once the data is clean. A task that fails is retried (once by default),
+unless it ran out of time or a reviewer rejected the study. If a critical task still fails,
+everything that depends on it is skipped (and reported) instead of crashing the run.
 """
 from __future__ import annotations
 
+import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 
 from .agent import AgentResult, BaseAgent, RunContext
+from .approval import NON_RETRYABLE
 
 
 @dataclass
@@ -18,6 +21,8 @@ class Task:
     agent: type[BaseAgent]
     depends_on: tuple[str, ...] = ()
     critical: bool = True
+    retries: int = 1                 # extra attempts after a failure (never after a timeout or a rejection)
+    timeout: float | None = None     # seconds; the agent stops at its next tool or LLM call once it is over
 
 
 class Workflow:
@@ -50,6 +55,15 @@ class Workflow:
         results: dict[str, AgentResult] = {}
         pending = set(self.tasks)
         running = {}
+        attempts: dict[str, int] = {}
+
+        def submit(tid: str) -> None:
+            task = self.tasks[tid]
+            agent = task.agent(ctx)
+            agent.time_limit = task.timeout
+            attempts[tid] = attempts.get(tid, 0) + 1
+            running[pool.submit(agent.run)] = tid
+
         with ThreadPoolExecutor(max_workers=max_workers if parallel else 1) as pool:
             while pending or running:
                 for tid in sorted(pending):
@@ -64,7 +78,7 @@ class Workflow:
                         pending.discard(tid)
                         continue
                     if parallel or not running:
-                        running[pool.submit(task.agent(ctx).run)] = tid
+                        submit(tid)
                         pending.discard(tid)
                 if not running:
                     if pending:  # nothing runnable: unresolved dependencies
@@ -75,8 +89,19 @@ class Workflow:
                 finished, _ = wait(list(running), return_when=FIRST_COMPLETED)
                 for fut in finished:
                     tid = running.pop(fut)
+                    task = self.tasks[tid]
                     try:
-                        results[tid] = fut.result()
+                        result = fut.result()
                     except Exception as exc:  # BaseAgent.run already catches; this is a last resort
-                        results[tid] = AgentResult(self.tasks[tid].agent.name, "failed", error=str(exc))
+                        result = AgentResult(task.agent.name, "failed", error=str(exc))
+                    error = result.error or ""
+                    if (result.status == "failed" and attempts[tid] <= task.retries
+                            and not error.startswith(NON_RETRYABLE)):
+                        ctx.tracer.emit(task.agent.name, "warning", f"failed ({error[:160]}); retrying, attempt "
+                                        f"{attempts[tid] + 1} of {task.retries + 1}", attempt=attempts[tid] + 1)
+                        time.sleep(0.5)
+                        submit(tid)
+                        continue
+                    result.attempts = attempts[tid]
+                    results[tid] = result
         return results

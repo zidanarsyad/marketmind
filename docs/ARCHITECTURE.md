@@ -117,6 +117,14 @@ classDiagram
         +llm: LLMClient
         +run_dir: Path
         +options: dict
+        +approver: callable
+        +llm_baseline: tuple
+    }
+    class Decision {
+        +approved: bool
+        +reviewer: str
+        +comment: str
+        +drop: list
     }
     class BaseAgent {
         <<abstract>>
@@ -124,6 +132,8 @@ classDiagram
         +role: str
         +goal: str
         +ml_capability: str
+        +finding_prefix: str
+        +time_limit: float
         +tools: dict
         +register_tools()
         +use(name, args) Any
@@ -134,9 +144,13 @@ classDiagram
         +ask_llm(task, facts) str
         +execute() str
         +run() AgentResult
+        +answer_requests() list
+        +run_follow_up() AgentResult
     }
     class ResearchDirectorAgent {
+        +review_plan() Decision
         +build_workflow() Workflow
+        +supervise(results, workflow) dict
         +quality_loop(results) dict
     }
     class Blackboard {
@@ -183,6 +197,8 @@ classDiagram
         +agent: type
         +depends_on: tuple
         +critical: bool
+        +retries: int
+        +timeout: float
     }
     class AgentResult {
         +agent: str
@@ -190,6 +206,7 @@ classDiagram
         +seconds: float
         +findings: int
         +tool_calls: int
+        +attempts: int
     }
     class SentimentSuite {
         +train(texts, labels) dict
@@ -215,6 +232,7 @@ classDiagram
     RunContext --> Blackboard
     RunContext --> Tracer
     RunContext --> LLMClient
+    RunContext ..> Decision : approver returns
     Blackboard "1" o-- "many" Finding
     BaseAgent ..> AgentResult : returns
     ConsumerInsightAgent --> SentimentSuite
@@ -225,11 +243,13 @@ The other seven agents (Data Collection, Data Quality, Market & Trend Analyst, C
 
 ## 4. Workflow (dependency graph)
 
-The Director builds this graph from the plan's active modules. Data tasks are **critical** (a failure skips dependents); analysis tasks are **non-critical** (a failure leaves Strategy to work with the findings that exist).
+The Director builds this graph from the plan's active modules, once a reviewer (or the automatic default) has approved the plan. Data tasks are **critical** (a failure skips dependents); analysis tasks are **non-critical** (a failure leaves Strategy to work with the findings that exist). Every task is retried once after a failure and has a time limit (900 s by default), enforced at its next tool or LLM call.
 
 ```mermaid
 flowchart LR
-    P["plan<br/>Research Director"] --> C["collect<br/>Data Collection"]
+    P["plan<br/>Research Director"] --> G1{{"approval gate:<br/>plan"}}
+    G1 -- "approved, maybe trimmed" --> C["collect<br/>Data Collection"]
+    G1 -- "rejected" --> X(["run rejected"])
     C --> Q["quality<br/>Data Quality"]
     Q --> M["market"]
     Q --> K["competition"]
@@ -241,13 +261,18 @@ flowchart LR
     I -.-> T
     S -.-> T
     F -.-> T
-    T --> R["report<br/>Report Writer"]
+    T --> G2{{"approval gate:<br/>recommendations"}}
+    G2 -- "approved, maybe trimmed" --> R["report<br/>Report Writer"]
+    G2 -- "rejected" --> X
     R --> A{"qa<br/>Critic"}
+    A -- "question or section left open" --> D["Director: send the<br/>responsible analyst back"]
+    D -. "once per agent" .-> M
+    D -.-> T
     A -- "pass" --> OUT(["saved run"])
     A -- "fail (max 2)" --> R
 ```
 
-Dotted edges = non-critical dependencies. Analysis agents run concurrently on a `ThreadPoolExecutor` with three workers.
+Dotted edges = non-critical dependencies or follow-ups. Analysis agents run concurrently on a `ThreadPoolExecutor` with three workers. The recommendation gate runs inside the Strategy agent, before it writes the executive summary, so a dropped recommendation never reaches the report.
 
 ## 5. A run, step by step
 
@@ -269,6 +294,9 @@ sequenceDiagram
     UI->>SYS: run()
     SYS->>DIR: run() (plan)
     DIR->>BB: put("plan")
+    SYS->>DIR: review_plan()
+    DIR->>U: approval gate: plan (or approve automatically)
+    U-->>DIR: Decision (approve, leave modules out, or reject)
     SYS->>DIR: build_workflow()
     DIR-->>SYS: Workflow
     SYS->>WF: run(ctx, parallel=True)
@@ -279,11 +307,19 @@ sequenceDiagram
         AN->>BB: read datasets, put *.tables, publish findings
     end
     WF->>ST: run()
+    ST->>U: approval gate: recommendations
+    U-->>ST: Decision (approve, drop some, or reject)
     ST->>BB: put strategy.swot / recommendations / kpis
     WF->>RW: run()
     RW->>BB: put report.markdown / report.html
     WF->>CR: run()
     CR->>BB: put qa.result
+    opt a research question or analysis section left open
+        DIR->>AN: message: "Answer Qn" (re-run in full if the agent had failed)
+        AN->>BB: findings, or an "open question" finding
+        AN->>DIR: reply
+        DIR->>ST: run() again, then Report Writer and Critic
+    end
     alt QA failed and revisions left
         DIR->>RW: message: block-level issues
         RW->>BB: revised report
@@ -302,14 +338,17 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Started: run()
     Started --> Perceiving: read blackboard
-    Perceiving --> Reasoning: think (optionally ask the LLM)
-    Reasoning --> Acting: use(tool)
+    Perceiving --> Reasoning: think (optionally ask the LLM, within the run's budget)
+    Reasoning --> Acting: use(tool), if within the time limit
     Acting --> Reasoning: observation
     Acting --> Publishing: put artefacts, publish findings
+    Publishing --> Answering: follow-up requests from the Director
+    Answering --> Completed
     Publishing --> Completed
     Started --> Failed: exception (traceback traced)
     Reasoning --> Failed
-    Acting --> Failed
+    Acting --> Failed: exception, or AgentTimeout at the next call
+    Failed --> Started: retried once (not after a timeout or a rejection)
     [*] --> Skipped: a critical upstream task failed
     Completed --> [*]
     Failed --> [*]
@@ -321,12 +360,17 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
     [*] --> Planning
-    Planning --> Executing: plan on blackboard
+    Planning --> PlanReview: plan on blackboard
+    PlanReview --> Executing: approved (modules may be left out)
+    PlanReview --> Rejected: reviewer rejects
+    Executing --> Rejected: reviewer rejects the recommendations
     Planning --> Failed: planning error, e.g. unknown client
     Executing --> Unverified: report written, Critic crashed
     Unverified --> Saved: report marked NOT VERIFIED
     Executing --> QAReview: report written
     Executing --> Failed: collect, quality, strategy or report failed
+    QAReview --> FollowUp: question or section left open (once per agent)
+    FollowUp --> QAReview: analyst answers or is re-run; strategy, report and QA redone
     QAReview --> Released: score >= 85 and no critical issue
     QAReview --> Revising: failed and revisions < 2
     Revising --> QAReview: Report Writer replaces rejected blocks
@@ -334,6 +378,7 @@ stateDiagram-v2
     Released --> Saved
     ReleasedWithIssues --> Saved: open issues listed in the QA certificate
     Failed --> Saved
+    Rejected --> Saved: no report released
     Saved --> [*]
 ```
 
@@ -448,6 +493,9 @@ flowchart TB
 | Blackboard communication | Direct agent calls, message bus | Decouples agents, gives one place for provenance, makes parallel execution and persistence simple |
 | Deterministic tools produce all numbers; LLM writes language only | LLM-driven analysis (ReAct over pandas) | Prevents hallucinated figures; the Critic can verify every number |
 | Critic + bounded revision loop | Single-pass generation | Reflection catches ungrounded LLM text without unbounded loops (max 2 revisions) |
+| Director sends analysts back for open questions | Only rewrite the report text | Text revisions cannot create missing evidence; a targeted request (or a re-run after a failure) can. Once per agent keeps it bounded, and an unanswerable question is reported as open, not hidden |
+| Human approval gates on the plan and the recommendations | Fully autonomous runs | A person decides what is studied and what is recommended; without a reviewer the gates approve automatically and the report says so |
+| Cooperative time limits and an LLM budget | Kill threads; unlimited calls | Python threads cannot be killed safely; checking at each tool and LLM call stops an agent cleanly. The budget caps the cost of free-tier and paid LLMs per run |
 | Model selection by validation, honest test metrics | Fixed model choice | The DL model must earn its place; the ensemble or baseline wins when it is better |
 | Transfer validation on a labelled social sample | Assume review-trained model transfers | An early BiGRU labelled 73% of social posts negative. The check now picks the best scorer for that domain: the ensemble reaches macro-F1 0.918 on the labelled posts, against 0.850 for the BiGRU alone |
 | Direct multi-horizon residual boosting + rolling backtests | Recursive forecasting, single holdout | Recursive feedback inflated forecasts; one holdout was dominated by an unforecastable shock |
@@ -457,9 +505,11 @@ flowchart TB
 ## 11. Cross-cutting concerns
 
 - **Concurrency:** the blackboard and tracer use locks; analysis agents share a three-worker pool; PyTorch uses up to four threads.
-- **Error handling:** `BaseAgent.run()` catches exceptions, traces the traceback and returns a `failed` result; the workflow skips only critical dependents; the dashboard guards each view.
+- **Error handling:** `BaseAgent.run()` catches exceptions, traces the traceback and returns a `failed` result; the workflow retries a failed task once (not after a timeout or a rejection) and skips only critical dependents; the Director re-dispatches an analyst whose gap the Critic flags; the dashboard guards each view.
+- **Bounded resources:** a time limit per agent (`--agent-timeout`, 900 s by default) checked at every tool and LLM call, and a per-run LLM budget (`--max-llm-calls` 40 and `--max-llm-tokens` 300,000 by default); past the budget, agents fall back to deterministic reasoning.
+- **Human oversight:** two approval gates (`core/approval.py`): the plan, before any analysis, and the recommendations, before the summary and report. Reviewers answer at the terminal (`run.py --approve`) or in the dashboard; every decision is traced and stored in `run_meta.json`.
 - **Caching:** the sentiment models are cached under a hash of their training data, in one folder per training mode (`--sentiment-data`); World Bank responses are cached in `data/external`; LLM responses are cached in `outputs/cache/llm`.
 - **Configuration:** `.env` (LLM provider and keys, news keys, rate limit), `marketmind/config.py` (paths, dataset registry, default brief).
 - **Security:** API keys travel only in request headers, never in prompts, traces, run files or reports. The dashboard listens only on this machine (`address = "localhost"` in `.streamlit/config.toml`); `--server.address 0.0.0.0` shares it on a network.
 - **Engineering:** git history, dependency ranges plus an exact lock file (`requirements-lock.txt`), ruff linting, and a GitHub Actions workflow that runs the linter and the whole test suite on every push.
-- **Performance:** about 2 minutes for a first run (model training) and about 50 seconds once the models are cached (48 s for the reference run, on an 8-thread laptop CPU).
+- **Performance:** with the models cached, a run took 114 s on 10 November 2026 (48 to 134 s across runs on the same 8-thread laptop CPU, see [EVALUATION.md §10](EVALUATION.md#10-efficiency)); a first run adds about 95 s of model training. The approval gates add whatever time the reviewer takes.

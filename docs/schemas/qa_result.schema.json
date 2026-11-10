@@ -27,7 +27,8 @@
         },
         "coverage": {
           "type": "object", "required": ["score", "questions", "unanswered"],
-          "properties": {"score": {"$ref": "#/$defs/ratio"}, "questions": {"type": "integer", "minimum": 0}, "unanswered": {"$ref": "#/$defs/ids"}}
+          "properties": {"score": {"$ref": "#/$defs/ratio"}, "questions": {"type": "integer", "minimum": 0}, "unanswered": {"$ref": "#/$defs/ids"},
+                         "open": {"$ref": "#/$defs/ids", "description": "Questions answered only by an 'open question' finding: addressed but not answered (half credit)."}}
         },
         "grounding": {
           "type": "object", "required": ["score", "rate", "checked", "grounded", "blocks"],

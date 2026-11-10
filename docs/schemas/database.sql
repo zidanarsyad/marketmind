@@ -183,7 +183,7 @@ GROUP BY s.month, s.brand;
 CREATE TABLE IF NOT EXISTS run (
     run_id        TEXT PRIMARY KEY,                         -- 'YYYYMMDD-HHMMSS'
     started       TEXT,
-    status        TEXT NOT NULL CHECK (status IN ('completed', 'unverified', 'failed')),
+    status        TEXT NOT NULL CHECK (status IN ('completed', 'unverified', 'failed', 'rejected')),
     seconds       REAL,
     brief         TEXT,
     client        TEXT REFERENCES dim_brand (brand),
@@ -265,7 +265,7 @@ CREATE TABLE IF NOT EXISTS trace_event (
     seq        INTEGER NOT NULL,
     ts         REAL,
     agent      TEXT NOT NULL,
-    kind       TEXT NOT NULL CHECK (kind IN ('status', 'thought', 'action', 'observation', 'finding', 'message', 'llm', 'warning', 'error')),
+    kind       TEXT NOT NULL CHECK (kind IN ('status', 'thought', 'action', 'observation', 'finding', 'message', 'llm', 'warning', 'error', 'approval')),
     message    TEXT,
     data_json  TEXT,
     PRIMARY KEY (run_id, seq)

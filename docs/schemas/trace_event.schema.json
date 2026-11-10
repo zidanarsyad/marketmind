@@ -12,7 +12,7 @@
     "agent": {"type": "string", "minLength": 1, "description": "Agent name, or System for run-level events."},
     "kind": {
       "type": "string",
-      "enum": ["status", "thought", "action", "observation", "finding", "message", "llm", "warning", "error"]
+      "enum": ["status", "thought", "action", "observation", "finding", "message", "llm", "warning", "error", "approval"]
     },
     "message": {"type": "string"},
     "data": {"type": "object", "description": "Kind-specific payload, e.g. tool name, finding id, seconds, traceback."}

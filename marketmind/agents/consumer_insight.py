@@ -38,6 +38,7 @@ def _nss(labels: pd.Series) -> float:
 
 class ConsumerInsightAgent(BaseAgent):
     name = "Consumer Insight Agent"
+    finding_prefix = "CON"
     role = "NLP / deep-learning specialist. Reads what consumers write in reviews and on social media."
     goal = "Explain what consumers love and dislike - by brand, aspect and over time - and flag emerging problems early."
     ml_capability = ("Deep learning: PyTorch BiGRU + attention sentiment classifier (with TF-IDF/LogReg baseline and "

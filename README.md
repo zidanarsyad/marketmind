@@ -13,6 +13,8 @@ The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 -
 | **Machine learning** | K-Means segmentation, gradient-boosting demand forecasting, NMF topic mining, Poisson anomaly detection, fixed-effects price elasticity |
 | **LLM** | Optional - free Gemini / Groq / OpenRouter / local Ollama, or Claude. Fully functional offline. |
 | **Quality gate** | Critic agent verifies numeric grounding, coverage, citations and evidence; failed reports go back for revision |
+| **Human in the loop** | Approval gates on the research plan and the recommendations (terminal: `run.py --approve`, or the dashboard); without a reviewer they approve automatically and the report says so |
+| **Adaptive and bounded** | The Research Director sends analysts back for questions the report leaves open; every agent is retried once and has a time limit; each run has an LLM budget |
 | **Effectiveness** | 24 / 25 planted ground-truth insights recovered on the reference data; 23.6 / 25 on average over five more data seeds (see [Evaluation](#evaluation)) |
 
 ---
@@ -35,9 +37,9 @@ python run.py
 streamlit run app/dashboard.py
 ```
 
-The simulated datasets are in the repository (`python scripts/generate_data.py` regenerates them identically). `run.py` prints the live agent trace and saves everything to `outputs/runs/<run_id>/` (report.html, report.md, findings, tables, trace). The first run trains the deep-learning model (~2 minutes on a laptop CPU); later runs reuse it (~50 seconds). In the dashboard you can also launch new studies with your own brief and watch the agents work live. For the exact package versions the tests last passed with, install `requirements-lock.txt` instead.
+The simulated datasets are in the repository (`python scripts/generate_data.py` regenerates them identically). `run.py` prints the live agent trace and saves everything to `outputs/runs/<run_id>/` (report.html, report.md, findings, tables, trace). The first run trains the deep-learning model (3-4 minutes on a laptop CPU); later runs reuse it (1-2 minutes). Add `--approve` to review the research plan and the recommendations yourself before the study goes on. In the dashboard you can also launch new studies with your own brief, watch the agents work live, and approve the plan and recommendations in a form. For the exact package versions the tests last passed with, install `requirements-lock.txt` instead.
 
-Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`, or just the fast ones with `python -m pytest -q -m "not slow"`. The tests cover each agent's core logic, end-to-end runs, the Critic's revision loop, the schema contracts, failure paths and a dashboard smoke test. GitHub Actions runs the linter and the tests, with coverage, on every push.
+Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`, or just the fast ones with `python -m pytest -q -m "not slow"`. The tests cover each agent's core logic, end-to-end runs, the Critic's revision loop, the approval gates, retries, time limits and the Director's follow-ups, the schema contracts, failure paths and the dashboard. GitHub Actions runs the linter and the tests, with coverage, on every push.
 
 ---
 
@@ -175,7 +177,7 @@ The system is complete without an LLM. With one, the Director refines the plan, 
 
 ## Dashboard
 
-`streamlit run app/dashboard.py` - tabs: **Overview** (KPIs, key findings, priority actions) · **Agents** (workflow graph, roster, messages, full trace explorer) · **Market** · **Competition** · **Consumers (DL)** (model card, confusion matrix, aspect heatmap, complaint spikes, live model tester) · **Segments** (PCA small multiples, personas, concept test, Van Westendorp) · **Forecast & pricing** (forecasts with intervals, backtest, drivers, elasticities, price simulator) · **Strategy** (SWOT, recommendations, sized opportunities) · **Report** (embedded HTML + downloads) · **Ask the analyst** (chat) · **Evaluation** (ground-truth scorecard) · **Data**.
+`streamlit run app/dashboard.py` - tabs: **Overview** (KPIs, key findings, priority actions) · **Agents** (workflow graph, roster, messages, approvals and follow-ups, full trace explorer) · **Market** · **Competition** · **Consumers (DL)** (model card, confusion matrix, aspect heatmap, complaint spikes, live model tester) · **Segments** (PCA small multiples, personas, concept test, Van Westendorp) · **Forecast & pricing** (forecasts with intervals, backtest, drivers, elasticities, price simulator) · **Strategy** (SWOT, recommendations, sized opportunities) · **Report** (embedded HTML + downloads) · **Ask the analyst** (chat) · **Evaluation** (ground-truth scorecard) · **Data**.
 
 ---
 

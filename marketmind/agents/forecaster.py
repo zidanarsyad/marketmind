@@ -16,6 +16,7 @@ MODEL_NAMES = {"gradient_boosting": "gradient boosting", "seasonal_naive": "seas
 
 class DemandForecastingAgent(BaseAgent):
     name = "Demand Forecasting Agent"
+    finding_prefix = "FCT"
     role = "Forecasting and pricing economist. Builds ML demand forecasts and measures price sensitivity."
     goal = "Quantify the 12-month outlook for the market and the client, and how price moves change volume and revenue."
     ml_capability = ("Machine learning: global direct multi-horizon gradient boosting (HistGradientBoosting) with "

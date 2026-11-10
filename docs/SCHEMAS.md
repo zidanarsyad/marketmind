@@ -68,6 +68,10 @@ Every artefact on the blackboard has one producer. The run store saves each arte
 | `report.html` | string | Report Writer; the system adds the QA certificate and badge | readers | `report.html` |
 | `qa.result` | dict, QAResult | Critic | Research Director, system | `json/qa.result.json` |
 | `qa.history` | list | Critic | system, dashboard | `json/qa.history.json` |
+| `approvals` | list of decisions | Research Director (plan gate), Strategy (recommendation gate) | system, Report Writer | `json/approvals.json`; `run_meta.json` → `approvals` |
+| `strategy.approved_proposal`, `strategy.rejected_recommendations` | dict, list | Strategy | Strategy (to reuse an unchanged decision), Report Writer, Critic | `json/` |
+| `director.adaptations`, `director.followed_up` | list, list | Research Director | system, Report Writer | `json/`; `run_meta.json` → `adaptations` |
+| `followups.answered` | list of `agent\|question` | analysis agents | analysis agents (each question is answered once) | `json/followups.answered.json` |
 
 Findings are not stored under a key. They have their own list on the blackboard (`add_finding` and `findings()`) and are saved to `findings.json`. Messages go into `run_meta.json` → `messages`, and the trace into `trace.jsonl`.
 
@@ -154,10 +158,10 @@ An illustrative failing issue, of the kind produced by the Critic test (`tests/t
 
 ### AgentResult, TraceEvent, RunMeta and SentimentModelCard
 
-- **AgentResult**: `agent`, `status` (`completed`, `failed` or `skipped`), `summary`, `seconds`, `findings`, `tool_calls`, `llm_calls`, `error` (null unless the agent failed).
-- **TraceEvent**: `ts` (Unix seconds), `time` (`HH:MM:SS`), `agent`, `kind`, `message`, `data` (free-form object). `kind` is one of `status`, `thought`, `action`, `observation`, `finding`, `message`, `llm`, `warning` or `error`. For example:
+- **AgentResult**: `agent`, `status` (`completed`, `failed` or `skipped`), `summary`, `seconds`, `findings`, `tool_calls`, `llm_calls`, `error` (null unless the agent failed), and `attempts` (more than 1 when the workflow retried the agent; absent in older runs).
+- **TraceEvent**: `ts` (Unix seconds), `time` (`HH:MM:SS`), `agent`, `kind`, `message`, `data` (free-form object). `kind` is one of `status`, `thought`, `action`, `observation`, `finding`, `message`, `llm`, `warning`, `error` or `approval` (a decision at a human approval gate; `data` holds the gate and the Decision). For example:
   `{"ts": 1793778362.57, "time": "14:46:02", "agent": "Data Quality Agent", "kind": "action", "message": "clean_sales_panel - standardise labels, ...", "data": {"tool": "clean_sales_panel"}}`
-- **RunMeta**: `run_id`, `status` (`completed`, `unverified` when the report was released but the Critic did not finish, or `failed`), `started`, `seconds`, `brief`, `client`, `plan` (ResearchPlan), `options`, `llm` (provider, model, description, stats, last error), `agents` (task id to AgentResult, including `report_rev1` and so on), `agent_roster`, `workflow` (layers, edges, tasks), `qa` (score, passed, revisions, history) and `messages`.
+- **RunMeta**: `run_id`, `status` (`completed`, `unverified` when the report was released but the Critic did not finish, `rejected` when a reviewer stopped the study at an approval gate, or `failed`), `started`, `seconds`, `brief`, `client`, `plan` (ResearchPlan), `options` (also the retries, the agent time limit, the LLM budget and whether a person reviewed the gates), `llm` (provider, model, description, stats, last error), `agents` (task id to AgentResult, including `report_rev1`, `market_followup`, `strategy_followup` and so on), `agent_roster`, `workflow` (layers, edges, tasks), `qa` (score, passed, revisions, history), `messages`, and two optional arrays: `approvals` (gate, time, approved, reviewer, comment, drop) and `adaptations` (each agent the Director sent back: task, agent, reason, questions, sections, action, status, outcome).
 - **SentimentModelCard**: the task and labels, the label source, split sizes, class distribution, validation macro-F1 per candidate, test metrics per candidate, `selected`, `ensemble_weight`, the confusion matrix, training seconds, BiGRU history and configuration, vocabulary size, `trained_at`, plus optional `data_hash`, `transfer_model`, `transfer_n` and `transfer_metrics`. Four optional fields describe the training data option: `training_data` (mode, number of study and real reviews, source, cache folder), `split_sources` (rows per source in each split), `test_metrics_by_source`, and `study_reviews_check` (the score on all the study's reviews when the model was trained on real reviews only). RunMeta's `options` records the mode as `sentiment_data`.
 
 ## 4. Dataset row contracts

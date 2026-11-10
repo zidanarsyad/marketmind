@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from ..core.agent import BaseAgent
+from ..core.agent import OPEN_QUESTION, BaseAgent
 
 CITE = re.compile(r"\[([A-Z]{2,4}-\d{2})\]")
 CODE_SPAN = re.compile(r"`[^`\n]*`")   # identifiers (model names, IDs, files), not claims: not checked
@@ -164,13 +164,22 @@ class QualityAssuranceAgent(BaseAgent):
         structure = dict(score=1 - len(missing) / (len(REQUIRED) + 5), missing=missing,
                          issues=[dict(check="structure", severity="critical" if m in ("Executive Summary", "Recommendations") else "major",
                                       block=None, message=f"Missing section: {m}") for m in missing])
-        areas = {f.area for f in self.bb.findings() if "methodology" not in f.tags}
+        found = [f for f in self.bb.findings() if "methodology" not in f.tags]
+        areas = {f.area for f in found if OPEN_QUESTION not in f.tags}
+        open_areas = {f.area for f in found if OPEN_QUESTION in f.tags}
         recs = self.bb.get("strategy.recommendations", [])
-        unanswered = [q for q in plan["questions"]
-                      if not (q["area"] in areas or (q["area"] == "segmentation" and "pricing" in areas)
-                              or (q["area"] == "strategy" and recs))]
-        coverage = dict(score=1 - len(unanswered) / max(len(plan["questions"]), 1), questions=len(plan["questions"]),
-                        unanswered=[q["id"] for q in unanswered],
+
+        def covered(q: dict, pool: set) -> bool:
+            return (q["area"] in pool or (q["area"] == "segmentation" and "pricing" in pool)
+                    or (q["area"] == "strategy" and bool(recs)))
+
+        answered = [q for q in plan["questions"] if covered(q, areas)]
+        still_open = [q for q in plan["questions"] if q not in answered and covered(q, open_areas)]
+        unanswered = [q for q in plan["questions"] if q not in answered and q not in still_open]
+        n_questions = max(len(plan["questions"]), 1)
+        # a question an agent looked into and reported as open is addressed, not answered: half credit, no issue
+        coverage = dict(score=(len(answered) + 0.5 * len(still_open)) / n_questions, questions=len(plan["questions"]),
+                        unanswered=[q["id"] for q in unanswered], open=[q["id"] for q in still_open],
                         issues=[dict(check="coverage", severity="major", block=None,
                                      message=f"{q['id']} not answered by any finding: {q['question']}") for q in unanswered])
         low = md.lower()
@@ -197,8 +206,10 @@ class QualityAssuranceAgent(BaseAgent):
         unevidenced = [r["id"] for r in recs if not [e for e in r["evidence"] if e in known]]
         rec_issues = [dict(check="recommendations", severity="major", block=None,
                            message=f"Recommendation {r} has no valid evidence") for r in unevidenced]
-        if len(recs) < 3:
+        # recommendations a human reviewer dropped count as proposed: the agents did their part
+        proposed = len(recs) + len(self.bb.get("strategy.rejected_recommendations", []))
+        if proposed < 3:
             rec_issues.append(dict(check="recommendations", severity="critical", block=None,
                                    message=f"Only {len(recs)} recommendations (minimum 3)"))
-        rec_score = (1 - len(unevidenced) / max(len(recs), 1)) * (1.0 if len(recs) >= 3 else 0.5)
+        rec_score = (1 - len(unevidenced) / max(len(recs), 1)) * (1.0 if proposed >= 3 else 0.5)
         return citations, dict(score=rec_score, count=len(recs), unevidenced=unevidenced, issues=rec_issues)

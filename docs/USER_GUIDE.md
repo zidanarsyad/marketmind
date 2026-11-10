@@ -47,7 +47,7 @@ python scripts/generate_data.py
 python run.py
 ```
 
-This runs the default brief for Kirana Beauty. It prints the agents' trace live, then a summary of every agent's status, the top recommendations and the path to the report. The first run takes about 2 minutes because it trains the deep-learning model; later runs reuse the model and take about 50 seconds.
+This runs the default brief for Kirana Beauty. It prints the agents' trace live, then a summary of every agent's status, the approval decisions, any follow-ups the Research Director sent, the top recommendations and the path to the report. The first run takes 3 to 4 minutes because it trains the deep-learning model; later runs reuse the model and take about 1 to 2 minutes on a laptop.
 
 | Option | Effect |
 |---|---|
@@ -59,8 +59,29 @@ This runs the default brief for Kirana Beauty. It prints the agents' trace live,
 | `--sentiment-data study+real` | Train the sentiment models on the study's reviews plus about 72,000 real Shopee/Tokopedia beauty reviews; `real` uses the real reviews only, and `study` (the default) the study's reviews only. Download the real reviews first ([DATA_SOURCES.md](DATA_SOURCES.md)); each new mix trains once, for a few minutes, and is then cached. |
 | `--sequential` | Run the analysis agents one at a time (slower; useful for debugging) |
 | `--quiet` | Do not stream the trace |
+| `--approve` | Review the research plan and the recommendations yourself, at the terminal (section 3, "Approving the plan and the recommendations") |
+| `--retries 1` | Extra attempts for an agent that fails (default 1; `0` turns retries off) |
+| `--agent-timeout 900` | Time limit per agent, in seconds (default 900). An agent over its limit stops at its next step and is reported as failed |
+| `--max-llm-calls 40`, `--max-llm-tokens 300000` | The LLM budget for one run (these are the defaults). Past it, the agents carry on without the LLM |
 
-The exit code is 0 when the run completes with its report checked by the Critic. It is 1 when the run fails, or ends `unverified` because the Critic itself did not finish. So you can schedule `run.py` from a script and alert on a non-zero exit.
+The exit code is 0 when the run completes with its report checked by the Critic. It is 1 when the run fails, ends `unverified` because the Critic itself did not finish, or is rejected by a reviewer. So you can schedule `run.py` from a script and alert on a non-zero exit.
+
+### Approving the plan and the recommendations
+
+A study has two approval gates. The first comes after the Research Director has planned, before any analysis runs; the second after the Strategy agent has drafted its recommendations, before the executive summary and the report are written. At each gate you can approve, trim, or stop the study:
+
+| Gate | Approve | Trim | Reject |
+|---|---|---|---|
+| Plan | the study runs as planned | leave modules out (for example `pricing,forecast`); their questions go. Leaving out segmentation also leaves out pricing | the study stops with status `rejected` and no report |
+| Recommendations | all of them go into the report | drop some by ID (for example `R2,R5`); the rest are renumbered, and the report lists the dropped ones under its limitations | the study stops with status `rejected` and no report |
+
+With `python run.py --approve`, the terminal shows each proposal and waits: press Enter to approve, type `n` to reject, or type the modules or IDs to drop; you can add a comment. In the dashboard, switch on **Review the plan and recommendations myself** before **Run study**: the live panel pauses at each gate with a form, and the study resumes when you press **Approve** or **Reject the study**. A gate left unanswered in the dashboard for 30 minutes approves automatically.
+
+Without a reviewer, both gates approve automatically, and the report says that no reviewer was asked. Every decision, with the reviewer, the time, what was dropped and the comment, is kept in the report's Appendix D, in the Agents tab and in `run_meta.json`.
+
+### When the team goes back for more
+
+After the Critic's first check, the Research Director looks for research questions that no finding answers and analysis sections missing from the report, for example because an agent failed. It sends the responsible agent back with the question: an agent that failed runs again, and one that finished answers from its findings or says plainly that the question stays open. The strategy, the report and the check are then redone. Each agent is sent back at most once. The report's methodology and Appendix D say who was sent back and why, and open questions are listed under the limitations.
 
 ### From the dashboard
 
@@ -71,7 +92,7 @@ streamlit run app/dashboard.py
 Open <http://localhost:8501>. In the sidebar:
 
 1. **Generate datasets** appears only if the data is missing.
-2. **New research run**: edit the brief, pick the client brand, choose whether to use the LLM, which reviews the sentiment models learn from (shown once the real reviews are downloaded), whether to retrain the model and whether to run the analysts in parallel, then press **Run study**. A live panel shows each agent's status and trace while the study runs.
+2. **New research run**: edit the brief, pick the client brand, choose whether to use the LLM, which reviews the sentiment models learn from (shown once the real reviews are downloaded), whether to retrain the model, whether to run the analysts in parallel, and whether to review the plan and recommendations yourself, then press **Run study**. A live panel shows each agent's status and trace while the study runs, and pauses with a form at each approval gate if you chose to review. **Run study** stays disabled until the study ends.
 3. **LLM** shows the active provider. **Test LLM connection** sends a short test request.
 4. **Saved runs** switches between past studies. Each one is labelled with its run id, QA score and client.
 
@@ -103,7 +124,7 @@ Example briefs:
 | Tab | What to look at |
 |---|---|
 | **Overview** | Headline KPIs, the top findings and the priority actions. Open "Research brief" to see the brief the study answered. |
-| **Agents** | The workflow graph, the agent roster, the messages between agents, and the full trace explorer. Filter by agent or event kind to see exactly how a conclusion was reached. |
+| **Agents** | The workflow graph, the agent roster, the messages between agents, the approval decisions and the Director's follow-ups, and the full trace explorer. Filter by agent or event kind (for example `approval`) to see exactly how a conclusion was reached. |
 | **Market** | Market size and CAGR, growth by category, channel and region, seasonality (Ramadan/Eid, 11.11 and 12.12) and rising topics. |
 | **Competition** | Shares and momentum, channel and region indices, the price-value map, share of voice, the threat index, white space and stock-out losses. |
 | **Consumers (DL)** | The sentiment model card and confusion matrix, sentiment by brand and month, the aspect heatmap, complaint spikes, topics and social sentiment. Under "Try the deep-learning model" you can type any review and see the predicted sentiment, the attention weights (where the model looked) and the sentiment of each aspect. |
@@ -204,6 +225,9 @@ Old runs are never deleted automatically. Delete a run's folder under `outputs/r
 | "rate limited, retrying ..." in the trace | The free tier's per-minute limit was reached. MarketMind waits and retries; set `LLM_MIN_INTERVAL` (for example `4`) to space out calls. |
 | "World Bank API unreachable" warning | You are offline. MarketMind uses the cached data, or continues without macro indicators; the rest of the study is unaffected. |
 | The run stops at planning with "Unknown client" | The name matches no brand in the sales data, even ignoring case and accents. Use one of the brands the message lists. |
+| The run ends `rejected` | A reviewer rejected the plan or the recommendations. The dashboard shows who and why; no report was written. Run the study again with a revised brief. |
+| "LLM budget for this run is used up" in the trace | The run reached `--max-llm-calls` or `--max-llm-tokens`. The remaining text is written without the LLM; raise the limits if you need more. |
+| An agent fails with `AgentTimeout` | It ran past `--agent-timeout` (900 s by default). On a slow machine, a first run's model training can take longer; raise the limit. |
 | The run ends `unverified` and the report says "NOT VERIFIED" | The Critic agent crashed, so the report's numbers, citations and coverage were not checked. The Agents tab and `trace.jsonl` show the error; fix it and run the study again before relying on the report. |
 | An analysis agent shows "failed" but the study completes | That is graceful degradation: the other agents carry on. The Agents tab shows the error and its traceback in the trace. |
 | QA certificate says NOT PASSED | Read the open issues in the certificate; each names the failing check. LLM text that fails a check is replaced during the revisions, so issues that remain usually come from the deterministic report: a missing section, a research question no finding answers (often because an analysis agent failed), or fewer than three recommendations. |

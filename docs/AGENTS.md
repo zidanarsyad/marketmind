@@ -38,7 +38,10 @@ Every pipeline agent subclasses `BaseAgent` (`marketmind/core/agent.py`) and run
 | Tracing | Every status change, thought, action, observation, finding, message, LLM call, warning and error becomes an `Event` (see `trace_event.schema.json`). |
 | Findings | The unit of knowledge: a statement, metrics, evidence, impact (1-5), confidence (0-1), an optional SWOT tag and topic tags. Priority = impact x confidence. |
 | LLM calls | `ask_llm` builds a system prompt from the agent's name, role and goal plus the shared `GROUNDING_RULES` (use only the given facts, never invent numbers, cite finding IDs). The facts are sent as JSON, cut off at 14,000 characters. With no LLM, or if the call fails, it returns `None` and the agent continues deterministically. |
-| Result | `run()` returns an `AgentResult` (`completed`, `failed` or `skipped`) with timing and counts of findings, tool calls and LLM calls. Any exception is caught, its traceback is traced, and the agent returns `failed`. |
+| Result | `run()` returns an `AgentResult` (`completed`, `failed` or `skipped`) with timing, counts of findings, tool calls and LLM calls, and the number of `attempts`. Any exception is caught, its traceback is traced, and the agent returns `failed`. |
+| Retries and time limit | The workflow retries a failed agent once (`--retries`), except after a timeout or a reviewer's rejection. Each agent has a time limit (`--agent-timeout`, 900 s by default), checked at its next tool call or LLM call: past it, the agent stops with `AgentTimeout`. |
+| LLM budget | `ask_llm` checks the run's budget (`--max-llm-calls` 40 and `--max-llm-tokens` 300,000 by default, counted from the start of the run). Once it is used up, the agent warns and continues deterministically. |
+| Follow-up requests | When the Research Director sends an agent back with a research question (a blackboard message carrying `question`), the agent answers it after its work: it names its findings in the question's area, or publishes an "open question" finding (`<prefix>-9<n>` for question Qn, tag `open question`, impact 1) and replies to the Director. |
 
 ### Task environment
 
@@ -58,15 +61,15 @@ Every pipeline agent subclasses `BaseAgent` (`marketmind/core/agent.py`) and run
 
 ### 3.1 Research Director
 
-Turns the free-text brief into a validated research plan, dispatches the specialist agents as a dependency graph and enforces the QA gate.
+Turns the free-text brief into a validated research plan, puts it to the reviewer, dispatches the specialist agents as a dependency graph, sends analysts back for questions the report leaves open, and enforces the QA gate.
 
 | Field | Specification |
 |---|---|
 | Type | Goal-based planner and supervisor |
 | Performance measure | Every research question answered; QA gate passed within two revisions |
-| Environment | The client's business brief, the available datasets, the Critic's verdicts |
-| Sensors | `options.brief`, `options.client`, the dataset catalogue (scanned from `data/raw`), `qa.result` |
-| Actuators | Tools below; writes `plan`; builds the `Workflow`; sends revision requests to the Report Writer |
+| Environment | The client's business brief, the available datasets, the reviewer's decisions, the Critic's verdicts |
+| Sensors | `options.brief`, `options.client`, the dataset catalogue (scanned from `data/raw`), the plan-gate decision, `qa.result`, replies from analysts |
+| Actuators | Tools below; writes `plan`, `director.adaptations`; builds the `Workflow`; sends follow-up requests to analysts and revision requests to the Report Writer |
 | LLM use | `refine_plan_with_llm` (JSON). The refinement is accepted only if it returns 3-8 objectives and its questions cover every area of the rule-based plan; otherwise the rule-based plan (or its questions) stands, and the Director records the reason as a thought in the trace. |
 | On failure | The run stops with status `failed`, and the trace is saved. |
 
@@ -74,9 +77,12 @@ Turns the free-text brief into a validated research plan, dispatches the special
 |---|---|
 | `scan_data_catalog` | Lists the brands, categories, channels and months in the sales panel, and checks which datasets exist. |
 | `parse_brief` | Rule-based parser. Finds the client (`--client` if given, else a brand named in the brief, else the default), the horizon (3-12 months), the modules (keyword match per area) and a concept name, and writes one templated question per active area plus a strategy question. A `--client` name is matched ignoring case, accents and spaces; a name that matches no brand stops the run here, with the list of valid brands. |
-| `refine_plan_with_llm` | Lets the LLM sharpen the objectives and questions (optional; validated as above). |
+| `refine_plan_with_llm` | Lets the LLM sharpen the objectives and questions (optional; validated as above). A refinement that is not usable JSON, or whose questions leave out an area, is not used, and the Director says so in the trace. |
+| `seek_plan_approval` | Puts the plan to the human approval gate (`core/approval.py`). The reviewer approves it, leaves modules out (their questions go and the rest are renumbered; leaving out segmentation also leaves out pricing, whose price research runs in the segmentation agent), or rejects the study, which then ends with status `rejected`. Without a reviewer the gate approves automatically. |
 
 Planning rules: if no area keyword matches, all six areas are switched on. Pricing implies segmentation (the Van Westendorp study lives in the survey agent). Competition or consumer questions imply market context. The forecast task runs when either `forecast` or `pricing` is active.
+
+**Adaptive re-dispatch** (`supervise`): after the first QA verdict, passed or not, the Director looks for gaps that rewriting cannot fix: research questions no finding answers, and analysis sections missing from the report. It traces each gap to the analysis task responsible (`AREA_TASKS`, `SECTION_TASKS`; a pricing question goes to both the segmentation and the forecasting agent) and sends that agent a message with the question. An agent that had failed is re-run in full; one that completed answers from its findings or reports the question as open (`run_follow_up`). If anything changed, the Strategy agent, the Report Writer and the Critic run again on the new evidence. Each agent is sent back at most once per run, and every follow-up is recorded in `director.adaptations` (and `run_meta.json`, `adaptations`) and in the report's Appendix D.
 
 **Supervision** (`quality_loop`): if `qa.result.passed` is false, the Director sends the Report Writer up to 20 of the Critic's issues, sets `options.revision`, and re-runs the Report Writer and then the Critic. It does this at most twice (`max_revisions=2`). If the report still fails, it is released with a warning and its open issues are listed in the QA certificate.
 
@@ -258,6 +264,7 @@ The gradient-boosting model is a global, direct multi-horizon `HistGradientBoost
 | `build_swot` | Maps the findings tagged S, W, O or T into a SWOT, with up to five items per quadrant. |
 | `size_opportunities` | Puts a rupiah value on each opportunity (`OPP-1` to `OPP-5`) and states the basis for it. The concept opportunity assumes 5% year-1 conversion among top-2-box intenders, and the report states this assumption. |
 | `apply_strategy_playbook` | Evidence-triggered rules. Each play fires only if at least one of its evidence findings exists. Its impact is the highest impact among that evidence, and its confidence is the mean confidence. The effort factor is 1.0 for Low, 0.85 for Medium and 0.7 for High effort. Recommendations are numbered R1, R2, ... in order of priority and placed on a horizon: Quick win (0-3 months), Core move (0-6 or 0-12 months) or Strategic bet. |
+| `seek_client_approval` | Puts the recommendations to the human approval gate, after the playbook and before the summary is written, so nothing the reviewer drops reaches the report. The reviewer approves them, drops some (the rest are renumbered and the dropped ones are listed in the report's limitations), or rejects the study. Dropping every recommendation counts as a rejection. When the Director has the strategy redone and the recommendations are unchanged, the earlier decision stands. |
 | `draft_executive_summary` | Writes a deterministic summary from the key findings, and optionally an LLM version. |
 
 Playbook rules (each fires only when its evidence exists): channel growth engine (CMP-02, MKT-03, CMP-07); fix the pain point (CON-03, CON-09); launch the concept at the Van Westendorp price, and test the runner-up price too when SEG-04 says the pick is not settled (SEG-02, SEG-04, CMP-08, CON-07, MKT-06); hold list prices if demand is elastic (FCT-04, CON-06); expand distribution in growth regions (CMP-04, MKT-04); defend against the top threat (CMP-05, SEG-05); win over a competitor's customers during its crisis (CON-05, SEG-05); plan stock and campaigns around Ramadan (MKT-05, CMP-09, FCT-01).
@@ -306,6 +313,8 @@ The Critic checks the work of the generators. It is fully deterministic, so the 
 | `check_citations_and_evidence` | Every `[XXX-NN]` citation must name a real finding; an invented citation inside an LLM block is critical. Every recommendation must cite valid evidence, and there must be at least three recommendations. |
 
 Score = 15 x structure + 20 x coverage + 35 x grounding + 10 x citations + 15 x recommendations + 5 x disclosure, where each check scores 0-1 (grounding scores 1.0 once at least 98% of numbers are grounded). **Pass = a score of at least 85 and no critical issue.**
+
+Two rules handle the human and adaptive steps. A question answered only by an "open question" finding is addressed but not answered: it earns half credit in coverage, raises no issue, and is listed under `coverage.open`. Recommendations a reviewer dropped count towards the minimum of three, because the agents proposed them.
 
 ---
 
@@ -369,7 +378,7 @@ Findings marked † are published only when the evidence meets the agent's thres
 | FCT-04 | Demand Forecasting | pricing | \<Client\> price elasticity |
 | FCT-05 | Demand Forecasting | forecast | Forecast model quality |
 
-With the bundled data, all 37 findings are published.
+With the bundled data, all 37 findings are published. When the Director sends an agent back with a question it cannot answer, the agent adds an open-question finding, `<prefix>-9<n>` for question Qn (for example `MKT-91`), tagged `open question`.
 
 ## 6. Messages between agents
 
@@ -379,6 +388,8 @@ Agents never call each other directly. Apart from shared artefacts, the only dir
 |---|---|---|---|
 | Critic to Report Writer | The QA verdict fails | "QA failed with score S; N issues to fix" | `issues`: every issue |
 | Research Director to Report Writer | Before each revision | "Revise the report to resolve the QA issues" | `issues`: the first 20 issues |
+| Research Director to an analysis agent | A research question is unanswered, or the agent's report section is missing | "Answer Qn: ..." or "Re-run your analysis: the report has no ... section" | `question`: the plan's question object |
+| Analysis agent to Research Director | After answering a follow-up question | "Qn is answered by ..." or "Qn has no conclusive answer; published ..." | `question_id` |
 
 Each issue is an object `{check, severity, block, message}`. `check` is one of `structure`, `coverage`, `grounding`, `citations`, `recommendations` or `disclosure`; `severity` is `critical` or `major`; `block` names the LLM block to replace, or is `null` for issues in deterministic text. See `qa_result.schema.json`.
 

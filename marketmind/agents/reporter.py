@@ -217,7 +217,7 @@ class ReportWriterAgent(BaseAgent):
                 + (md_table(cat[["dataset", "rows", "coverage", "source"]]) if cat is not None else "") + "\n\n"
                 + (f"**Data quality.** {F['DAT-02'].statement} `[DAT-02]`\n\n" if "DAT-02" in F else "")
                 + (md_table(dq[["dataset", "rows_in", "rows_out", "quality_score", "actions"]]) if dq is not None else "")
-                + "\n\n**Models**\n\n" + "\n".join(cards) + f"\n\n{llm_note}")
+                + "\n\n**Models**\n\n" + "\n".join(cards) + f"\n\n{llm_note}" + self._oversight())
         add("methodology", "3. Methodology and Data", meth)
 
         # -- analysis sections
@@ -312,7 +312,7 @@ class ReportWriterAgent(BaseAgent):
             "The concept revenue estimate uses an assumed 5% year-1 conversion of top-2-box intenders; validate with a "
             "pilot launch.",
             "Aspect detection is lexicon-based; aspect polarity comes from the sentiment model and inherits its error rate.",
-        ])
+        ] + self._open_items())
         add("limitations", f"{n}. Risks and Limitations", lim)
 
         # -- appendix
@@ -327,8 +327,64 @@ class ReportWriterAgent(BaseAgent):
             app += "\n\n### B. Sentiment model card (held-out test set)\n\n" + md_table(tm)
         if fc and "backtest_metrics" in fc:
             app += "\n\n### C. Forecast backtest (mean of 3 rolling folds)\n\n" + md_table(fc["backtest_metrics"])
+        log = self._coordination_log()
+        if log:
+            app += "\n\n### D. Human review and agent coordination\n\n" + log
         add("appendix", "Appendix", app)
         return sections
+
+    # -- oversight: approval gates, follow-up requests, open questions
+    def _oversight(self) -> str:
+        """One paragraph on who approved the plan and the recommendations, and what the Director sent back."""
+        bb, parts = self.bb, []
+        approvals = bb.get("approvals", [])
+        if approvals and all(a["reviewer"].startswith("auto") and a["approved"] and not a["drop"] for a in approvals):
+            parts_text = ("\n\n**Human review.** No reviewer was asked in this run: the plan and recommendation gates "
+                          "approved automatically. Run with `--approve`, or tick the review option in the dashboard, to "
+                          "review them.")
+            approvals = []
+        else:
+            parts_text = ""
+        for a in approvals:
+            what = "research plan" if a["gate"] == "plan" else "recommendations"
+            who = f"`{a['reviewer']}`"
+            if a["drop"]:
+                kind = "module(s)" if a["gate"] == "plan" else "recommendation(s)"
+                parts.append(f"the {what} {'was' if a['gate'] == 'plan' else 'were'} approved by {who}, who removed "
+                             f"{len(a['drop'])} {kind}")
+            else:
+                parts.append(f"the {what} {'was' if a['gate'] == 'plan' else 'were'} approved by {who}")
+        text = parts_text
+        if parts:
+            text += "\n\n**Human review.** " + "; ".join(parts)[0].upper() + "; ".join(parts)[1:] + " (details in Appendix D)."
+        ad = bb.get("director.adaptations", [])
+        if ad:
+            sent = ", ".join(f"the {a['agent']} ({a['action']}: {a['reason']})" for a in ad)
+            text += (f"\n\n**Adaptive coordination.** After the first quality check the Research Director sent back {sent}, "
+                     "then had the strategy, this report and the quality check redone.")
+        return text
+
+    def _open_items(self) -> list[str]:
+        """Limitations from the run itself: questions left open, and recommendations the reviewer removed."""
+        items = []
+        open_qs = [f for f in self.bb.findings() if "open question" in f.tags]
+        if open_qs:
+            items.append("Research questions left open: " + "; ".join(
+                f"{f.metrics.get('question', f.id)} `[{f.id}]`" for f in open_qs)
+                + ". The responsible agents were asked again and found no evidence strong enough to answer them.")
+        for r in self.bb.get("strategy.rejected_recommendations", []):
+            items.append(f"The reviewer `{r['reviewer']}` removed the recommendation \"{r['title']}\"; it is not part of "
+                         "this plan.")
+        return items
+
+    def _coordination_log(self) -> str:
+        rows = [dict(Step=f"Approval: {a['gate']}", Decision="approved" if a["approved"] else "rejected",
+                     By=a["reviewer"], Detail="; ".join(x for x in (", ".join(a["drop"]) and f"removed {', '.join(a['drop'])}",
+                                                                     a["comment"]) if x) or "-")
+                for a in self.bb.get("approvals", [])]
+        rows += [dict(Step=f"Follow-up: {a['agent']}", Decision=a["action"], By="Research Director",
+                      Detail=f"{a['reason']} -> {a['outcome']}") for a in self.bb.get("director.adaptations", [])]
+        return md_table(pd.DataFrame(rows)) if rows else ""
 
     def _render(self, sections: list[dict]) -> str:
         return render_html(sections, self.bb, title=f"{self.client} - Market Research Report", run_id=self.ctx.run_id)

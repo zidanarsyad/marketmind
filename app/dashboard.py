@@ -25,6 +25,7 @@ import streamlit as st  # noqa: E402
 import streamlit.components.v1 as components  # noqa: E402
 
 from marketmind.config import DATA_RAW, DATASETS, DEFAULT_BRIEF, DEFAULT_CLIENT, MODELS_DIR  # noqa: E402
+from marketmind.core.approval import ApprovalBroker, Decision  # noqa: E402
 from marketmind.core.llm import LLMClient  # noqa: E402
 from marketmind.core.store import list_runs, load_run  # noqa: E402
 from marketmind.reporting.charts import CHARTS, TableSource  # noqa: E402
@@ -168,10 +169,16 @@ def render_progress(events, grid, feed) -> None:
     feed.markdown("\n\n".join(lines) if lines else "_starting ..._")
 
 
-def launch(brief: str, client: str, use_llm: bool, retrain: bool, parallel: bool, sentiment_data: str = "study") -> str | None:
+def start_run(brief: str, client: str, use_llm: bool, retrain: bool, parallel: bool, sentiment_data: str = "study",
+              review: bool = False) -> None:
+    """Start a study in a background thread; it survives Streamlit reruns in the session state."""
     from marketmind.system import MarketResearchSystem
+    if "active_run" in st.session_state:   # one study at a time per browser session
+        return
+    # a gate left unanswered for 30 minutes approves automatically (and says so), so no study waits forever
+    broker = ApprovalBroker(reviewer="dashboard reviewer", timeout=1800) if review else None
     system = MarketResearchSystem(brief=brief, client=client, use_llm=use_llm, force_retrain=retrain, parallel=parallel,
-                                  llm=get_llm(), sentiment_data=sentiment_data)
+                                  llm=get_llm(), sentiment_data=sentiment_data, approver=broker)
     holder: dict = {}
 
     def target():
@@ -182,6 +189,50 @@ def launch(brief: str, client: str, use_llm: bool, retrain: bool, parallel: bool
 
     th = threading.Thread(target=target, daemon=True)
     th.start()
+    st.session_state["active_run"] = dict(system=system, thread=th, holder=holder, broker=broker)
+
+
+def approval_form(broker: ApprovalBroker, run_id: str) -> None:
+    """Show the proposal waiting at an approval gate; the study resumes when the reviewer decides.
+
+    One checkbox per module or recommendation, each with its own key: checkbox state survives the page reruns that
+    a paused study goes through (a multiselect here once came back empty after submitting, dropping everything).
+    """
+    gate, proposal = broker.pending
+    step = len(st.session_state.get("decided", []))
+    with st.form(f"gate-{run_id}-{step}"):
+        if gate == "plan":
+            st.markdown(f"**Your approval: research plan for {proposal['client']}**")
+            st.dataframe(pd.DataFrame(proposal["questions"])[["id", "area", "question"]], hide_index=True, width="stretch")
+            st.caption("Modules to run (untick to leave one out)")
+            items = {m: m for m in proposal["modules"]}
+        else:
+            st.markdown("**Your approval: recommendations** (before the executive summary and the report are written)")
+            st.caption("Recommendations to keep (untick to drop one)")
+            items = {r["id"]: f"{r['id']}. {r['title']} (priority {r['priority']:.2f})" for r in proposal["recommendations"]}
+        cols = st.columns(2)
+        kept = {i: cols[n % 2].checkbox(label, value=True, key=f"keep-{run_id}-{step}-{i}")
+                for n, (i, label) in enumerate(items.items())}
+        drop = [i for i, on in kept.items() if not on]
+        comment = st.text_input("Comment (optional)", key=f"comment-{run_id}-{step}")
+        c1, c2 = st.columns(2)
+        approve = c1.form_submit_button("Approve", type="primary", width="stretch")
+        reject = c2.form_submit_button("Reject the study", width="stretch")
+    if approve and len(drop) == len(items):
+        st.error("Nothing would be left. Keep at least one item, or reject the study.")
+        return
+    if approve or reject:
+        broker.decide(Decision(bool(approve), broker.reviewer, comment, drop=drop if approve else []))
+        st.session_state.setdefault("decided", []).append(gate)
+        st.rerun()
+
+
+def follow_active_run() -> str | None:
+    """Show the running study and pause it at the approval gates. Returns the run id once it has finished."""
+    act = st.session_state.get("active_run")
+    if not act:
+        return None
+    system, th, holder, broker = act["system"], act["thread"], act["holder"], act["broker"]
     with st.status(f"Run {system.run_id}: the agent team is working ...", expanded=True) as box:
         c1, c2 = st.columns([1, 1.4])
         with c1:
@@ -192,14 +243,21 @@ def launch(brief: str, client: str, use_llm: bool, retrain: bool, parallel: bool
             feed = st.empty()
         while th.is_alive():
             render_progress(system.tracer.snapshot(), grid, feed)
+            if broker is not None and broker.pending:
+                box.update(label=f"Run {system.run_id}: waiting for your approval", state="running", expanded=True)
+                approval_form(broker, system.run_id)
+                st.stop()          # the study waits on the gate; submitting the form reruns the page
             time.sleep(0.6)
         th.join()
         render_progress(system.tracer.snapshot(), grid, feed)
+        st.session_state.pop("active_run", None)
+        st.session_state.pop("decided", None)
         if "error" in holder:
             box.update(label=f"Run failed: {holder['error']}", state="error")
             return None
         res = holder["result"]
-        box.update(label=f"Run {res.run_id} {res.status} in {res.seconds}s - QA {res.qa.get('score')}/100",
+        qa_txt = f" - QA {res.qa.get('score')}/100" if res.qa else ""
+        box.update(label=f"Run {res.run_id} {res.status} in {res.seconds}s{qa_txt}",
                    state="complete" if res.status == "completed" else "error", expanded=False)
     return system.run_id
 
@@ -232,7 +290,11 @@ with st.sidebar:
                  "must be downloaded first (docs/DATA_SOURCES.md); a new mix trains once, for a few minutes.")
         retrain = st.toggle("Retrain deep-learning model", value=False)
         parallel = st.toggle("Run analysis agents in parallel", value=True)
-        start = st.button("Run study", type="primary", width="stretch", disabled=not data_ok)
+        review = st.toggle("Review the plan and recommendations myself", value=False,
+                           help="The study pauses twice for your approval: after planning, and before the report is "
+                                "written. Without review, both gates approve automatically and the report says so.")
+        busy = "active_run" in st.session_state
+        start = st.button("Run study", type="primary", width="stretch", disabled=not data_ok or busy)
     st.divider()
     st.caption(f"**LLM:** {llm.describe()}")
     if llm.available and st.button("Test LLM connection", width="stretch"):
@@ -246,11 +308,13 @@ with st.sidebar:
         st.session_state["run_id"] = run_id
 
 if start:
-    new_id = launch(brief, client, use_llm, retrain, parallel, sentiment_data)
-    if new_id:
-        st.session_state["run_id"] = new_id
-        st.session_state.pop(f"chat-{new_id}", None)
-        st.rerun()
+    start_run(brief, client, use_llm, retrain, parallel, sentiment_data, review)
+    st.rerun()             # redraw the sidebar at once, with "Run study" disabled while the study runs
+new_id = follow_active_run()
+if new_id:
+    st.session_state["run_id"] = new_id
+    st.session_state.pop(f"chat-{new_id}", None)
+    st.rerun()
 
 if not runs:
     st.header("Welcome to MarketMind")
@@ -267,7 +331,9 @@ qa = meta.get("qa", {})
 
 # ============================================================================ header
 st.title(f"{client} · Market Research")
-chips = [f"Run {run.run_id}", f"{meta.get('seconds')}s", meta.get("llm", {}).get("description", ""),
+llm_chip = (meta.get("llm", {}).get("description", "") if meta.get("options", {}).get("use_llm", True)
+            else "LLM off (deterministic run)")
+chips = [f"Run {run.run_id}", f"{meta.get('seconds')}s", llm_chip,
          f"QA {qa.get('score')}/100 {'passed' if qa.get('passed') else 'not passed'}" if qa.get("score") is not None
          else "QA not run - unverified",
          f"{len(run.findings)} findings", f"{len(run.json('strategy.recommendations', []) or [])} recommendations"]
@@ -275,6 +341,12 @@ st.markdown("".join(f'<span class="mm-chip">{html.escape(str(c))}</span>' for c 
 if meta.get("status") == "unverified":
     st.warning("The Critic agent did not complete in this run, so the report's numbers, citations and coverage were "
                "not checked. The Agents tab shows the error.")
+if meta.get("status") == "rejected":
+    stop = next((a for a in meta.get("approvals", []) if not a["approved"]), {})
+    st.error(f"This study was stopped at the {stop.get('gate', '?')} approval gate by {stop.get('reviewer', '?')}"
+             + (f": {stop['comment']}" if stop.get("comment") else "") + ". No report was released.")
+    st.dataframe(pd.DataFrame(meta.get("approvals", [])), width="stretch", hide_index=True)
+    st.stop()
 
 tabs = st.tabs(["Overview", "Agents", "Market", "Competition", "Consumers (DL)", "Segments", "Forecast & pricing",
                 "Strategy", "Report", "Ask the analyst", "Evaluation", "Data"])
@@ -351,6 +423,15 @@ with tabs[1], guard("Agents"):
                      width="stretch", hide_index=True)
         st.markdown("**QA history**")
         st.dataframe(pd.DataFrame(qa.get("history", [])), width="stretch", hide_index=True)
+        st.markdown("**Human review and follow-ups**")
+        steps = [dict(step=f"approval: {a['gate']}", decision="approved" if a["approved"] else "rejected",
+                      by=a["reviewer"], detail=", ".join(filter(None, [a["drop"] and "removed " + ", ".join(a["drop"]),
+                                                                        a["comment"]])) or "-")
+                 for a in meta.get("approvals", [])]
+        steps += [dict(step=f"follow-up: {a['agent']}", decision=a["action"], by="Research Director",
+                       detail=f"{a['reason']} -> {a['outcome']}") for a in meta.get("adaptations", [])]
+        st.dataframe(pd.DataFrame(steps) if steps else pd.DataFrame([{"info": "Not recorded for this run."}]),
+                     width="stretch", hide_index=True)
     with c2:
         st.markdown("**LLM usage**")
         st.json(meta.get("llm", {}), expanded=False)

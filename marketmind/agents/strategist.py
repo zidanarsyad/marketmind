@@ -10,6 +10,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..core.agent import BaseAgent
+from ..core.approval import Decision, StudyRejected, request_approval
 from ..core.findings import Finding
 from .common import idr, pct
 
@@ -27,6 +28,7 @@ class StrategyAgent(BaseAgent):
         self.tool("build_swot", self._swot, "map findings to strengths, weaknesses, opportunities and threats")
         self.tool("size_opportunities", self._size, "quantify the revenue at stake for each opportunity")
         self.tool("apply_strategy_playbook", self._playbook, "trigger evidence-based recommendations")
+        self.tool("seek_client_approval", self._seek_approval, "put the recommendations to the human approval gate")
         self.tool("draft_executive_summary", self._exec_summary, "write the executive summary")
 
     def execute(self) -> str:
@@ -39,6 +41,7 @@ class StrategyAgent(BaseAgent):
         swot = self.use("build_swot", findings)
         opps = self.use("size_opportunities")
         recs = self.use("apply_strategy_playbook", opps)
+        recs = self.use("seek_client_approval", recs)
         kpis = self._kpis()
         summary, summary_llm = self.use("draft_executive_summary", recs, kpis)
         self.put("strategy.swot", swot, "SWOT analysis")
@@ -51,6 +54,40 @@ class StrategyAgent(BaseAgent):
         return f"{len(recs)} recommendations; SWOT {sum(len(v) for v in swot.values())} items; {len(opps)} sized opportunities"
 
     # ------------------------------------------------------------------ tools
+    def _seek_approval(self, recs: list[dict]) -> list[dict]:
+        """Human approval gate: the reviewer approves the recommendations, drops some, or rejects the study.
+
+        Runs before the executive summary is written, so a dropped recommendation cannot reach the report. When the
+        Director has the strategy redone and the recommendations are unchanged, the earlier decision stands.
+        """
+        titles = [r["title"] for r in recs]
+        last = self.bb.get("strategy.approved_proposal")
+        if last and last["titles"] == titles:
+            decision = Decision(**last["decision"])
+            self.think("The recommendations are unchanged since the reviewer decided on them; that decision stands.")
+        else:
+            proposal = dict(recommendations=[dict(id=r["id"], title=r["title"], priority=r["priority"],
+                                                  horizon=r["horizon"], evidence=r["evidence"]) for r in recs])
+            decision = request_approval(self.ctx, "recommendations", proposal, self.name)
+            self.put("strategy.approved_proposal", dict(titles=titles, decision=decision.to_dict()),
+                     "Recommendations put to the reviewer and the decision taken")
+        if not decision.approved:
+            raise StudyRejected(f"the reviewer rejected the recommendations ({decision.comment or 'no reason given'})")
+        dropped = [r for r in recs if r["id"] in decision.drop]
+        if not dropped:
+            return recs
+        if len(dropped) == len(recs):  # nothing left to deliver: that is a rejection, whatever the form said
+            raise StudyRejected("the reviewer removed every recommendation")
+        kept = [r for r in recs if r["id"] not in decision.drop]
+        self.put("strategy.rejected_recommendations",
+                 [dict(id=r["id"], title=r["title"], reviewer=decision.reviewer, comment=decision.comment) for r in dropped],
+                 "Recommendations the reviewer dropped")
+        for i, r in enumerate(kept):
+            r["id"] = f"R{i + 1}"
+        self.think(f"The reviewer dropped {', '.join(r['id'] for r in dropped)}; {len(kept)} recommendations remain, "
+                   f"renumbered R1-R{len(kept)}.")
+        return kept
+
     def _rank(self) -> list[Finding]:
         fs = sorted(self.bb.findings(), key=lambda f: -f.priority)
         self.think(f"Synthesising {len(fs)} findings from {len({f.agent for f in fs})} agents.")

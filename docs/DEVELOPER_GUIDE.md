@@ -59,15 +59,17 @@ outputs/                     runs/, models/, cache/llm/, marketmind.db   (git-ig
 | Member | Purpose |
 |---|---|
 | `name`, `role`, `goal`, `ml_capability` | Class attributes. They identify the agent in traces, prompts, the roster and the report. Set `ml_capability` only for agents that train or apply models. |
+| `finding_prefix` | The ID prefix of the agent's findings (`"MKT"`, `"CMP"`, ...). It names the open-question finding the agent publishes when the Director sends it back with a question it cannot answer (`MKT-91` for Q1). |
 | `register_tools()` | Override this to declare tools with `self.tool(name, fn, description)` |
 | `use(name, *args, **kwargs)` | Calls a tool, tracing an `action` and an `observation`. Always call tools through `use`, so the call is visible. |
 | `execute() -> str` | Override with the agent's logic. Return a one-line summary. |
-| `run() -> AgentResult` | The lifecycle wrapper: it traces the start and end and turns any exception into a `failed` result. Do not override it. |
+| `run() -> AgentResult` | The lifecycle wrapper: it traces the start and end, starts the agent's time limit (`time_limit`, set by the workflow), answers any follow-up requests after `execute()`, and turns any exception into a `failed` result. Do not override it. |
+| `answer_requests()`, `run_follow_up()` | Answer the Research Director's follow-up questions (messages carrying `question`) from the agent's findings, or publish an open-question finding. `run_follow_up` does only that, without redoing the analysis. |
 | `think(msg)`, `warn(msg)`, `emit(kind, msg, **data)` | Write trace events |
 | `put(key, value, description)` | Writes an artefact to the blackboard with provenance |
 | `publish(finding)` | Adds a finding and traces it |
 | `tell(recipient, content, **data)` | Leaves a message for another agent |
-| `ask_llm(task, facts, max_tokens, as_json)` | Grounded LLM call. Returns `None` when no LLM is available, so always keep a deterministic path. |
+| `ask_llm(task, facts, max_tokens, as_json)` | Grounded LLM call. Returns `None` when no LLM is available or the run's LLM budget (`options["budget"]`) is used up, so always keep a deterministic path. |
 | `self.bb`, `self.llm`, `self.tracer`, `self.ctx`, `self.options` | The run's shared services and options |
 
 ### Blackboard (`core/blackboard.py`)
@@ -76,7 +78,11 @@ outputs/                     runs/, models/, cache/llm/, marketmind.db   (git-ig
 
 ### Workflow (`core/orchestrator.py`)
 
-`Task(id, agent_class, depends_on=(), critical=True)`. `Workflow(tasks)` sorts the tasks into layers and rejects cycles (`ValueError`). `run(ctx, parallel, max_workers=3)` runs each layer on a thread pool, and skips a task if any of its critical dependencies did not complete.
+`Task(id, agent_class, depends_on=(), critical=True, retries=1, timeout=None)`. `Workflow(tasks)` sorts the tasks into layers and rejects cycles (`ValueError`). `run(ctx, parallel, max_workers=3)` runs each layer on a thread pool, retries a failed task up to `retries` times (not after `AgentTimeout` or `StudyRejected`), records the attempts in `AgentResult.attempts`, and skips a task if any of its critical dependencies did not complete. `timeout` becomes the agent's `time_limit`: the agent raises `AgentTimeout` at its next `use()` or `ask_llm()` once it is over, because Python threads cannot be stopped from outside.
+
+### Approval gates (`core/approval.py`)
+
+`MarketResearchSystem(approver=...)` takes any callable `approver(gate, proposal) -> Decision`, where `gate` is `"plan"` or `"recommendations"` and `Decision(approved, reviewer, comment, drop)` says what to do; `drop` lists modules or recommendation IDs to remove. `request_approval(ctx, gate, proposal, actor)` asks it, traces an `approval` event and appends the decision to the blackboard's `approvals`. Three reviewers are included: `auto_approve` (the default), `ConsoleApprover` (used by `run.py --approve`; its `ask` and `say` functions can be replaced in tests) and `ApprovalBroker`, which hands a gate from the study's thread to the dashboard's thread and waits for `decide()`. A rejection raises `StudyRejected` in the Strategy agent, or stops the run after planning, and the run ends `rejected`.
 
 ### LLMClient (`core/llm.py`)
 
@@ -157,7 +163,8 @@ With the bundled data it publishes: *"Promotions lift Kirana Beauty's units most
 - **Read through `require`, write through `put`.** Never reach into another agent's object, and never mutate a DataFrame you read from the blackboard; work on a copy.
 - **Findings are self-contained.** The statement holds the numbers, `metrics` holds the same values in machine-readable form, and `evidence` names the sources. Choose impact and confidence honestly, because they drive priority.
 - **Keep an offline path.** Treat `ask_llm` returning `None` as normal.
-- **Fail loudly, degrade gracefully.** Raise on broken inputs; the framework records the failure and the rest of the study continues.
+- **Fail loudly, degrade gracefully.** Raise on broken inputs; the framework records the failure, retries once, and the rest of the study continues.
+- **Set `finding_prefix`** for an analysis agent, and map its area and report section in `AREA_TASKS` and `SECTION_TASKS` (`agents/director.py`), so the Director can send it back for questions the report leaves open.
 
 ## 5. Adding a tool to an existing agent
 
@@ -200,7 +207,8 @@ An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/ll
 | `tests/test_real_reviews.py` (5 tests) | The `--sentiment-data` option: emoji conversion, the three training modes on a small stand-in corpus, an unchanged cache key in the default mode, rejection of unknown modes, test metrics per source | seconds |
 | `tests/test_failure_paths.py` (6 tests) | Graceful degradation: client names matched ignoring case and accents; an unknown client stopping the run at planning; a missing dataset skipped with a warning; a World Bank outage falling back to the cache, then to nothing; garbled LLM output leaving the rule-based plan in place; and an end-to-end run where an analyst and the Critic crash, which must still save a schema-valid run marked `unverified` with a "NOT VERIFIED" report | about 1 minute |
 | `tests/test_agent_logic.py` (14 tests) | Each agent's core method on small synthetic inputs with a known answer: the Critic's number parsing, grounding at written precision (percentages, rupiah units, years, LLM blocks, code spans) and citation checks; the workflow's skip rules; Van Westendorp crossings against hand-solved values, the middle of a tied stretch of curves, the bootstrap of the recommended price and the count of answers that place the optimal price point; elasticity estimates recovering known slopes; the constant-elasticity price scenarios; the complaint-spike detector finding exactly the planted episode; the threat index; label canonicalisation; and the Strategy agent's priority rule | seconds, plus the shared run |
-| `tests/test_dashboard.py` | Streamlit's test runner renders the real dashboard for the shared run: all 12 tabs, no exception and no tab-level error | about 30 s, plus the shared run |
+| `tests/test_dashboard.py` (2 tests) | Streamlit's test runner renders the real dashboard for the shared run: all 12 tabs, no exception and no tab-level error; and a rejected run shows who stopped it and why | about 45 s, plus the shared run |
+| `tests/test_agentic.py` (13 tests) | Retries (a flaky agent recovers; a broken one fails after two attempts), the time limit (stops at the next tool call, not retried), the LLM budget, the console reviewer, decision tracing and a crashing reviewer, the dashboard broker across threads, the plan gate (modules left out, questions renumbered) and the recommendation gate (drop, renumber, reuse an unchanged decision, reject), the Director's mapping of open questions to agents, open-question answers, the Critic's half credit; and two end-to-end studies: the market analyst fails until the Director sends it back while a reviewer drops a recommendation, and a rejected plan stops the study before any analysis | about 2 minutes |
 | `tests/test_llm_client.py` (12 tests) | The LLM client against a fake OpenAI-style API, with no network or key: the request sent, response parsing, token counts, caching (and that the key never reaches the cache), the retry after a rate limit, dropping JSON mode when a provider rejects it, per-provider model settings winning over the global ones, a busy (503) or hung (timeout) model handing the call to the fallback, a retired model replaced for good, an unrelated bad request that mentions the model leaving it in place, rediscovery preferring `latest` aliases over previews, soft failure on HTTP errors, and offline mode without a key | under a second |
 | `tests/test_evaluation_and_chat.py` (2 tests) | The ground-truth evaluation on the shared run, which must recover every planted insight (a regression guard for the whole system). The one exception is the concept price, a documented noise-driven miss on the bundled data ([EVALUATION.md §4.5](EVALUATION.md#45-concept-pricing)); when it misses, SEG-04 must say the pick is not settled and name a runner-up inside the true band; and the Analyst Chat's offline retrieval: a pain-point question answered from weaknesses or threats with citations, a pricing question from pricing evidence, nonsense answered with "no evidence" | seconds, plus the shared run |
 

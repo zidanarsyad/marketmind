@@ -2,10 +2,14 @@
 
 1. Plans: turns the free-text business brief into a structured research plan (client, scope,
    objectives, research questions, modules to run) - rule-based parsing, optionally refined by
-   the LLM, always validated against the data actually available.
-2. Dispatches: builds the agent workflow (DAG) for the modules the plan needs.
-3. Supervises: enforces the QA gate - if the Critic rejects the report, it sends the report back
-   to the Report Writer for revision (bounded number of loops).
+   the LLM, always validated against the data actually available - and puts it to the human
+   approval gate, applying the reviewer's edits.
+2. Dispatches: builds the agent workflow (DAG) for the modules the plan needs, with retries and a
+   time limit per agent.
+3. Supervises: when the Critic finds a research question the report leaves open, it sends the
+   responsible analysis agent back with that question (re-running it if it had failed) and has the
+   strategy, report and QA redone; then it enforces the QA gate, sending a failing report back to
+   the Report Writer for revision (bounded number of loops).
 """
 from __future__ import annotations
 
@@ -17,6 +21,7 @@ import pandas as pd
 
 from ..config import DATA_RAW, DATASETS, DEFAULT_CLIENT
 from ..core.agent import AgentResult, BaseAgent
+from ..core.approval import Decision, request_approval
 from ..core.orchestrator import Task, Workflow
 
 AREAS = ["market", "competition", "consumer", "segmentation", "pricing", "forecast"]
@@ -37,6 +42,12 @@ QUESTION_TEMPLATES = {
     "forecast": "What is the 12-month demand outlook for the market and for {client}?",
     "strategy": "Where should {client} play and how can it win over the next 12 months?",
 }
+# which analysis task answers the questions of each area, and which task writes each report section
+AREA_TASKS = {"market": ("market",), "competition": ("competition",), "consumer": ("consumer",),
+              "segmentation": ("segmentation",), "pricing": ("segmentation", "forecast"), "forecast": ("forecast",)}
+SECTION_TASKS = {"Market Overview": "market", "Competitive Landscape": "competition", "Consumer Insights": "consumer",
+                 "Segments and Personas": "segmentation", "Demand Forecast": "forecast"}
+DEFAULT_AGENT_TIMEOUT = 900.0   # seconds per agent; a first run trains the deep-learning model in about 2 minutes
 
 
 def _fold(s: str) -> str:
@@ -52,6 +63,7 @@ class ResearchDirectorAgent(BaseAgent):
         self.tool("scan_data_catalog", self._scan_catalog, "inspect available datasets, brands, categories and coverage")
         self.tool("parse_brief", self._rule_plan, "extract client, scope, horizon and questions from the brief (rule-based)")
         self.tool("refine_plan_with_llm", self._llm_refine, "let the LLM sharpen objectives and questions")
+        self.tool("seek_plan_approval", self._seek_plan_approval, "put the research plan to the human approval gate")
 
     # ------------------------------------------------------------------ planning
     def execute(self) -> str:
@@ -142,13 +154,46 @@ class ResearchDirectorAgent(BaseAgent):
         refined["planner"] = "rule-based + LLM refinement"
         return refined
 
+    # ------------------------------------------------------------------ human approval of the plan
+    def review_plan(self) -> Decision:
+        """Put the plan to the approval gate and apply the reviewer's edits (modules left out)."""
+        return self.use("seek_plan_approval")
+
+    def _seek_plan_approval(self) -> Decision:
+        plan = self.bb.require("plan")
+        proposal = dict(client=plan["client"], modules=[a for a in AREAS if plan["modules"][a]],
+                        questions=plan["questions"], objectives=plan["objectives"],
+                        horizon_months=plan["horizon_months"], concept=plan.get("concept"))
+        decision = request_approval(self.ctx, "plan", proposal, self.name)
+        if not decision.approved:
+            self.think(f"The reviewer rejected the plan ({decision.comment or 'no reason given'}); stopping the study.")
+            return decision
+        drop = [m for m in decision.drop if m in AREAS and plan["modules"].get(m)]
+        if "segmentation" in drop and plan["modules"].get("pricing") and "pricing" not in drop:
+            drop.append("pricing")  # the concept price research runs inside the segmentation agent
+        if drop:
+            for m in drop:
+                plan["modules"][m] = False
+            kept = [q for q in plan["questions"] if q["area"] not in drop]
+            plan["questions"] = [dict(q, id=f"Q{i + 1}") for i, q in enumerate(kept)]
+            active = [a for a in AREAS if plan["modules"][a]]
+            if not active:
+                self.think("The reviewer left out every analysis module, so there is nothing to study; stopping.")
+                return Decision(False, decision.reviewer, "every analysis module was left out")
+            self.put("plan", plan, "Research plan after the reviewer's edits")
+            self.think(f"The reviewer left out {', '.join(drop)}; the plan now covers {', '.join(active)} "
+                       f"with {len(plan['questions'])} questions.")
+        return decision
+
     # ------------------------------------------------------------------ dispatching
     def build_workflow(self) -> Workflow:
         from . import (CompetitiveIntelligenceAgent, ConsumerInsightAgent, DataCollectionAgent, DataQualityAgent,
                        DemandForecastingAgent, MarketTrendAnalystAgent, QualityAssuranceAgent, ReportWriterAgent,
                        SegmentationAgent, StrategyAgent)
         modules = self.bb.require("plan")["modules"]
-        tasks = [Task("collect", DataCollectionAgent), Task("quality", DataQualityAgent, ("collect",))]
+        limits = dict(retries=int(self.options.get("retries", 1)),
+                      timeout=float(self.options.get("agent_timeout") or DEFAULT_AGENT_TIMEOUT))
+        tasks = [Task("collect", DataCollectionAgent, **limits), Task("quality", DataQualityAgent, ("collect",), **limits)]
         analysis = []
         for key, agent, flag in [("market", MarketTrendAnalystAgent, modules["market"]),
                                  ("competition", CompetitiveIntelligenceAgent, modules["competition"]),
@@ -156,18 +201,90 @@ class ResearchDirectorAgent(BaseAgent):
                                  ("segmentation", SegmentationAgent, modules["segmentation"]),
                                  ("forecast", DemandForecastingAgent, modules["forecast"] or modules["pricing"])]:
             if flag:
-                tasks.append(Task(key, agent, ("quality",), critical=False))
+                tasks.append(Task(key, agent, ("quality",), critical=False, **limits))
                 analysis.append(key)
-        tasks += [Task("strategy", StrategyAgent, tuple(analysis) or ("quality",)),
-                  Task("report", ReportWriterAgent, ("strategy",)),
-                  Task("qa", QualityAssuranceAgent, ("report",))]
+        tasks += [Task("strategy", StrategyAgent, tuple(analysis) or ("quality",), **limits),
+                  Task("report", ReportWriterAgent, ("strategy",), **limits),
+                  Task("qa", QualityAssuranceAgent, ("report",), **limits)]
         wf = Workflow(tasks)
         self.emit("thought", f"Dispatching {len(tasks)} agents in {len(wf.layers)} stages; "
                              f"{len(analysis)} analysis agents will run in parallel.",
                   layers=wf.layers)
         return wf
 
-    # ------------------------------------------------------------------ supervision
+    # ------------------------------------------------------------------ supervision: adaptive re-dispatch
+    def follow_up_plan(self, qa: dict, results: dict[str, AgentResult], tasks: set[str]) -> dict[str, dict]:
+        """Which analysis agents to send back, and why: {task id: {questions, sections, failed}}.
+
+        Reads the Critic's verdict: research questions no finding answers, and analysis sections missing from
+        the report. Each is traced to the task that should have answered it.
+        """
+        plan = self.bb.require("plan")
+        questions = {q["id"]: q for q in plan["questions"]}
+        checks = qa.get("checks", {})
+        todo: dict[str, dict] = {}
+        for qid in checks.get("coverage", {}).get("unanswered", []):
+            q = questions.get(qid)
+            for tid in AREA_TASKS.get(q["area"] if q else "", ()):
+                if tid in tasks:
+                    todo.setdefault(tid, dict(questions=[], sections=[]))["questions"].append(q)
+        for section in checks.get("structure", {}).get("missing", []):
+            tid = SECTION_TASKS.get(section)
+            if tid in tasks:
+                todo.setdefault(tid, dict(questions=[], sections=[]))["sections"].append(section)
+        for tid, item in todo.items():
+            item["failed"] = tid not in results or results[tid].status != "completed"
+        return todo
+
+    def supervise(self, results: dict[str, AgentResult], workflow: Workflow) -> dict[str, AgentResult]:
+        """Send analysis agents back for the research questions the report leaves open (once per agent per run).
+
+        An agent that failed is re-dispatched in full; one that completed but did not answer a question gets a
+        targeted request and answers it from its findings, or reports the question as open. If anything changed,
+        the Strategy agent, the Report Writer and the Critic are run again on the new evidence.
+        """
+        qa = self.bb.get("qa.result") or {}
+        done = set(self.bb.get("director.followed_up", []))
+        todo = {tid: v for tid, v in self.follow_up_plan(qa, results, set(workflow.tasks)).items() if tid not in done}
+        if not todo:
+            return results
+        adaptations = list(self.bb.get("director.adaptations", []))
+        changed = False
+        for tid, item in todo.items():
+            task = workflow.tasks[tid]
+            qids = [q["id"] for q in item["questions"]]
+            gaps = qids + [f"the {s} section" for s in item["sections"]]
+            reason = "it failed" if item["failed"] else f"no finding answers {', '.join(qids)}"
+            self.think(f"The report leaves {', '.join(gaps)} open ({reason}); sending the {task.agent.name} back.")
+            for q in item["questions"]:
+                self.tell(task.agent.name, f"Answer {q['id']}: {q['question']}", question=q)
+            if not item["questions"]:
+                self.tell(task.agent.name, f"Re-run your analysis: the report has no {', '.join(item['sections'])} section")
+            agent = task.agent(self.ctx)
+            agent.time_limit = task.timeout
+            result = agent.run() if item["failed"] else agent.run_follow_up()
+            results[f"{tid}_followup"] = result
+            adaptations.append(dict(task=tid, agent=task.agent.name, reason=reason, questions=qids,
+                                    sections=item["sections"], action="re-dispatched" if item["failed"] else "targeted request",
+                                    status=result.status, outcome=result.summary if result.status == "completed"
+                                    else f"failed again: {result.error}"))
+            changed |= result.status == "completed"
+        self.put("director.followed_up", sorted(done | set(todo)), "Analysis tasks already sent back once")
+        self.put("director.adaptations", adaptations, "Follow-up requests the Director sent and their outcomes")
+        if changed:
+            self.think("Redoing the strategy, the report and the QA check with the new evidence.")
+            for tid in ("strategy", "report", "qa"):
+                if tid in workflow.tasks:
+                    agent = workflow.tasks[tid].agent(self.ctx)
+                    agent.time_limit = workflow.tasks[tid].timeout
+                    results[f"{tid}_followup"] = agent.run()
+                    if results[f"{tid}_followup"].status != "completed":
+                        break
+        else:
+            self.warn("Follow-up requests did not close the gaps; they are disclosed in the report.")
+        return results
+
+    # ------------------------------------------------------------------ supervision: QA gate
     def quality_loop(self, results: dict[str, AgentResult], max_revisions: int = 2) -> dict[str, AgentResult]:
         from . import QualityAssuranceAgent, ReportWriterAgent
         for attempt in range(1, max_revisions + 1):

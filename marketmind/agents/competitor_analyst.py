@@ -28,6 +28,7 @@ WHITE_SPACES = [
 
 class CompetitiveIntelligenceAgent(BaseAgent):
     name = "Competitive Intelligence Agent"
+    finding_prefix = "CMP"
     role = "Competitive analyst. Benchmarks the client against rivals and finds gaps competitors leave open."
     goal = "Show where the client wins, where it is exposed, who the main threat is and which spaces are unclaimed."
 

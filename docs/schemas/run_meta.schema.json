@@ -8,8 +8,8 @@
   "additionalProperties": false,
   "properties": {
     "run_id": {"type": "string", "pattern": "^[0-9]{8}-[0-9]{6}$"},
-    "status": {"type": "string", "enum": ["completed", "unverified", "failed"],
-               "description": "unverified = the report was released but the Critic agent did not complete, so it was not checked."},
+    "status": {"type": "string", "enum": ["completed", "unverified", "failed", "rejected"],
+               "description": "unverified = the report was released but the Critic agent did not complete, so it was not checked; rejected = a reviewer rejected the plan or the recommendations at an approval gate."},
     "started": {"type": "string"},
     "seconds": {"type": "number", "minimum": 0},
     "brief": {"type": "string"},
@@ -91,6 +91,31 @@
             "properties": {"revision": {"type": "integer"}, "score": {"type": "number"}, "passed": {"type": "boolean"}, "issues": {"type": "integer"}}
           }
         }
+      }
+    },
+    "approvals": {
+      "type": "array",
+      "description": "Decisions taken at the human approval gates, in order. Absent in older runs.",
+      "items": {
+        "type": "object",
+        "required": ["gate", "time", "approved", "reviewer", "comment", "drop"],
+        "properties": {"gate": {"type": "string", "enum": ["plan", "recommendations"]}, "time": {"type": "string"},
+                       "approved": {"type": "boolean"}, "reviewer": {"type": "string"}, "comment": {"type": "string"},
+                       "drop": {"type": "array", "items": {"type": "string"}, "description": "Modules (plan) or recommendation IDs the reviewer removed."}}
+      }
+    },
+    "adaptations": {
+      "type": "array",
+      "description": "Analysis agents the Research Director sent back for open questions. Absent in older runs.",
+      "items": {
+        "type": "object",
+        "required": ["task", "agent", "reason", "questions", "sections", "action", "status", "outcome"],
+        "properties": {"task": {"type": "string"}, "agent": {"type": "string"}, "reason": {"type": "string"},
+                       "questions": {"type": "array", "items": {"type": "string"}},
+                       "sections": {"type": "array", "items": {"type": "string"}},
+                       "action": {"type": "string", "enum": ["re-dispatched", "targeted request"]},
+                       "status": {"type": "string", "enum": ["completed", "failed", "skipped"]},
+                       "outcome": {"type": "string"}}
       }
     },
     "messages": {

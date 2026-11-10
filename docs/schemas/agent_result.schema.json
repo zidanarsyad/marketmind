@@ -14,6 +14,7 @@
     "findings": {"type": "integer", "minimum": 0},
     "tool_calls": {"type": "integer", "minimum": 0},
     "llm_calls": {"type": "integer", "minimum": 0},
-    "error": {"type": ["string", "null"], "description": "Exception text for failed tasks, reason for skipped ones."}
+    "error": {"type": ["string", "null"], "description": "Exception text for failed tasks, reason for skipped ones."},
+    "attempts": {"type": "integer", "minimum": 1, "description": "Attempts the workflow made; more than 1 after a retry. Absent in older runs."}
   }
 }

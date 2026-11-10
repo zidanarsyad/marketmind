@@ -1,0 +1,41 @@
+year,category,market_value_idr_bn,local_brand_share_pct,online_share_pct,status,source,yoy_growth_pct
+2019,Facial Wash,7020.0,31,17,actual,Simulated industry estimate (MarketMind demo data),
+2019,Toner,3510.0,31,17,actual,Simulated industry estimate (MarketMind demo data),
+2019,Serum,4212.0,31,17,actual,Simulated industry estimate (MarketMind demo data),
+2019,Moisturizer,5616.0,31,17,actual,Simulated industry estimate (MarketMind demo data),
+2019,Sunscreen,3042.0,31,17,actual,Simulated industry estimate (MarketMind demo data),
+2020,Facial Wash,6592.0,35,27,actual,Simulated industry estimate (MarketMind demo data),-6.1
+2020,Toner,3263.2,35,27,actual,Simulated industry estimate (MarketMind demo data),-7.0
+2020,Serum,4242.0,35,27,actual,Simulated industry estimate (MarketMind demo data),0.7
+2020,Moisturizer,5461.5,35,27,actual,Simulated industry estimate (MarketMind demo data),-2.8
+2020,Sunscreen,3141.2,35,27,actual,Simulated industry estimate (MarketMind demo data),3.3
+2021,Facial Wash,7102.2,40,34,actual,Simulated industry estimate (MarketMind demo data),7.7
+2021,Toner,3480.8,40,34,actual,Simulated industry estimate (MarketMind demo data),6.7
+2021,Serum,4901.7,40,34,actual,Simulated industry estimate (MarketMind demo data),15.6
+2021,Moisturizer,6093.7,40,34,actual,Simulated industry estimate (MarketMind demo data),11.6
+2021,Sunscreen,3721.6,40,34,actual,Simulated industry estimate (MarketMind demo data),18.5
+2022,Facial Wash,7750.2,45,39,actual,Simulated industry estimate (MarketMind demo data),9.1
+2022,Toner,3760.6,45,39,actual,Simulated industry estimate (MarketMind demo data),8.0
+2022,Serum,5736.7,45,39,actual,Simulated industry estimate (MarketMind demo data),17.0
+2022,Moisturizer,6886.6,45,39,actual,Simulated industry estimate (MarketMind demo data),13.0
+2022,Sunscreen,4465.9,45,39,actual,Simulated industry estimate (MarketMind demo data),20.0
+2023,Facial Wash,8333.0,48,43,actual,Simulated industry estimate (MarketMind demo data),7.5
+2023,Toner,4003.1,48,43,actual,Simulated industry estimate (MarketMind demo data),6.4
+2023,Serum,6615.4,48,43,actual,Simulated industry estimate (MarketMind demo data),15.3
+2023,Moisturizer,7668.2,48,43,actual,Simulated industry estimate (MarketMind demo data),11.3
+2023,Sunscreen,5280.3,48,43,actual,Simulated industry estimate (MarketMind demo data),18.2
+2024,Facial Wash,8826.1,51,46,actual,Simulated industry estimate (MarketMind demo data),5.9
+2024,Toner,4197.8,51,46,actual,Simulated industry estimate (MarketMind demo data),4.9
+2024,Serum,7514.9,51,46,actual,Simulated industry estimate (MarketMind demo data),13.6
+2024,Moisturizer,8411.2,51,46,actual,Simulated industry estimate (MarketMind demo data),9.7
+2024,Sunscreen,6150.1,51,46,actual,Simulated industry estimate (MarketMind demo data),16.5
+2025,Facial Wash,9257.4,53,49,actual,Simulated industry estimate (MarketMind demo data),4.9
+2025,Toner,4359.1,53,49,actual,Simulated industry estimate (MarketMind demo data),3.8
+2025,Serum,8453.6,53,49,actual,Simulated industry estimate (MarketMind demo data),12.5
+2025,Moisturizer,9136.5,53,49,actual,Simulated industry estimate (MarketMind demo data),8.6
+2025,Sunscreen,7093.4,53,49,actual,Simulated industry estimate (MarketMind demo data),15.3
+2026,Facial Wash,9651.3,55,52,estimate,Simulated industry estimate (MarketMind demo data),4.3
+2026,Toner,4499.4,55,52,estimate,Simulated industry estimate (MarketMind demo data),3.2
+2026,Serum,9452.4,55,52,estimate,Simulated industry estimate (MarketMind demo data),11.8
+2026,Moisturizer,9864.6,55,52,estimate,Simulated industry estimate (MarketMind demo data),8.0
+2026,Sunscreen,8132.3,55,52,estimate,Simulated industry estimate (MarketMind demo data),14.6

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/datasets/market_size_row.schema.json",
+  "title": "MarketSizeRow",
+  "description": "One row of market_size.csv: year x category.",
+  "type": "object",
+  "required": ["year", "category", "market_value_idr_bn", "local_brand_share_pct", "online_share_pct", "status", "source", "yoy_growth_pct"],
+  "properties": {
+    "year": {"type": "integer", "minimum": 2000, "maximum": 2100},
+    "category": {"type": "string", "enum": ["Facial Wash", "Toner", "Serum", "Moisturizer", "Sunscreen"]},
+    "market_value_idr_bn": {"type": "number", "exclusiveMinimum": 0},
+    "local_brand_share_pct": {"type": "number", "minimum": 0, "maximum": 100},
+    "online_share_pct": {"type": "number", "minimum": 0, "maximum": 100},
+    "status": {"type": "string", "enum": ["actual", "estimate"]},
+    "source": {"type": "string", "minLength": 1},
+    "yoy_growth_pct": {"type": ["number", "null"], "description": "Null for the first year."}
+  }
+}

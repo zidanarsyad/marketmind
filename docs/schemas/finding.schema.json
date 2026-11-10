@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/finding.schema.json",
+  "title": "Finding",
+  "description": "The unit of knowledge exchanged between agents: one number-backed statement with provenance, importance and confidence. Published by analysis agents, ranked by the Strategy agent, cited by the report and verified by the Critic.",
+  "type": "object",
+  "required": ["id", "agent", "area", "title", "statement", "metrics", "evidence", "impact", "confidence", "swot", "tags"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,4}-[0-9]{2}$",
+      "description": "Stable reference, area prefix + two digits (DAT, MAC, MKT, CMP, CON, SEG, FCT).",
+      "examples": ["CMP-02"]
+    },
+    "agent": {"type": "string", "minLength": 1, "description": "Name of the publishing agent."},
+    "area": {
+      "type": "string",
+      "enum": ["data", "market", "competition", "consumer", "segmentation", "pricing", "forecast", "strategy"]
+    },
+    "title": {"type": "string", "minLength": 1, "maxLength": 120},
+    "statement": {"type": "string", "minLength": 10, "description": "One sentence with the numbers that support it."},
+    "metrics": {
+      "type": "object",
+      "description": "Machine-readable values behind the statement; the Critic uses them as evidence numbers.",
+      "additionalProperties": {"type": ["number", "string", "boolean", "null"]}
+    },
+    "evidence": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "Datasets, methods or artefacts the finding was derived from."
+    },
+    "impact": {"type": "integer", "minimum": 1, "maximum": 5, "description": "Business importance: 1 minor to 5 critical."},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "swot": {
+      "type": ["string", "null"],
+      "enum": ["S", "W", "O", "T", null],
+      "description": "SWOT quadrant from the client's point of view; null for methodology findings."
+    },
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "priority": {"type": "number", "minimum": 0, "maximum": 5, "description": "Derived: impact x confidence (present in saved runs)."}
+  }
+}

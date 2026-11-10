@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/datasets/sales_panel_row.schema.json",
+  "title": "SalesPanelRow",
+  "description": "One row of market_sales_panel.csv after the Data Quality agent: month x brand x category x channel x region. The raw file deliberately violates this contract (label variants, negative and outlier units, missing discounts, duplicates).",
+  "type": "object",
+  "required": ["month", "brand", "category", "channel", "region", "units", "revenue_idr", "list_price_idr", "avg_selling_price_idr", "discount_pct", "promo_flag", "stockout_days"],
+  "properties": {
+    "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-01$"},
+    "brand": {"type": "string", "minLength": 1},
+    "category": {"type": "string", "enum": ["Facial Wash", "Toner", "Serum", "Moisturizer", "Sunscreen"]},
+    "channel": {"type": "string", "enum": ["Shopee", "Tokopedia", "TikTok Shop", "Lazada", "Offline Retail"]},
+    "region": {
+      "type": "string",
+      "enum": ["DKI Jakarta & Banten", "Jawa Barat", "Jawa Tengah & DIY", "Jawa Timur", "Sumatera", "Kalimantan & Sulawesi", "Bali & Indonesia Timur"]
+    },
+    "units": {"type": "integer", "minimum": 0},
+    "revenue_idr": {"type": "integer", "minimum": 0},
+    "list_price_idr": {"type": "integer", "exclusiveMinimum": 0},
+    "avg_selling_price_idr": {"type": "integer", "exclusiveMinimum": 0},
+    "discount_pct": {"type": "number", "minimum": 0, "maximum": 1},
+    "promo_flag": {"type": "boolean", "description": "True when discount_pct >= 0.15."},
+    "stockout_days": {"type": "integer", "minimum": 0, "maximum": 31}
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/qa_result.schema.json",
+  "title": "QAResult",
+  "description": "The Critic agent's verdict on a report (blackboard key `qa.result`). Release requires score >= 85 and no critical issue.",
+  "type": "object",
+  "required": ["score", "passed", "revision", "checks", "issues", "numbers_checked", "numbers_grounded"],
+  "additionalProperties": false,
+  "$defs": {
+    "ratio": {"type": "number", "minimum": 0, "maximum": 1},
+    "ids": {"type": "array", "items": {"type": "string"}}
+  },
+  "properties": {
+    "score": {"type": "number", "minimum": 0, "maximum": 100, "description": "Weighted: structure 15, coverage 20, grounding 35, citations 10, recommendations 15, disclosure 5."},
+    "passed": {"type": "boolean"},
+    "revision": {"type": "integer", "minimum": 0, "maximum": 2},
+    "numbers_checked": {"type": "integer", "minimum": 0},
+    "numbers_grounded": {"type": "integer", "minimum": 0},
+    "checks": {
+      "type": "object",
+      "required": ["structure", "coverage", "grounding", "citations", "recommendations", "disclosure"],
+      "additionalProperties": false,
+      "properties": {
+        "structure": {
+          "type": "object", "required": ["score", "missing"],
+          "properties": {"score": {"$ref": "#/$defs/ratio"}, "missing": {"$ref": "#/$defs/ids"}}
+        },
+        "coverage": {
+          "type": "object", "required": ["score", "questions", "unanswered"],
+          "properties": {"score": {"$ref": "#/$defs/ratio"}, "questions": {"type": "integer", "minimum": 0}, "unanswered": {"$ref": "#/$defs/ids"}}
+        },
+        "grounding": {
+          "type": "object", "required": ["score", "rate", "checked", "grounded", "blocks"],
+          "properties": {
+            "score": {"$ref": "#/$defs/ratio"},
+            "rate": {"$ref": "#/$defs/ratio"},
+            "checked": {"type": "integer", "minimum": 0},
+            "grounded": {"type": "integer", "minimum": 0},
+            "blocks": {
+              "type": "object",
+              "description": "Per checked block (deterministic_text or an LLM block key): number of ungrounded numbers.",
+              "additionalProperties": {"type": "object", "required": ["ungrounded"], "properties": {"ungrounded": {"type": "integer", "minimum": 0}}}
+            }
+          }
+        },
+        "citations": {
+          "type": "object", "required": ["score", "cited", "distinct", "unknown"],
+          "properties": {"score": {"$ref": "#/$defs/ratio"}, "cited": {"type": "integer", "minimum": 0}, "distinct": {"type": "integer", "minimum": 0}, "unknown": {"$ref": "#/$defs/ids"}}
+        },
+        "recommendations": {
+          "type": "object", "required": ["score", "count", "unevidenced"],
+          "properties": {"score": {"$ref": "#/$defs/ratio"}, "count": {"type": "integer", "minimum": 0}, "unevidenced": {"$ref": "#/$defs/ids"}}
+        },
+        "disclosure": {"type": "object", "required": ["score"], "properties": {"score": {"$ref": "#/$defs/ratio"}}}
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check", "severity", "block", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "check": {"type": "string", "enum": ["structure", "coverage", "grounding", "citations", "recommendations", "disclosure"]},
+          "severity": {"type": "string", "enum": ["critical", "major", "minor"]},
+          "block": {"type": ["string", "null"], "description": "LLM block key to replace on revision, or null for document-level issues."},
+          "message": {"type": "string"}
+        }
+      }
+    }
+  }
+}

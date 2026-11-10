@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/recommendation.schema.json",
+  "title": "Recommendation",
+  "description": "An evidence-linked action produced by the Strategy agent's playbook (blackboard key `strategy.recommendations`, a list of these).",
+  "type": "object",
+  "required": ["id", "title", "action", "rationale", "evidence", "kpi", "timeline", "horizon", "owner", "effort", "impact", "confidence", "priority"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^R[0-9]+$", "description": "R1 is the highest priority."},
+    "title": {"type": "string", "minLength": 5},
+    "action": {"type": "string", "minLength": 10, "description": "What to do."},
+    "rationale": {"type": "string", "minLength": 10, "description": "Why, with the supporting numbers."},
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^[A-Z]{2,4}-[0-9]{2}$"},
+      "description": "Finding ids that triggered the recommendation; the Critic checks they exist."
+    },
+    "kpi": {"type": "string", "minLength": 5},
+    "timeline": {"type": "string", "pattern": "^[0-9]+-[0-9]+ months$", "examples": ["0-3 months"]},
+    "horizon": {"type": "string", "enum": ["Quick win", "Core move", "Strategic bet"]},
+    "owner": {"type": "string", "minLength": 2, "description": "Accountable function."},
+    "effort": {"type": "string", "enum": ["Low", "Medium", "High"]},
+    "value_idr": {"type": ["number", "null"], "description": "Indicative 12-month value at stake in rupiah, when sized."},
+    "impact": {"type": "integer", "minimum": 1, "maximum": 5},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "priority": {"type": "number", "minimum": 0, "description": "impact x confidence x effort factor (Low 1.0, Medium 0.85, High 0.7)."}
+  }
+}

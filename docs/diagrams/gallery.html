@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MarketMind Diagrams</title>
+<style>
+:root{--bg:#fcfcfb;--surface:#ffffff;--text:#0b0b0b;--text2:#52514e;--muted:#7a7974;--border:#e4e3dd;
+--accent:#2a78d6;--accent-soft:#e8f1fc;--error:#c43131;--error-soft:#fbeaea;--code:#f3f2ee}
+@media (prefers-color-scheme:dark){:root{--bg:#121211;--surface:#1b1b1a;--text:#f2f2ef;--text2:#c3c2b7;
+--muted:#9a998f;--border:#2f2f2c;--accent:#6aa9f4;--accent-soft:#1c2a3b;--error:#ff7b7b;--error-soft:#3a1f1f;--code:#232321}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--text2);margin:0 0 20px}
+.status{display:inline-block;padding:4px 10px;border:1px solid var(--border);border-radius:999px;font-size:13px;color:var(--text2);background:var(--surface)}
+.status.bad{color:var(--error);border-color:var(--error);background:var(--error-soft)}
+nav{margin:24px 0 8px;display:grid;gap:14px}
+nav h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px}
+nav ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+nav a{display:block;padding:4px 10px;border:1px solid var(--border);border-radius:999px;color:var(--text);text-decoration:none;font-size:13px;background:var(--surface)}
+nav a:hover{border-color:var(--accent);color:var(--accent)}
+section.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin:22px 0;overflow:hidden}
+section.card.error{border-color:var(--error)}
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:14px 18px;border-bottom:1px solid var(--border)}
+.head h3{margin:0;font-size:17px;flex:1 1 260px}
+.meta{color:var(--muted);font-size:12.5px;width:100%;order:3}
+.meta code{background:var(--code);padding:1px 5px;border-radius:4px}
+.actions{display:flex;gap:6px}
+button{font:inherit;font-size:13px;padding:5px 11px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button:disabled{opacity:.45;cursor:default}
+.canvas{padding:18px;overflow-x:auto;text-align:center;min-height:80px}
+.canvas svg{max-width:100%;height:auto}
+.canvas.wide svg{max-width:none}
+.err{color:var(--error);background:var(--error-soft);text-align:left;padding:12px 14px;border-radius:8px;white-space:pre-wrap;font:12.5px/1.5 ui-monospace,Consolas,monospace}
+details{border-top:1px solid var(--border)}
+summary{cursor:pointer;padding:10px 18px;color:var(--text2);font-size:13px}
+pre{margin:0;padding:12px 18px 18px;overflow-x:auto;background:var(--code);font:12.5px/1.5 ui-monospace,Consolas,monospace;color:var(--text)}
+footer{color:var(--muted);font-size:12.5px;margin-top:32px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MarketMind diagrams</h1>
+  <p class="sub">Every Mermaid diagram in the MarketMind documentation, rendered in one place. Use <b>SVG</b> or <b>PNG</b> to export a diagram for slides or reports, and <b>Wide</b> to see a large diagram at full size.</p>
+  <span class="status" id="status">Rendering 14 diagrams ...</span>
+  <nav id="toc"></nav>
+  <main id="gallery"></main>
+  <footer>Generated 2026-11-04 20:35 by <code>scripts/build_diagram_gallery.py</code> from the Markdown sources. Rendered with mermaid 11.4.1.</footer>
+</div>
+<script id="diagram-data" type="application/json">[{"id": 1, "doc": "README.md", "line": 76, "title": "Architecture", "section": "Architecture", "kind": "flowchart", "code": "flowchart LR\n    B([Business brief]) --> D[Research Director<br/>plan + supervise]\n    D --> C[Data Collection<br/>CSV + World Bank API + news]\n    C --> Q[Data Quality<br/>clean + validate]\n    Q --> M[Market & Trend Analyst]\n    Q --> K[Competitive Intelligence]\n    Q --> I[Consumer Insight<br/><b>deep learning<\/b>]\n    Q --> S[Consumer Segmentation<br/><b>ML<\/b>]\n    Q --> F[Demand Forecasting<br/><b>ML<\/b>]\n    M & K & I & S & F --> T[Strategy Agent]\n    T --> R[Report Writer]\n    R --> A[Critic / QA]\n    A -- \"fail: block-level issues\" --> D\n    D -- \"revise\" --> R\n    A -- pass --> O([Report + dashboard])\n    BB[(Blackboard<br/>shared memory)] -.- C & Q & M & K & I & S & F & T & R & A", "slug": "01-architecture"}, {"id": 2, "doc": "docs/ARCHITECTURE.md", "line": 13, "title": "System context", "section": "1. System context", "kind": "flowchart", "code": "flowchart LR\n    MM[\"MarketMind<br/>multi-agent market research system\"]\n    MGR([\"Marketing manager\"]) -- \"brief, questions\" --> MM\n    ANA([\"Research analyst\"]) -- \"briefs, inspects evidence\" --> MM\n    IT([\"Data / IT staff\"]) -- \"datasets, LLM keys\" --> MM\n    LEC([\"Lecturer / reviewer\"]) -- \"scores runs\" --> MM\n    MM -- \"report, dashboard, answers\" --> MGR\n    FILES[(\"Research datasets<br/>data/raw/*.csv\")] --> MM\n    WB[\"World Bank Open Data API<br/>(no key, cached)\"] --> MM\n    NEWS[\"GNews / NewsAPI<br/>(optional key)\"] --> MM\n    MM <-- \"language only\" --> LLM[\"LLM provider (optional)<br/>Gemini, Groq, OpenRouter, Ollama, Claude\"]", "slug": "02-system-context"}, {"id": 3, "doc": "docs/ARCHITECTURE.md", "line": 29, "title": "Components (layered view)", "section": "2. Components (layered view)", "kind": "flowchart", "code": "flowchart TB\n    subgraph UI[\"Interfaces\"]\n        DASH[\"Streamlit dashboard<br/>app/dashboard.py\"]\n        CLI[\"Command line<br/>run.py\"]\n        CHAT[\"Analyst Chat agent<br/>agents/analyst_chat.py\"]\n    end\n    subgraph ORCH[\"Orchestration\"]\n        SYS[\"MarketResearchSystem<br/>system.py\"]\n        DIR[\"Research Director<br/>agents/director.py\"]\n        WF[\"Workflow engine (DAG, thread pool)<br/>core/orchestrator.py\"]\n    end\n    subgraph AG[\"Specialist agents (marketmind/agents)\"]\n        A1[\"Data Collection\"] --- A2[\"Data Quality\"]\n        A3[\"Market & Trend\"] --- A4[\"Competitive Intelligence\"]\n        A5[\"Consumer Insight (DL)\"] --- A6[\"Segmentation (ML)\"]\n        A7[\"Forecasting (ML)\"] --- A8[\"Strategy\"]\n        A9[\"Report Writer\"] --- A10[\"Critic (QA)\"]\n    end\n    subgraph CORE[\"Core services (marketmind/core)\"]\n        BB[\"Blackboard<br/>shared memory\"]\n        TR[\"Tracer<br/>event log\"]\n        LLMC[\"LLM client<br/>provider-agnostic\"]\n        ST[\"Run store<br/>save / load runs\"]\n    end\n    subgraph MLK[\"ML / DL toolkits (marketmind/ml)\"]\n        M1[\"text + sentiment (PyTorch)\"]\n        M2[\"topics, segmentation\"]\n        M3[\"forecasting, pricing, calendar\"]\n    end\n    subgraph REP[\"Reporting (marketmind/reporting)\"]\n        CH[\"chart library (Plotly)\"]\n        HT[\"HTML report renderer\"]\n    end\n    subgraph DATA[\"Data and persistence\"]\n        RAW[(\"data/raw\")]\n        EXT[(\"data/external<br/>World Bank cache\")]\n        OUT[(\"outputs/<br/>runs, models, LLM cache\")]\n    end\n    DASH --> SYS\n    CLI --> SYS\n    CHAT --> ST\n    SYS --> DIR --> WF --> AG\n    AG <--> BB\n    AG --> TR\n    AG --> LLMC\n    AG --> MLK\n    A9 --> REP\n    DASH --> CH\n    DASH --> ST\n    ST --> OUT\n    A1 --> RAW\n    A1 --> EXT", "slug": "03-components-layered-view"}, {"id": 4, "doc": "docs/ARCHITECTURE.md", "line": 103, "title": "Core classes", "section": "3. Core classes", "kind": "classDiagram", "code": "classDiagram\n    direction LR\n    class MarketResearchSystem {\n        +run_id: str\n        +blackboard: Blackboard\n        +tracer: Tracer\n        +llm: LLMClient\n        +run() RunResult\n    }\n    class RunContext {\n        +run_id: str\n        +blackboard: Blackboard\n        +tracer: Tracer\n        +llm: LLMClient\n        +run_dir: Path\n        +options: dict\n    }\n    class BaseAgent {\n        <<abstract>>\n        +name: str\n        +role: str\n        +goal: str\n        +ml_capability: str\n        +tools: dict\n        +register_tools()\n        +use(name, args) Any\n        +think(message)\n        +publish(finding) Finding\n        +put(key, value)\n        +tell(recipient, content)\n        +ask_llm(task, facts) str\n        +execute() str\n        +run() AgentResult\n    }\n    class ResearchDirectorAgent {\n        +build_workflow() Workflow\n        +quality_loop(results) dict\n    }\n    class Blackboard {\n        +put(key, value, agent)\n        +get(key) Any\n        +require(key) Any\n        +add_finding(finding)\n        +findings(area, agent) list\n        +post(sender, recipient, content)\n        +inbox(recipient) list\n    }\n    class Finding {\n        +id: str\n        +agent: str\n        +area: str\n        +statement: str\n        +metrics: dict\n        +evidence: list\n        +impact: int\n        +confidence: float\n        +swot: str\n        +priority() float\n    }\n    class Tracer {\n        +events: list\n        +emit(agent, kind, message)\n        +save(path)\n    }\n    class LLMClient {\n        +provider: str\n        +model: str\n        +available: bool\n        +complete(system, prompt) str\n        +complete_json(system, prompt) dict\n        +ping() tuple\n    }\n    class Workflow {\n        +tasks: dict\n        +layers: list\n        +run(ctx, parallel) dict\n    }\n    class Task {\n        +id: str\n        +agent: type\n        +depends_on: tuple\n        +critical: bool\n    }\n    class AgentResult {\n        +agent: str\n        +status: str\n        +seconds: float\n        +findings: int\n        +tool_calls: int\n    }\n    class SentimentSuite {\n        +train(texts, labels) dict\n        +predict_proba(texts) array\n        +score_social(texts) tuple\n        +evaluate_transfer(texts, labels) dict\n        +score_clauses(texts) array\n    }\n    class DemandForecaster {\n        +backtest(panel, client) dict\n        +forecast(panel, method) DataFrame\n    }\n    MarketResearchSystem --> RunContext\n    MarketResearchSystem --> ResearchDirectorAgent\n    ResearchDirectorAgent --> Workflow\n    Workflow \"1\" *-- \"many\" Task\n    Task --> BaseAgent\n    BaseAgent <|-- ResearchDirectorAgent\n    BaseAgent <|-- ConsumerInsightAgent\n    BaseAgent <|-- DemandForecastingAgent\n    BaseAgent <|-- SegmentationAgent\n    BaseAgent --> RunContext\n    RunContext --> Blackboard\n    RunContext --> Tracer\n    RunContext --> LLMClient\n    Blackboard \"1\" o-- \"many\" Finding\n    BaseAgent ..> AgentResult : returns\n    ConsumerInsightAgent --> SentimentSuite\n    DemandForecastingAgent --> DemandForecaster", "slug": "04-core-classes"}, {"id": 5, "doc": "docs/ARCHITECTURE.md", "line": 230, "title": "Workflow (dependency graph)", "section": "4. Workflow (dependency graph)", "kind": "flowchart", "code": "flowchart LR\n    P[\"plan<br/>Research Director\"] --> C[\"collect<br/>Data Collection\"]\n    C --> Q[\"quality<br/>Data Quality\"]\n    Q --> M[\"market\"]\n    Q --> K[\"competition\"]\n    Q --> I[\"consumer (DL)\"]\n    Q --> S[\"segmentation (ML)\"]\n    Q --> F[\"forecast (ML)\"]\n    M -.-> T[\"strategy\"]\n    K -.-> T\n    I -.-> T\n    S -.-> T\n    F -.-> T\n    T --> R[\"report<br/>Report Writer\"]\n    R --> A{\"qa<br/>Critic\"}\n    A -- \"pass\" --> OUT([\"saved run\"])\n    A -- \"fail (max 2)\" --> R", "slug": "05-workflow-dependency-graph"}, {"id": 6, "doc": "docs/ARCHITECTURE.md", "line": 254, "title": "A run, step by step", "section": "5. A run, step by step", "kind": "sequenceDiagram", "code": "sequenceDiagram\n    autonumber\n    actor U as User\n    participant UI as Dashboard / CLI\n    participant SYS as MarketResearchSystem\n    participant DIR as Research Director\n    participant WF as Workflow\n    participant BB as Blackboard\n    participant AN as Analysis agents (x5)\n    participant ST as Strategy\n    participant RW as Report Writer\n    participant CR as Critic\n    participant RS as Run store\n    U->>UI: brief + options\n    UI->>SYS: run()\n    SYS->>DIR: run() (plan)\n    DIR->>BB: put(\"plan\")\n    SYS->>DIR: build_workflow()\n    DIR-->>SYS: Workflow\n    SYS->>WF: run(ctx, parallel=True)\n    WF->>BB: Data Collection: put datasets.raw, external.macro\n    WF->>BB: Data Quality: put datasets, dq.*\n    par five analysts on a thread pool\n        WF->>AN: run()\n        AN->>BB: read datasets, put *.tables, publish findings\n    end\n    WF->>ST: run()\n    ST->>BB: put strategy.swot / recommendations / kpis\n    WF->>RW: run()\n    RW->>BB: put report.markdown / report.html\n    WF->>CR: run()\n    CR->>BB: put qa.result\n    alt QA failed and revisions left\n        DIR->>RW: message: block-level issues\n        RW->>BB: revised report\n        DIR->>CR: run() again\n    end\n    SYS->>RS: save_run (meta, findings, trace, tables, report)\n    RS-->>UI: run_id\n    UI-->>U: dashboard updates", "slug": "06-a-run-step-by-step"}, {"id": 7, "doc": "docs/ARCHITECTURE.md", "line": 301, "title": "Agent lifecycle", "section": "6. Lifecycles", "kind": "stateDiagram-v2", "code": "stateDiagram-v2\n    [*] --> Started: run()\n    Started --> Perceiving: read blackboard\n    Perceiving --> Reasoning: think (optionally ask the LLM)\n    Reasoning --> Acting: use(tool)\n    Acting --> Reasoning: observation\n    Acting --> Publishing: put artefacts, publish findings\n    Publishing --> Completed\n    Started --> Failed: exception (traceback traced)\n    Reasoning --> Failed\n    Acting --> Failed\n    [*] --> Skipped: a critical upstream task failed\n    Completed --> [*]\n    Failed --> [*]\n    Skipped --> [*]", "slug": "07-agent-lifecycle"}, {"id": 8, "doc": "docs/ARCHITECTURE.md", "line": 321, "title": "Run lifecycle and the QA gate", "section": "6. Lifecycles", "kind": "stateDiagram-v2", "code": "stateDiagram-v2\n    [*] --> Planning\n    Planning --> Executing: plan on blackboard\n    Planning --> Failed: planning error\n    Executing --> QAReview: report written\n    Executing --> Failed: collect, quality, strategy or report failed\n    QAReview --> Released: score >= 85 and no critical issue\n    QAReview --> Revising: failed and revisions < 2\n    Revising --> QAReview: Report Writer replaces rejected blocks\n    QAReview --> ReleasedWithIssues: failed after 2 revisions\n    Released --> Saved\n    ReleasedWithIssues --> Saved: open issues listed in the QA certificate\n    Failed --> Saved\n    Saved --> [*]", "slug": "08-run-lifecycle-and-the-qa-gate"}, {"id": 9, "doc": "docs/ARCHITECTURE.md", "line": 342, "title": "Data flow", "section": "7. Data flow", "kind": "flowchart", "code": "flowchart LR\n    BRIEF[\"Business brief\"] --> P1((\"1.0 Plan\"))\n    P1 --> D2[(\"D2 Blackboard\")]\n    CSV[(\"D1 data/raw\")] --> P2((\"2.0 Collect\"))\n    WBAPI[\"World Bank API\"] --> P2\n    P2 --> D2\n    D2 --> P3((\"3.0 Clean and validate\"))\n    P3 --> D2\n    D2 --> P4((\"4.0 Analyse<br/>market, competition,<br/>consumers, segments,<br/>forecast\"))\n    D3[(\"D3 Model store<br/>outputs/models\")] <--> P4\n    P4 --> D2\n    D2 --> P5((\"5.0 Synthesise<br/>SWOT, actions\"))\n    P5 --> D2\n    D2 --> P6((\"6.0 Write report\"))\n    LLMP[\"LLM provider\"] <-.-> P6\n    P6 --> D2\n    D2 --> P7((\"7.0 QA\"))\n    P7 -- \"revision request\" --> P6\n    P7 --> D4[(\"D4 Run store<br/>outputs/runs\")]\n    D4 --> DASHB[\"Dashboard and readers\"]\n    D5[(\"D5 LLM cache\")] <-.-> LLMP", "slug": "09-data-flow"}, {"id": 10, "doc": "docs/ARCHITECTURE.md", "line": 368, "title": "Deployment", "section": "8. Deployment", "kind": "flowchart", "code": "flowchart TB\n    subgraph LAPTOP[\"Laptop / VM (Windows, macOS or Linux), Python 3.12, CPU only\"]\n        subgraph PROC[\"Python process\"]\n            STR[\"Streamlit server :8501<br/>or run.py\"]\n            AGENTS[\"Agents + workflow thread pool\"]\n            TORCH[\"PyTorch CPU / scikit-learn\"]\n        end\n        FS[(\"File system<br/>data/, outputs/\")]\n        OLL[\"Ollama :11434<br/>(optional local LLM)\"]\n    end\n    BROWSER[\"Web browser\"] -- \"HTTP\" --> STR\n    STR --- AGENTS --- TORCH\n    AGENTS --- FS\n    AGENTS -. \"HTTPS\" .-> WB2[\"api.worldbank.org\"]\n    AGENTS -. \"HTTPS, optional\" .-> LLMS[\"LLM APIs: Gemini, Groq, OpenRouter, Anthropic\"]\n    AGENTS -. \"HTTPS, optional\" .-> NWS[\"gnews.io / newsapi.org\"]\n    AGENTS -. \"HTTP, optional\" .-> OLL", "slug": "10-deployment"}, {"id": 11, "doc": "docs/ARCHITECTURE.md", "line": 394, "title": "Deep-learning sentiment model", "section": "9. Model architectures", "kind": "flowchart", "code": "flowchart TB\n    T[\"Review text (Indonesian slang, emojis)\"] --> N[\"Normalise: slang map, elongations, emoji tokens\"]\n    N --> TK[\"Tokens (max 64), vocabulary built on training data\"]\n    TK --> E[\"Embedding, 96 dims (word dropout 10% in training)\"]\n    E --> D1[\"Dropout 0.3\"]\n    D1 --> G[\"Bidirectional GRU, one layer,<br/>64 units per direction\"]\n    G --> AT[\"Additive attention pooling<br/>(weights shown in the dashboard)\"]\n    AT --> D2[\"Dropout 0.3\"]\n    D2 --> L[\"Linear, 3 classes\"]\n    L --> SM[\"Softmax: negative / neutral / positive\"]\n    TF[\"TF-IDF word 1-2 + char 3-5 grams<br/>logistic regression\"] --> ENS{\"Soft-vote ensemble<br/>weight tuned on validation\"}\n    SM --> ENS\n    ENS --> SEL[\"Model selection by validation macro-F1;<br/>transfer scorer chosen on 400 labelled social posts\"]", "slug": "11-deep-learning-sentiment-model"}, {"id": 12, "doc": "docs/ARCHITECTURE.md", "line": 412, "title": "Demand forecaster", "section": "9. Model architectures", "kind": "flowchart", "code": "flowchart LR\n    SP[\"Clean sales panel\"] --> PN[\"Monthly panel<br/>150 brand x category x channel series\"]\n    CAL[\"Ramadan / Eid / mega-sale calendar\"] --> FE\n    PN --> FE[\"Features at origin o for horizon h:<br/>momentum 1/3/6, level, calendar shifts,<br/>price, discount, stock-out changes, codes\"]\n    FE --> GB[\"HistGradientBoosting<br/>target: YoY log growth minus 3-month momentum\"]\n    PN --> SN[\"Seasonal naive, seasonal naive + drift\"]\n    GB --> EN[\"GBM + drift ensemble\"]\n    SN --> EN\n    GB --> BT{\"3 rolling-origin folds x 6 months<br/>pick lowest series WAPE\"}\n    SN --> BT\n    EN --> BT\n    BT --> FC[\"12-month forecast<br/>+ 80% intervals from backtest errors\"]", "slug": "12-demand-forecaster"}, {"id": 13, "doc": "docs/ARCHITECTURE.md", "line": 429, "title": "Critic numeric-grounding check", "section": "9. Model architectures", "kind": "flowchart", "code": "flowchart TB\n    EV[\"Collect evidence numbers:<br/>finding statements + metrics, recommendations,<br/>KPIs, model cards, opportunities\"] --> EXP[\"Expand: x100 for ratios,<br/>/1e3, /1e6, /1e9, /1e12 for rupiah\"]\n    REP[\"Report prose (tables, headings, quotes excluded)\"] --> BL[\"Split into blocks:<br/>LLM blocks + deterministic text\"]\n    BL --> NUM[\"Extract numbers with written precision\"]\n    NUM --> CHK{\"Match within 0.5 x 10^-decimals<br/>or 0.5% relative?\"}\n    EXP --> CHK\n    CHK -- \"yes\" --> OK[\"grounded\"]\n    CHK -- \"no, LLM block\" --> CRIT[\"critical issue: replace block on revision\"]\n    CHK -- \"no, deterministic text\" --> MAJ[\"major issue\"]", "slug": "13-critic-numeric-grounding-check"}, {"id": 14, "doc": "docs/SCHEMAS.md", "line": 186, "title": "Relational model", "section": "5. Relational model", "kind": "erDiagram", "code": "erDiagram\n    dim_brand ||--o{ dim_product : makes\n    dim_category ||--o{ dim_product : classifies\n    dim_brand ||--o{ fact_sales_monthly : sells\n    dim_category ||--o{ fact_sales_monthly : \"sold in\"\n    dim_channel ||--o{ fact_sales_monthly : \"sold via\"\n    dim_region ||--o{ fact_sales_monthly : \"sold in\"\n    dim_product ||--o{ fact_review : \"reviewed in\"\n    dim_brand ||--o{ fact_review : \"reviewed in\"\n    dim_channel ||--o{ fact_review : \"posted on\"\n    dim_region ||--o{ fact_review : \"posted from\"\n    dim_brand |o--o{ fact_social_post : \"mentioned in\"\n    fact_social_post ||--o| social_label : \"labelled by\"\n    dim_brand ||--o{ fact_survey_response : \"main brand of\"\n    dim_channel ||--o{ fact_survey_response : \"preferred by\"\n    dim_region ||--o{ fact_survey_response : \"home of\"\n    dim_category ||--o{ fact_market_size : sized\n    dim_brand |o--o{ run : \"client of\"\n    run ||--o{ agent_result : records\n    run ||--o{ finding : publishes\n    run ||--o{ recommendation : proposes\n    recommendation ||--|{ recommendation_evidence : \"backed by\"\n    finding ||--o{ recommendation_evidence : \"cited by\"\n    run ||--o{ qa_check : scores\n    run ||--o{ trace_event : traces\n\n    dim_brand {\n        TEXT brand PK\n        INTEGER is_client\n    }\n    dim_product {\n        TEXT sku_id PK\n        TEXT brand FK\n        TEXT category FK\n        INTEGER price_idr\n        INTEGER fragrance_free\n    }\n    fact_sales_monthly {\n        TEXT month PK\n        TEXT brand PK\n        TEXT category PK\n        TEXT channel PK\n        TEXT region PK\n        INTEGER units\n        INTEGER revenue_idr\n        REAL discount_pct\n        INTEGER stockout_days\n    }\n    fact_review {\n        TEXT review_id PK\n        TEXT sku_id FK\n        TEXT review_date\n        INTEGER rating\n        TEXT review_text\n    }\n    fact_social_post {\n        TEXT post_id PK\n        TEXT brand_mentioned FK\n        TEXT platform\n        TEXT post_text\n    }\n    social_label {\n        TEXT post_id PK\n        TEXT human_label\n    }\n    fact_survey_response {\n        TEXT respondent_id PK\n        TEXT main_brand FK\n        INTEGER concept_purchase_intent\n    }\n    fact_market_size {\n        INTEGER year PK\n        TEXT category PK\n        REAL market_value_idr_bn\n    }\n    run {\n        TEXT run_id PK\n        TEXT status\n        TEXT client FK\n        REAL qa_score\n    }\n    agent_result {\n        TEXT run_id PK\n        TEXT task_id PK\n        TEXT status\n    }\n    finding {\n        TEXT run_id PK\n        TEXT finding_id PK\n        TEXT statement\n        REAL priority\n    }\n    recommendation {\n        TEXT run_id PK\n        TEXT rec_id PK\n        TEXT horizon\n        REAL priority\n    }\n    recommendation_evidence {\n        TEXT run_id PK\n        TEXT rec_id PK\n        TEXT finding_id PK\n    }\n    qa_check {\n        TEXT run_id PK\n        INTEGER revision PK\n        TEXT check_name PK\n        REAL score\n    }\n    trace_event {\n        TEXT run_id PK\n        INTEGER seq PK\n        TEXT agent\n        TEXT kind\n    }", "slug": "14-relational-model"}]</script>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
+
+const diagrams = JSON.parse(document.getElementById("diagram-data").textContent);
+const gallery = document.getElementById("gallery");
+const toc = document.getElementById("toc");
+const status = document.getElementById("status");
+const dark = window.matchMedia("(prefers-color-scheme: dark)");
+
+function el(tag, attrs = {}, text) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// table of contents, grouped by source document
+const byDoc = new Map();
+for (const d of diagrams) (byDoc.get(d.doc) || byDoc.set(d.doc, []).get(d.doc)).push(d);
+for (const [doc, items] of byDoc) {
+  const group = el("div");
+  group.append(el("h2", {}, doc));
+  const ul = el("ul");
+  for (const d of items) {
+    const li = el("li");
+    li.append(el("a", { href: "#" + d.slug }, d.title));
+    ul.append(li);
+  }
+  group.append(ul);
+  toc.append(group);
+}
+
+// one card per diagram
+for (const d of diagrams) {
+  const card = el("section", { class: "card", id: d.slug });
+  const head = el("div", { class: "head" });
+  head.append(el("h3", {}, d.id + ". " + d.title));
+  const actions = el("div", { class: "actions" });
+  for (const [label, fn] of [["SVG", downloadSvg], ["PNG", downloadPng], ["Wide", toggleWide], ["Copy source", copySource]]) {
+    const b = el("button", { type: "button" }, label);
+    b.addEventListener("click", () => fn(d, card, b));
+    actions.append(b);
+  }
+  head.append(actions);
+  const meta = el("div", { class: "meta" });
+  meta.append(document.createTextNode(d.kind + " · from "));
+  meta.append(el("code", {}, d.doc + ":" + d.line));
+  meta.append(document.createTextNode(" · section " + d.section));
+  head.append(meta);
+  card.append(head, el("div", { class: "canvas" }));
+  const details = el("details");
+  details.append(el("summary", {}, "Mermaid source"), el("pre", {}, d.code));
+  card.append(details);
+  gallery.append(card);
+}
+
+async function renderAll() {
+  mermaid.initialize({
+    startOnLoad: false, securityLevel: "strict", theme: dark.matches ? "dark" : "default",
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', htmlLabels: false,
+    flowchart: { htmlLabels: false, useMaxWidth: false, curve: "basis" },
+    sequence: { useMaxWidth: false }, class: { useMaxWidth: false }, state: { useMaxWidth: false },
+    er: { useMaxWidth: false },
+  });
+  let failed = 0;
+  for (const d of diagrams) {
+    const card = document.getElementById(d.slug);
+    const canvas = card.querySelector(".canvas");
+    card.classList.remove("error");
+    try {
+      const { svg } = await mermaid.render("mmd-" + d.id + "-" + Date.now(), d.code);
+      canvas.innerHTML = svg;
+      cleanLabels(canvas.querySelector("svg"));
+    } catch (err) {
+      failed += 1;
+      card.classList.add("error");
+      canvas.replaceChildren(el("div", { class: "err" }, "Could not render this diagram:\n" + (err && err.message ? err.message : err)));
+    }
+    for (const b of card.querySelectorAll(".actions button")) if (b.textContent !== "Copy source") b.disabled = !canvas.querySelector("svg");
+  }
+  status.textContent = failed ? `${diagrams.length - failed} of ${diagrams.length} diagrams rendered; ${failed} failed` : `${diagrams.length} diagrams rendered`;
+  status.classList.toggle("bad", failed > 0);
+  document.body.dataset.rendered = String(diagrams.length - failed);
+  document.body.dataset.failed = String(failed);
+}
+
+// Plain SVG text labels keep exports portable (PowerPoint ignores HTML labels), but mermaid then prints
+// "&" as "&amp;" and leaves inline tags such as <b> as literal text; tidy those text nodes.
+function cleanLabels(svg) {
+  const entities = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
+  const walker = document.createTreeWalker(svg, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.parentNode && node.parentNode.closest("style")) continue;
+    node.nodeValue = node.nodeValue.replace(/&(amp|lt|gt|quot|#39);/g, m => entities[m])
+      .replace(/<\/?(b|i|strong|em|u|small)>/g, "").replace(/\s{2,}/g, " ");
+  }
+}
+
+function svgText(card) {
+  const svg = card.querySelector(".canvas svg").cloneNode(true);
+  svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  const box = card.querySelector(".canvas svg").viewBox.baseVal;
+  if (box && box.width) { svg.setAttribute("width", box.width); svg.setAttribute("height", box.height); }
+  svg.style.backgroundColor = getComputedStyle(document.body).getPropertyValue("--surface").trim();
+  return { text: new XMLSerializer().serializeToString(svg), width: box.width, height: box.height };
+}
+
+function save(blob, name) {
+  const a = el("a", { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function downloadSvg(d, card) {
+  save(new Blob([svgText(card).text], { type: "image/svg+xml" }), d.slug + ".svg");
+}
+
+function downloadPng(d, card, button) {
+  const { text, width, height } = svgText(card);
+  const scale = 2, img = new Image();
+  img.onload = () => {
+    const c = el("canvas"); c.width = Math.ceil(width * scale); c.height = Math.ceil(height * scale);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--surface").trim() || "#ffffff";
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    try { c.toBlob(b => b ? save(b, d.slug + ".png") : alert("PNG export failed; use SVG instead."), "image/png"); }
+    catch (e) { alert("This browser blocked PNG export (" + e.name + "); use SVG instead."); }
+  };
+  img.onerror = () => alert("PNG export failed; use SVG instead.");
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(text);
+}
+
+function toggleWide(d, card, button) {
+  const wide = card.querySelector(".canvas").classList.toggle("wide");
+  button.textContent = wide ? "Fit" : "Wide";
+}
+
+async function copySource(d, card, button) {
+  try { await navigator.clipboard.writeText(d.code); button.textContent = "Copied"; }
+  catch { button.textContent = "Select the source below"; card.querySelector("details").open = true; }
+  setTimeout(() => (button.textContent = "Copy source"), 1600);
+}
+
+renderAll();
+dark.addEventListener("change", renderAll);
+</script>
+</body>
+</html>

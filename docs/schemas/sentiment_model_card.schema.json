@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/sentiment_model_card.schema.json",
+  "title": "SentimentModelCard",
+  "description": "Model card of the Consumer Insight agent's sentiment models (blackboard key `consumer.model_card`; also outputs/models/sentiment/model_card.json).",
+  "type": "object",
+  "required": ["task", "labels", "label_source", "n_train", "n_val", "n_test", "class_distribution", "validation_macro_f1", "test_metrics", "selected", "ensemble_weight", "confusion_matrix", "training_seconds", "bigru_history", "bigru_config", "vocab_size", "trained_at"],
+  "$defs": {
+    "model": {"type": "string", "enum": ["linear", "bigru", "ensemble"]},
+    "per_model": {
+      "type": "object",
+      "required": ["linear", "bigru", "ensemble"],
+      "additionalProperties": false,
+      "properties": {"linear": {"type": "number", "minimum": 0, "maximum": 1}, "bigru": {"type": "number", "minimum": 0, "maximum": 1}, "ensemble": {"type": "number", "minimum": 0, "maximum": 1}}
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["accuracy", "macro_f1", "per_class"],
+      "properties": {
+        "accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "macro_f1": {"type": "number", "minimum": 0, "maximum": 1},
+        "per_class": {
+          "type": "object",
+          "required": ["negative", "neutral", "positive"],
+          "additionalProperties": {
+            "type": "object",
+            "required": ["precision", "recall", "f1-score", "support"],
+            "properties": {
+              "precision": {"type": "number"}, "recall": {"type": "number"}, "f1-score": {"type": "number"}, "support": {"type": "number"}
+            }
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "task": {"type": "string"},
+    "labels": {"type": "array", "const": ["negative", "neutral", "positive"]},
+    "label_source": {"type": "string"},
+    "n_train": {"type": "integer", "minimum": 1},
+    "n_val": {"type": "integer", "minimum": 1},
+    "n_test": {"type": "integer", "minimum": 1},
+    "class_distribution": {
+      "type": "object", "required": ["negative", "neutral", "positive"],
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "validation_macro_f1": {"$ref": "#/$defs/per_model"},
+    "test_metrics": {
+      "type": "object", "required": ["linear", "bigru", "ensemble"],
+      "properties": {"linear": {"$ref": "#/$defs/metrics"}, "bigru": {"$ref": "#/$defs/metrics"}, "ensemble": {"$ref": "#/$defs/metrics"}}
+    },
+    "selected": {"$ref": "#/$defs/model"},
+    "ensemble_weight": {"type": "number", "minimum": 0, "maximum": 1, "description": "Weight of the linear model in the soft vote."},
+    "confusion_matrix": {
+      "type": "array", "minItems": 3, "maxItems": 3,
+      "items": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "integer", "minimum": 0}},
+      "description": "Rows = true class, columns = predicted class, order negative, neutral, positive; selected model on the test set."
+    },
+    "training_seconds": {"type": "object", "required": ["linear", "bigru"], "additionalProperties": {"type": "number", "minimum": 0}},
+    "bigru_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["epoch", "train_loss", "val_macro_f1", "val_accuracy", "seconds"],
+        "properties": {
+          "epoch": {"type": "integer", "minimum": 1}, "train_loss": {"type": "number"}, "val_macro_f1": {"type": "number"},
+          "val_accuracy": {"type": "number"}, "seconds": {"type": "number"}
+        }
+      }
+    },
+    "bigru_config": {
+      "type": "object",
+      "required": ["emb_dim", "hidden", "max_len", "epochs", "batch_size", "lr", "patience", "seed"],
+      "properties": {
+        "emb_dim": {"type": "integer"}, "hidden": {"type": "integer"}, "max_len": {"type": "integer"}, "epochs": {"type": "integer"},
+        "batch_size": {"type": "integer"}, "lr": {"type": "number"}, "patience": {"type": "integer"},
+        "word_dropout": {"type": "number", "minimum": 0, "maximum": 1}, "seed": {"type": "integer"}
+      }
+    },
+    "vocab_size": {"type": "integer", "minimum": 2},
+    "trained_at": {"type": "string"},
+    "data_hash": {"type": "string", "pattern": "^[0-9a-f]{16}$", "description": "SHA-1 prefix of the training texts and labels; the cache key."},
+    "transfer_model": {"$ref": "#/$defs/model"},
+    "transfer_n": {"type": "integer", "minimum": 1},
+    "transfer_metrics": {
+      "type": "object",
+      "description": "Accuracy and macro-F1 of each scorer on the hand-labelled social sample.",
+      "additionalProperties": {
+        "type": "object", "required": ["accuracy", "macro_f1"],
+        "properties": {"accuracy": {"type": "number"}, "macro_f1": {"type": "number"}}
+      }
+    },
+    "training_data": {
+      "type": "object",
+      "description": "Which reviews the models learned from (the run option sentiment_data) and where the model is cached.",
+      "required": ["mode", "study_reviews", "real_reviews", "model_dir"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"type": "string", "enum": ["study", "study+real", "real"]},
+        "study_reviews": {"type": "integer", "minimum": 0},
+        "real_reviews": {"type": "integer", "minimum": 0},
+        "real_source": {"type": ["string", "null"]},
+        "model_dir": {"type": "string", "description": "Cache folder relative to the project root."}
+      }
+    },
+    "split_sources": {
+      "type": "object",
+      "description": "Rows per source (study, real) in each split; present when the models were trained with source tags.",
+      "properties": {
+        "train": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "val": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "test": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}}
+      }
+    },
+    "test_metrics_by_source": {
+      "type": "object",
+      "description": "Test metrics of each candidate, computed separately on the test rows of each source.",
+      "additionalProperties": {
+        "type": "object", "required": ["linear", "bigru", "ensemble"],
+        "properties": {"linear": {"$ref": "#/$defs/metrics"}, "bigru": {"$ref": "#/$defs/metrics"}, "ensemble": {"$ref": "#/$defs/metrics"}}
+      }
+    },
+    "study_reviews_check": {
+      "type": "object",
+      "description": "Agreement of the selected model with the star ratings of all the study's reviews; present when it was trained on real reviews only.",
+      "required": ["n", "accuracy", "macro_f1"],
+      "properties": {
+        "n": {"type": "integer", "minimum": 1},
+        "accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "macro_f1": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

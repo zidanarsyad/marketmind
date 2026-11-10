@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/agent_result.schema.json",
+  "title": "AgentResult",
+  "description": "Outcome of one agent run, returned by BaseAgent.run() and stored per task id in run_meta.json (`agents`).",
+  "type": "object",
+  "required": ["agent", "status", "summary", "seconds", "findings", "tool_calls", "llm_calls", "error"],
+  "additionalProperties": false,
+  "properties": {
+    "agent": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["completed", "failed", "skipped"]},
+    "summary": {"type": "string"},
+    "seconds": {"type": "number", "minimum": 0},
+    "findings": {"type": "integer", "minimum": 0},
+    "tool_calls": {"type": "integer", "minimum": 0},
+    "llm_calls": {"type": "integer", "minimum": 0},
+    "error": {"type": ["string", "null"], "description": "Exception text for failed tasks, reason for skipped ones."}
+  }
+}

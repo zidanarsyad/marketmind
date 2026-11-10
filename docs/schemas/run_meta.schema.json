@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/run_meta.schema.json",
+  "title": "RunMeta",
+  "description": "outputs/runs/<run_id>/run_meta.json: everything needed to reload, audit and compare a run.",
+  "type": "object",
+  "required": ["run_id", "status", "started", "seconds", "brief", "client", "plan", "options", "llm", "agents", "agent_roster", "workflow", "qa", "messages"],
+  "additionalProperties": false,
+  "properties": {
+    "run_id": {"type": "string", "pattern": "^[0-9]{8}-[0-9]{6}$"},
+    "status": {"type": "string", "enum": ["completed", "failed"]},
+    "started": {"type": "string"},
+    "seconds": {"type": "number", "minimum": 0},
+    "brief": {"type": "string"},
+    "client": {"type": ["string", "null"]},
+    "plan": {
+      "anyOf": [
+        {"$ref": "https://marketmind.local/schemas/research_plan.schema.json"},
+        {"type": "object", "maxProperties": 0, "description": "Empty when planning failed."}
+      ]
+    },
+    "options": {
+      "type": "object",
+      "required": ["client", "use_llm", "force_retrain", "parallel"],
+      "properties": {
+        "client": {"type": ["string", "null"]},
+        "use_llm": {"type": "boolean"},
+        "force_retrain": {"type": "boolean"},
+        "parallel": {"type": "boolean"},
+        "sentiment_data": {"type": "string", "enum": ["study", "study+real", "real"],
+                           "description": "Reviews the sentiment models learn from (docs/DATA_SOURCES.md); absent in older runs."}
+      }
+    },
+    "llm": {
+      "type": "object",
+      "required": ["provider", "model", "description", "stats", "last_error"],
+      "properties": {
+        "provider": {"type": "string", "description": "none, gemini, groq, openrouter, ollama, openai_compatible or anthropic."},
+        "model": {"type": ["string", "null"]},
+        "description": {"type": "string"},
+        "last_error": {"type": ["string", "null"]},
+        "stats": {
+          "type": "object",
+          "required": ["calls", "cache_hits", "failures", "seconds", "prompt_tokens", "completion_tokens"],
+          "properties": {
+            "calls": {"type": "integer", "minimum": 0},
+            "cache_hits": {"type": "integer", "minimum": 0},
+            "failures": {"type": "integer", "minimum": 0},
+            "seconds": {"type": "number", "minimum": 0},
+            "prompt_tokens": {"type": "integer", "minimum": 0},
+            "completion_tokens": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "description": "Task id (plan, collect, quality, market, ..., report_rev1, qa_rev1) to AgentResult.",
+      "additionalProperties": {"$ref": "https://marketmind.local/schemas/agent_result.schema.json"}
+    },
+    "agent_roster": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "role", "goal", "ml"],
+        "properties": {"name": {"type": "string"}, "role": {"type": "string"}, "goal": {"type": "string"}, "ml": {"type": "string"}}
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "required": ["layers", "edges", "tasks"],
+      "properties": {
+        "layers": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}},
+        "edges": {"type": "array", "items": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}},
+        "tasks": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "qa": {
+      "type": "object",
+      "required": ["score", "passed", "revisions", "history"],
+      "properties": {
+        "score": {"type": ["number", "null"]},
+        "passed": {"type": ["boolean", "null"]},
+        "revisions": {"type": "integer", "minimum": 0},
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["revision", "score", "passed", "issues"],
+            "properties": {"revision": {"type": "integer"}, "score": {"type": "number"}, "passed": {"type": "boolean"}, "issues": {"type": "integer"}}
+          }
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sender", "recipient", "content"],
+        "properties": {"sender": {"type": "string"}, "recipient": {"type": "string"}, "content": {"type": "string"}}
+      }
+    }
+  }
+}

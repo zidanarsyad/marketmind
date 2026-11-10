@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/datasets/social_post_row.schema.json",
+  "title": "SocialPostRow",
+  "description": "One row of social_mentions.csv after removing reposts. No sentiment label: the Consumer Insight agent scores it.",
+  "type": "object",
+  "required": ["post_id", "post_date", "platform", "brand_mentioned", "topics", "post_text", "author_followers", "influencer_tier", "views", "likes", "comments", "shares"],
+  "properties": {
+    "post_id": {"type": "string", "pattern": "^P[0-9]{6}$"},
+    "post_date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "platform": {"type": "string", "enum": ["TikTok", "Instagram", "X", "YouTube"]},
+    "brand_mentioned": {"type": "string", "description": "Empty string for generic topic posts."},
+    "topics": {"type": "string", "pattern": "^[a-z ]+(;[a-z ]+)*$", "description": "Semicolon-separated topics."},
+    "post_text": {"type": "string", "minLength": 1},
+    "author_followers": {"type": "integer", "minimum": 0},
+    "influencer_tier": {"type": "string", "enum": ["nano", "micro", "macro", "mega"]},
+    "views": {"type": "integer", "minimum": 0},
+    "likes": {"type": "integer", "minimum": 0},
+    "comments": {"type": "integer", "minimum": 0},
+    "shares": {"type": "integer", "minimum": 0}
+  }
+}

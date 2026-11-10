@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/datasets/product_row.schema.json",
+  "title": "ProductRow",
+  "description": "One SKU of product_catalog.csv.",
+  "type": "object",
+  "required": ["sku_id", "brand", "product_name", "category", "key_ingredient", "size_ml", "price_idr", "launch_month", "fragrance_free", "spf", "price_per_ml_idr", "halal_certified", "bpom_registered", "rating_avg", "review_count", "units_sold_estimate"],
+  "properties": {
+    "sku_id": {"type": "string", "pattern": "^SKU-[0-9]{3}$"},
+    "brand": {"type": "string", "minLength": 1},
+    "product_name": {"type": "string", "minLength": 1},
+    "category": {"type": "string", "enum": ["Facial Wash", "Toner", "Serum", "Moisturizer", "Sunscreen"]},
+    "key_ingredient": {"type": "string", "minLength": 1},
+    "size_ml": {"type": "number", "exclusiveMinimum": 0},
+    "price_idr": {"type": "integer", "exclusiveMinimum": 0},
+    "launch_month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+    "fragrance_free": {"type": "boolean"},
+    "spf": {"type": ["integer", "null"], "minimum": 15, "maximum": 100, "description": "Sun protection factor; null for non-sunscreen products."},
+    "price_per_ml_idr": {"type": "number", "exclusiveMinimum": 0},
+    "halal_certified": {"type": "boolean"},
+    "bpom_registered": {"type": "boolean", "description": "Registered with BPOM, Indonesia's food and drug authority."},
+    "rating_avg": {"type": ["number", "null"], "minimum": 1, "maximum": 5, "description": "Null for SKUs too new for a stable rating."},
+    "review_count": {"type": "integer", "minimum": 0},
+    "units_sold_estimate": {"type": "integer", "minimum": 0}
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/research_plan.schema.json",
+  "title": "ResearchPlan",
+  "description": "Structured plan the Research Director derives from the free-text brief (blackboard key `plan`, saved as json/plan.json and inside run_meta.json).",
+  "type": "object",
+  "required": ["brief", "client", "competitors", "categories", "channels", "horizon_months", "data_window", "modules", "objectives", "questions", "planner", "created"],
+  "additionalProperties": false,
+  "properties": {
+    "brief": {"type": "string", "minLength": 1},
+    "client": {"type": "string", "minLength": 1, "description": "Client brand; must exist in the sales panel."},
+    "competitors": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "categories": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "channels": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "horizon_months": {"type": "integer", "minimum": 3, "maximum": 12},
+    "data_window": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2, "description": "First and last month of the sales panel."},
+    "modules": {
+      "type": "object",
+      "required": ["market", "competition", "consumer", "segmentation", "pricing", "forecast"],
+      "additionalProperties": false,
+      "properties": {
+        "market": {"type": "boolean"},
+        "competition": {"type": "boolean"},
+        "consumer": {"type": "boolean"},
+        "segmentation": {"type": "boolean"},
+        "pricing": {"type": "boolean"},
+        "forecast": {"type": "boolean"}
+      }
+    },
+    "concept": {"type": ["string", "null"], "description": "New-product concept named in the brief, if any."},
+    "objectives": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "area", "question"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^Q[0-9]+$"},
+          "area": {"type": "string", "enum": ["market", "competition", "consumer", "segmentation", "pricing", "forecast", "strategy"]},
+          "question": {"type": "string", "minLength": 5}
+        }
+      }
+    },
+    "planner": {"type": "string", "enum": ["rule-based", "rule-based + LLM refinement"]},
+    "created": {"type": "string", "description": "Local timestamp, YYYY-MM-DD HH:MM:SS."}
+  }
+}

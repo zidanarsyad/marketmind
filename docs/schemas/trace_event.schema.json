@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/trace_event.schema.json",
+  "title": "TraceEvent",
+  "description": "One line of trace.jsonl: every status change, thought, tool call, observation, finding, message, LLM call, warning and error an agent produces.",
+  "type": "object",
+  "required": ["ts", "agent", "kind", "message", "data", "time"],
+  "additionalProperties": false,
+  "properties": {
+    "ts": {"type": "number", "description": "Unix timestamp in seconds."},
+    "time": {"type": "string", "pattern": "^[0-9]{2}:[0-9]{2}:[0-9]{2}$", "description": "Local clock time, HH:MM:SS."},
+    "agent": {"type": "string", "minLength": 1, "description": "Agent name, or System for run-level events."},
+    "kind": {
+      "type": "string",
+      "enum": ["status", "thought", "action", "observation", "finding", "message", "llm", "warning", "error"]
+    },
+    "message": {"type": "string"},
+    "data": {"type": "object", "description": "Kind-specific payload, e.g. tool name, finding id, seconds, traceback."}
+  }
+}

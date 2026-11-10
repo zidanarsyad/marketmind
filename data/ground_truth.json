@@ -1,0 +1,183 @@
+{
+  "client_brand": "Kirana Beauty",
+  "price_elasticity": {
+    "Kirana Beauty": -1.3,
+    "Lumière Lab": -0.9,
+    "DewiSkin": -1.5,
+    "GlowNesia": -1.8,
+    "Aurelia Derma": -0.6,
+    "Purabotanica": -1.1
+  },
+  "events": [
+    {
+      "brand": "GlowNesia",
+      "start": "2024-08",
+      "end": null,
+      "type": "viral_campaign",
+      "channel": "TikTok Shop",
+      "description": "Viral TikTok campaign: +70% TikTok demand decaying to a sustained +30%."
+    },
+    {
+      "brand": "Kirana Beauty",
+      "start": "2024-03",
+      "end": null,
+      "type": "product_launch",
+      "category": "Sunscreen",
+      "description": "UV Shield Aqua Gel SPF 50 launch lifts Kirana sunscreen demand up to +45%."
+    },
+    {
+      "brand": "Kirana Beauty",
+      "start": "2025-07",
+      "end": null,
+      "type": "price_increase",
+      "description": "Kirana list price +12% across all categories (elasticity -1.3 => about -14% volume)."
+    },
+    {
+      "brand": "Lumière Lab",
+      "start": "2025-10",
+      "end": null,
+      "type": "product_launch",
+      "category": "Serum",
+      "description": "Barrier Ceramide Serum launch: serum demand up to +28%."
+    },
+    {
+      "brand": "Purabotanica",
+      "start": "2025-06",
+      "end": null,
+      "type": "campaign",
+      "description": "Refill-pouch sustainability campaign: +12% demand."
+    },
+    {
+      "brand": "DewiSkin",
+      "start": "2026-01",
+      "end": null,
+      "type": "rebrand",
+      "description": "Rebrand lifts online demand up to +18%."
+    },
+    {
+      "brand": "Kirana Beauty",
+      "start": "2026-02",
+      "end": "2026-04",
+      "type": "quality_issue",
+      "category": "Moisturizer",
+      "description": "Hydra Barrier Moisturizer pump defect: packaging complaints spike, moisturizer sales -7 to -12%."
+    },
+    {
+      "brand": "Kirana Beauty",
+      "start": "2026-02",
+      "end": "2026-03",
+      "type": "stockout",
+      "channel": "TikTok Shop",
+      "description": "Ramadan stock-outs on TikTok Shop (9 and 12 days)."
+    },
+    {
+      "brand": "GlowNesia",
+      "start": "2026-05",
+      "end": "2026-07",
+      "type": "counterfeit_crisis",
+      "description": "Counterfeit products flood marketplaces: authenticity complaints spike, demand -15 to -25%."
+    }
+  ],
+  "expected_insights": {
+    "client_underindexed_channel": "TikTok Shop",
+    "fastest_growing_channel": "TikTok Shop",
+    "fastest_growing_category": "Sunscreen",
+    "fastest_growing_regions": [
+      "Kalimantan & Sulawesi",
+      "Sumatera",
+      "Bali & Indonesia Timur"
+    ],
+    "client_top_negative_aspect_2026": "kemasan",
+    "client_negative_spike_months": [
+      "2026-02",
+      "2026-03",
+      "2026-04"
+    ],
+    "glownesia_negative_spike_months": [
+      "2026-05",
+      "2026-06",
+      "2026-07"
+    ],
+    "rising_topics": [
+      "peptide",
+      "refill",
+      "skin barrier",
+      "ceramide"
+    ],
+    "declining_topics": [
+      "niacinamide",
+      "glass skin",
+      "mugwort"
+    ],
+    "top_competitive_threats": [
+      "GlowNesia",
+      "Lumière Lab"
+    ],
+    "white_space": "Fragrance-free ceramide moisturizer in the Rp60-120k masstige band",
+    "target_segment_for_concept": "Sensitive-Skin Minimalists",
+    "concept_optimal_price_band_idr": [
+      80000,
+      100000
+    ],
+    "n_segments": 5
+  },
+  "segments": [
+    {
+      "name": "Budget Acne Fighters",
+      "share": 0.26
+    },
+    {
+      "name": "Ingredient-Savvy Professionals",
+      "share": 0.24
+    },
+    {
+      "name": "Halal Value Seekers",
+      "share": 0.22
+    },
+    {
+      "name": "Premium Age-Defiers",
+      "share": 0.13
+    },
+    {
+      "name": "Sensitive-Skin Minimalists",
+      "share": 0.15
+    }
+  ],
+  "topics": {
+    "niacinamide": "declining",
+    "ceramide": "rising",
+    "skin barrier": "rising",
+    "peptide": "emerging",
+    "retinol": "rising",
+    "salicylic acid": "stable",
+    "sunscreen": "rising",
+    "centella": "stable",
+    "mugwort": "fad",
+    "vitamin c": "stable",
+    "dupe": "rising",
+    "halal": "stable",
+    "refill": "rising",
+    "glass skin": "declining"
+  },
+  "data_quality_defects": {
+    "sales": {
+      "missing_discount": 483,
+      "negative_units": 12,
+      "outliers_x12": 8,
+      "channel_label_variants": 241,
+      "duplicate_rows": 145
+    },
+    "reviews": {
+      "duplicate_reviews": 201,
+      "rating_only_share": 0.03
+    },
+    "survey": {
+      "speeders": 72,
+      "straight_liners": 48,
+      "attention_fails": 60,
+      "missing_income": 96,
+      "invalid_age": 6
+    },
+    "social_reposts": 87
+  }
+}

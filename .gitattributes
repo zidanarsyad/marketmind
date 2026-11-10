@@ -1,0 +1,7 @@
+# Normalise line endings in the repository; keep binary files untouched.
+* text=auto
+*.parquet binary
+*.png binary
+*.pdf binary
+*.pt binary
+*.joblib binary

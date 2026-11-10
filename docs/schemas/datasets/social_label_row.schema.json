@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/datasets/social_label_row.schema.json",
+  "title": "SocialLabelRow",
+  "description": "One row of social_validation_labels.csv: an analyst-annotated social post used to validate model transfer.",
+  "type": "object",
+  "required": ["post_id", "human_label"],
+  "additionalProperties": false,
+  "properties": {
+    "post_id": {"type": "string", "pattern": "^P[0-9]{6}$"},
+    "human_label": {"type": "string", "enum": ["negative", "neutral", "positive"]}
+  }
+}

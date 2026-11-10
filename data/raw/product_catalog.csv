@@ -1,0 +1,50 @@
+sku_id,brand,product_name,category,key_ingredient,size_ml,price_idr,launch_month,fragrance_free,spf,price_per_ml_idr,halal_certified,bpom_registered,rating_avg,review_count,units_sold_estimate
+SKU-001,Kirana Beauty,Kirana Bright Rice Gentle Facial Wash,Facial Wash,Rice extract + amino acid,100,42900,2021-03,False,,429.0,True,True,4.9,16179,66979
+SKU-002,Kirana Beauty,Kirana Acne Calm Salicylic Facial Wash,Facial Wash,Salicylic acid 1%,100,45900,2022-02,True,,459.0,True,True,4.95,17615,62381
+SKU-003,Kirana Beauty,Kirana Bright Rice Essence Toner,Toner,Rice water + niacinamide,100,64900,2021-06,False,,649.0,True,True,4.87,14859,58536
+SKU-004,Kirana Beauty,Kirana 5% Niacinamide Bright Serum,Serum,Niacinamide,20,79900,2021-09,True,,3995.0,True,True,4.79,6277,20299
+SKU-005,Kirana Beauty,Kirana Acne Calm 2% BHA Serum,Serum,Salicylic acid,20,84900,2022-07,True,,4245.0,True,True,4.86,7608,34640
+SKU-006,Kirana Beauty,Kirana Hydra Barrier Moisturizer (Pump),Moisturizer,Hyaluronic acid + ceramide,40,79900,2021-01,False,,1998.0,True,True,4.83,23875,84320
+SKU-007,Kirana Beauty,Kirana Hydra Barrier Gel Cream,Moisturizer,Hyaluronic acid,30,69900,2022-05,False,,2330.0,True,True,4.82,22460,108321
+SKU-008,Kirana Beauty,Kirana UV Shield Tone-Up SPF 40 PA+++,Sunscreen,Tone-up chemical filters,40,62900,2022-01,False,40.0,1572.0,True,True,4.88,23202,93369
+SKU-009,Kirana Beauty,Kirana UV Shield Aqua Gel SPF 50 PA++++,Sunscreen,Chemical filters + hyaluronic acid,50,69900,2024-03,True,50.0,1398.0,True,True,4.86,16480,78519
+SKU-010,Kirana Beauty,Kirana UV Shield Aqua Gel SPF 50 Travel Size,Sunscreen,Chemical filters + hyaluronic acid,15,29900,2024-09,True,50.0,1993.0,True,True,4.85,19285,83521
+SKU-011,Lumière Lab,Lumière Lab Low pH Amino Cleanser,Facial Wash,Amino acid,100,59900,2020-05,True,,599.0,True,True,4.95,22281,90362
+SKU-012,Lumière Lab,Lumière Lab AHA/BHA Clarifying Toner,Toner,AHA/BHA,100,89900,2020-08,True,,899.0,True,True,4.94,8345,37767
+SKU-013,Lumière Lab,Lumière Lab Hyaluronic Water Toner,Toner,Hyaluronic acid,150,95000,2023-05,True,,633.0,True,True,4.95,8977,44813
+SKU-014,Lumière Lab,Lumière Lab 10% Niacinamide Bright Serum,Serum,Niacinamide,20,119000,2020-02,True,,5950.0,True,True,4.94,8893,39824
+SKU-015,Lumière Lab,Lumière Lab 15% Vitamin C Radiance Serum,Serum,Vitamin C,20,129000,2021-04,True,,6450.0,True,True,4.95,8927,43736
+SKU-016,Lumière Lab,Lumière Lab 0.3% Retinol Renewal Serum,Serum,Retinol,20,139000,2022-09,True,,6950.0,True,True,4.94,13346,45550
+SKU-017,Lumière Lab,Lumière Lab Barrier Ceramide Serum,Serum,Ceramide + peptide,20,135000,2025-10,True,,6750.0,True,True,,3203,13905
+SKU-018,Lumière Lab,Lumière Lab Ceramide Barrier Cream,Moisturizer,Ceramide,30,149000,2021-11,True,,4967.0,True,True,4.95,23444,104874
+SKU-019,Lumière Lab,Lumière Lab Daily Fluid Sunscreen SPF 50 PA++++,Sunscreen,Hybrid filters,50,99000,2022-03,True,50.0,1980.0,True,True,4.95,26416,88022
+SKU-020,DewiSkin,DewiSkin Fresh Halal Facial Foam,Facial Wash,Green tea,100,32500,2015-01,False,,325.0,True,True,4.85,20249,84573
+SKU-021,DewiSkin,DewiSkin Bright Glow Facial Wash,Facial Wash,Vitamin C,100,34500,2018-06,False,,345.0,True,True,4.9,16459,61469
+SKU-022,DewiSkin,DewiSkin Fresh Halal Toner,Toner,Witch hazel,150,39900,2016-03,False,,266.0,True,True,4.9,12488,46207
+SKU-023,DewiSkin,DewiSkin Bright Glow Serum,Serum,Niacinamide + licorice,20,59900,2020-10,False,,2995.0,True,True,4.85,7735,35954
+SKU-024,DewiSkin,DewiSkin Daily Moisturizer Gel,Moisturizer,Aloe vera,40,45900,2017-04,False,,1148.0,True,True,4.91,7676,24965
+SKU-025,DewiSkin,DewiSkin Bright Glow Day Cream SPF 30,Moisturizer,Niacinamide,30,52900,2019-02,False,30.0,1763.0,True,True,4.9,9714,39102
+SKU-026,DewiSkin,DewiSkin Daily Barrier Cream,Moisturizer,Ceramide,40,54900,2026-01,False,,1372.0,True,True,,1717,7421
+SKU-027,DewiSkin,DewiSkin Sun Protect Lotion SPF 50 PA+++,Sunscreen,Chemical filters,50,49900,2020-01,False,50.0,998.0,True,True,4.83,19081,62101
+SKU-028,GlowNesia,GlowNesia 2% Salicylic Acne Facial Wash,Facial Wash,Salicylic acid,100,29900,2022-01,False,,299.0,True,True,4.83,78324,297241
+SKU-029,GlowNesia,GlowNesia Mugwort Calming Toner,Toner,Mugwort,100,39900,2022-06,False,,399.0,True,True,4.81,24751,112962
+SKU-030,GlowNesia,GlowNesia 2% Salicylic Acne Serum,Serum,Salicylic acid,20,49900,2021-11,False,,2495.0,True,True,4.81,25248,91702
+SKU-031,GlowNesia,GlowNesia 10% Niacinamide Glow Serum,Serum,Niacinamide,20,49900,2022-03,False,,2495.0,True,True,4.81,32514,121036
+SKU-032,GlowNesia,GlowNesia Peptide Firming Serum,Serum,Peptide,20,59900,2025-08,False,,2995.0,True,True,,9005,36447
+SKU-033,GlowNesia,GlowNesia Ceramide Gel Moisturizer,Moisturizer,Ceramide,30,45900,2022-08,False,,1530.0,True,True,4.85,45388,179057
+SKU-034,GlowNesia,GlowNesia Glass Skin Sunscreen SPF 50 PA++++,Sunscreen,Chemical filters,50,44900,2022-05,False,50.0,898.0,True,True,4.81,59673,215705
+SKU-035,GlowNesia,GlowNesia Glass Skin Sunscreen Spray SPF 50,Sunscreen,Chemical filters,100,54900,2024-11,False,50.0,549.0,True,True,4.83,31316,105840
+SKU-036,Aurelia Derma,Aurelia Derma Silk Cleansing Milk,Facial Wash,Squalane,120,115000,2018-03,True,,958.0,False,True,4.95,2017,6750
+SKU-037,Aurelia Derma,Aurelia Derma Peptide Essence Toner,Toner,Peptide,120,189000,2019-05,True,,1575.0,False,True,4.95,1957,6605
+SKU-038,Aurelia Derma,Aurelia Derma Age Reverse Retinol Serum,Serum,Retinol,30,289000,2019-09,True,,9633.0,False,True,4.91,2027,6977
+SKU-039,Aurelia Derma,Aurelia Derma Peptide Lift Serum,Serum,Peptide,30,319000,2021-06,True,,10633.0,False,True,4.95,1457,5176
+SKU-040,Aurelia Derma,Aurelia Derma Peptide Repair Cream,Moisturizer,Peptide + ceramide,50,245000,2020-02,True,,4900.0,False,True,4.95,2754,11160
+SKU-041,Aurelia Derma,Aurelia Derma Retinol Night Cream,Moisturizer,Retinol,50,265000,2018-10,False,,5300.0,False,True,4.88,2545,8252
+SKU-042,Aurelia Derma,Aurelia Derma Mineral Sunscreen SPF 50,Sunscreen,Mineral (zinc oxide),40,179000,2021-03,True,50.0,4475.0,True,True,4.95,2429,9445
+SKU-043,Purabotanica,Purabotanica Rice & Tea Gentle Cleanser,Facial Wash,Rice + green tea,120,54900,2020-07,False,,458.0,True,True,4.8,10489,40406
+SKU-044,Purabotanica,Purabotanica Centella Calming Toner,Toner,Centella asiatica,150,74900,2020-03,False,,499.0,True,True,4.72,6317,28282
+SKU-045,Purabotanica,Purabotanica Centella Calming Toner Refill Pouch,Toner,Centella asiatica,300,99900,2025-06,False,,333.0,True,True,4.79,1531,5273
+SKU-046,Purabotanica,Purabotanica Rosehip Glow Serum,Serum,Rosehip oil,20,99900,2021-08,False,,4995.0,True,True,4.66,4404,15420
+SKU-047,Purabotanica,Purabotanica Rosemary Barrier Cream,Moisturizer,Ceramide + rosemary oil,40,95000,2022-04,False,,2375.0,True,True,4.81,4921,17322
+SKU-048,Purabotanica,Purabotanica Aloe Soothing Gel,Moisturizer,Aloe vera,100,59900,2021-05,False,,599.0,True,True,4.78,3151,12743
+SKU-049,Purabotanica,Purabotanica Zinc Botanical Sunscreen SPF 35,Sunscreen,Mineral (zinc oxide),50,89900,2022-09,False,35.0,1798.0,True,True,4.73,4567,15970

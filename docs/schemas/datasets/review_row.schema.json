@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://marketmind.local/schemas/datasets/review_row.schema.json",
+  "title": "ReviewRow",
+  "description": "One row of product_reviews.csv after de-duplication. Empty review_text = a rating-only review (kept for star ratings, excluded from text models).",
+  "type": "object",
+  "required": ["review_id", "review_date", "brand", "sku_id", "product_name", "category", "channel", "region", "rating", "review_text", "helpful_votes", "verified_purchase", "reviewer_id", "reviewer_skin_type"],
+  "properties": {
+    "review_id": {"type": "string", "pattern": "^R[0-9]{6}$"},
+    "review_date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "brand": {"type": "string", "minLength": 1},
+    "sku_id": {"type": "string", "pattern": "^SKU-[0-9]{3}$"},
+    "product_name": {"type": "string", "minLength": 1},
+    "category": {"type": "string", "enum": ["Facial Wash", "Toner", "Serum", "Moisturizer", "Sunscreen"]},
+    "channel": {"type": "string", "enum": ["Shopee", "Tokopedia", "TikTok Shop", "Lazada"]},
+    "region": {"type": "string", "minLength": 1},
+    "rating": {"type": "integer", "minimum": 1, "maximum": 5},
+    "review_text": {"type": ["string", "null"]},
+    "helpful_votes": {"type": "integer", "minimum": 0},
+    "verified_purchase": {"type": "boolean"},
+    "reviewer_id": {"type": "string", "pattern": "^U[0-9]{6}$"},
+    "reviewer_skin_type": {"type": ["string", "null"], "enum": ["oily", "dry", "combination", "sensitive", "normal", null]}
+  }
+}

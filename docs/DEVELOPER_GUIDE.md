@@ -12,19 +12,24 @@ python -m venv .venv
 pip install -r requirements.txt     # or requirements-lock.txt for the exact tested versions
 python -m ruff check .
 python -m pytest -q
+npm --prefix frontend install        # the web app (Node.js 20.19+), see section 12
+npm --prefix frontend test
 ```
 
-The repository includes the generated datasets, so `scripts/generate_data.py` is only needed after changing the generator. The full test suite takes several minutes (8 to 19 on the development laptop, the upper end with coverage), because it runs six full studies: the shared run and five end-to-end tests (see section 9). GitHub Actions (`.github/workflows/tests.yml`) runs `ruff check` and the full suite on every push and pull request. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
+The repository includes the generated datasets, so `scripts/generate_data.py` is only needed after changing the generator. The full test suite takes several minutes (8 to 19 on the development laptop, the upper end with coverage), because it runs six full studies: the shared run and five end-to-end tests (see section 9). GitHub Actions (`.github/workflows/tests.yml`) runs `ruff check` and the full suite on every push and pull request, and, in a second job, the web app's type-check, Vitest tests and production build. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
 
 **Dependencies.** `requirements.txt` holds compatible ranges, each capped below the next major version. `requirements-lock.txt` pins every package, including transitive ones, to the versions the suite last passed with. When you upgrade a library, run the tests, then regenerate the lock from the working environment.
 
-**Version control.** Commit code, docs and `data/raw`. `outputs/`, `data/external/` (downloaded corpora with their own licences) and `.env` (API keys) are git-ignored and must stay that way. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
+**Version control.** Commit code, docs and `data/raw`. `outputs/`, `data/external/` (downloaded corpora with their own licences), `data/real/` and `.env` (API keys) are git-ignored and must stay that way, as are `frontend/node_modules/` and the built `frontend/dist/`. Commit `frontend/package-lock.json` with any dependency change. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
 
 ## 2. Repository layout
 
 ```
 run.py                       command-line entry point
 app/dashboard.py             Streamlit dashboard (12 views, live runs, chat, evaluation)
+api/                         FastAPI layer for the web app (section 12): app.py, runs.py, studies.py, system_info.py,
+                             security.py; python -m api serves it with the built front end
+frontend/                    Vue 3 web app (section 12): src/views, src/components, src/stores, src/lib; package.json
 marketmind/
   config.py                  paths, dataset registry (DATASETS), default brief and client, env()
   system.py                  MarketResearchSystem: context, Director, workflow, QA loop, saving the run
@@ -182,7 +187,7 @@ Chart functions in `reporting/charts.py` take DataFrames and a theme mode and re
                                                "channel", "Promotion uplift by channel", m)),
 ```
 
-`s.t(group, name)` reads table `name` from the `<group>.tables` artefact, `s.j(key)` reads a JSON artefact, `s.df(key)` reads a single DataFrame artefact, and `s.client` is the client brand. `_safe` turns a missing table into "no chart" instead of an error. To use the chart in the report, list its key in the `charts` argument of the section's `add(...)` call in `reporter.py`. In the dashboard, call `chart(src, "<key>")`. Follow the existing palette tokens (`tk(mode)`, `brand_colors`): the client in the accent colour, competitors in greys, legends below the plot.
+`s.t(group, name)` reads table `name` from the `<group>.tables` artefact, `s.j(key)` reads a JSON artefact, `s.df(key)` reads a single DataFrame artefact, and `s.client` is the client brand. `_safe` turns a missing table into "no chart" instead of an error. To use the chart in the report, list its key in the `charts` argument of the section's `add(...)` call in `reporter.py`. In the dashboard, call `chart(src, "<key>")`; in the web app, add `<PlotlyChart :run-id="id" name="<key>" />` to the view (the API serves every chart in `CHARTS` by its key, in both themes). Follow the existing palette tokens (`tk(mode)`, `brand_colors`): the client in the accent colour, competitors in greys, legends below the plot.
 
 ## 7. Adding or replacing a dataset
 
@@ -220,9 +225,11 @@ An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/ll
 | `tests/test_real_data.py` (3 tests) | The Tokopedia importer on a small archive in the dataset's exact layout (beauty filter, categories from names, brands and their spellings, prices, SPF, pack size, unknown fields left null, one row per dated review, the seller's region, contract checks, manifest, brand map); the Director planning around missing data (modules left out with reasons, the most-reviewed brand as default client, falling back to what the data supports, nothing to study); and an end-to-end study on a real-data folder with only reviews and a catalogue (consumer module only, report discloses gaps and source and never calls the data simulated, no ground-truth score) | about 1 minute |
 | `tests/test_agentic.py` (13 tests) | Retries (a flaky agent recovers; a broken one fails after two attempts), the time limit (stops at the next tool call, not retried), the LLM budget, the console reviewer, decision tracing and a crashing reviewer, the dashboard broker across threads, the plan gate (modules left out, questions renumbered) and the recommendation gate (drop, renumber, reuse an unchanged decision, reject), the Director's mapping of open questions to agents, open-question answers, the Critic's half credit; and two end-to-end studies: the market analyst fails until the Director sends it back while a reviewer drops a recommendation, and a rejected plan stops the study before any analysis | about 2 minutes |
 | `tests/test_llm_client.py` (12 tests) | The LLM client against a fake OpenAI-style API, with no network or key: the request sent, response parsing, token counts, caching (and that the key never reaches the cache), the retry after a rate limit, dropping JSON mode when a provider rejects it, per-provider model settings winning over the global ones, a busy (503) or hung (timeout) model handing the call to the fallback, a retired model replaced for good, an unrelated bad request that mentions the model leaving it in place, rediscovery preferring `latest` aliases over previews, soft failure on HTTP errors, and offline mode without a key | under a second |
+| `tests/test_api.py` (11 tests) | The web API with FastAPI's `TestClient`, offline: the local-only guards (other hosts, non-JSON and cross-origin posts refused), API keys scrubbed from responses, 404s and path traversal, serving a built front end with client-side routes, request validation; the approval gates driven by a stub study (wrong gate, unknown items, nothing left, a double submit, the decisions handed over, the SSE stream and its resumption from `Last-Event-ID`); every read endpoint and all 32 charts in both themes on the shared run, the evaluation, the analyst chat and the sentiment tester; and one more study through both gates over HTTP (segmentation and a recommendation left out) | seconds; about 1 minute for the study, plus the shared run |
+| `frontend/src/**/*.test.ts` (Vitest, 13 tests) | The overview tiles (skipped modules leave no tile, the forecast label follows the horizon), the price simulator, the model-card scores, number formatting; the KPI tiles, the approval form (left-out items, nothing left, reject) and Ask the analyst (one request per question, the conversation restored after a reload without asking again, raw HTML escaped) mounted in jsdom | a few seconds |
 | `tests/test_evaluation_and_chat.py` (2 tests) | The ground-truth evaluation on the shared run, which must recover every planted insight (a regression guard for the whole system). The one exception is the concept price, a documented noise-driven miss on the bundled data ([EVALUATION.md §4.5](EVALUATION.md#45-concept-pricing)); when it misses, SEG-04 must say the pick is not settled and name a runner-up inside the true band; and the Analyst Chat's offline retrieval: a pain-point question answered from weaknesses or threats with citations, a pricing question from pricing evidence, nonsense answered with "no evidence" | seconds, plus the shared run |
 
-Tests that run the pipeline or the dashboard are marked `slow`: `tests/conftest.py` marks every test that uses `offline_run`, and the five other end-to-end tests (the revision loop, the crashing analyst and Critic, the two agentic studies and the real-data study) carry `@pytest.mark.slow`. `python -m pytest -q -m "not slow"` runs everything else in about half a minute, which is the loop to use while coding.
+Tests that run the pipeline or the dashboard are marked `slow`: `tests/conftest.py` marks every test that uses `offline_run`, and the six other end-to-end tests (the revision loop, the crashing analyst and Critic, the two agentic studies, the real-data study and the study run over the web API) carry `@pytest.mark.slow`. `python -m pytest -q -m "not slow"` runs everything else in about half a minute, which is the loop to use while coding.
 
 `tests/conftest.py` provides the session fixture `offline_run`: one complete offline study, saved to a temporary folder (never to `outputs/runs`) and shared by every test that needs a run. Use it in new tests rather than starting another pipeline run:
 
@@ -241,6 +248,8 @@ python -m pytest -q -m "not slow"                    # fast tests, about half a 
 python -m pytest -q                                  # everything (several minutes)
 python -m pytest -q --cov --cov-report=term          # everything, with line coverage of marketmind/
 python -m pytest -q tests/test_schemas.py            # contracts
+python -m pytest -q tests/test_api.py -m "not slow"  # the web API's fast tests
+npm --prefix frontend test                           # the web app's component tests (Vitest)
 python scripts/evaluate_agents.py                    # ground-truth score of the latest run
 ```
 
@@ -271,3 +280,80 @@ python scripts/build_diagram_gallery.py
 ```
 
 It writes `docs/diagrams/gallery.html`; open it in a browser. When you change an agent, a schema or a metric, update the matching document: [AGENTS.md](AGENTS.md) for agents, tools and findings; [SCHEMAS.md](SCHEMAS.md) and `docs/schemas/` for contracts; [EVALUATION.md](EVALUATION.md) for metrics; and the README for user-facing behaviour.
+
+## 12. The web API and the Vue front end
+
+The web app is a second interface beside the Streamlit dashboard, which keeps working until the web app replaces it. It changes nothing in the agent system or the run store: `api/` reads runs through `marketmind.core.store` and starts studies with `MarketResearchSystem`, exactly as `app/dashboard.py` does.
+
+```
+browser (Vue 3 app)  --JSON, SSE-->  api/ (FastAPI)  --->  marketmind (store, charts, system, approval broker)
+                                          |
+                                          +--> frontend/dist (the built app, same origin)
+```
+
+### Running it while developing
+
+Two terminals, one for each server:
+
+```bash
+python -m api --reload                 # the API on http://localhost:8000, restarting on Python changes
+```
+
+```bash
+npm --prefix frontend run dev          # the app on http://localhost:5173 with hot reload; /api goes to port 8000
+```
+
+Open <http://localhost:5173>. Set `MARKETMIND_API` to point the dev server at an API on another address. For the production build, `npm --prefix frontend run build` type-checks (`vue-tsc`) and writes `frontend/dist/`, which `python -m api` serves at <http://localhost:8000>; without a build it serves a page saying how to make one. The API is documented at `/api/docs` (OpenAPI).
+
+### The API (`api/`)
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/config`, `GET /api/llm`, `POST /api/llm/ping` | The data folder (real or simulated, ready or not), brands, default brief, sentiment-data options and datasets; the LLM's status; a test request |
+| `POST /api/data/generate` | Run `scripts/generate_data.py` when the data folder is empty |
+| `GET /api/runs` | `list_runs()`, with each run's duration, LLM use and review mode |
+| `GET /api/runs/{id}` | The run's `run_meta.json`, its KPIs (`strategy.kpis`), the forecast horizon, counts and the table keys it holds |
+| `GET /api/runs/{id}/kpis`, `/findings`, `/recommendations`, `/swot`, `/trace` | The run's artefacts as saved |
+| `GET /api/runs/{id}/tables`, `/tables/{key}?limit=&offset=`, `/json/{key}` | Any table (as `{columns, data, total, truncated}`, NaN as null) or JSON artefact |
+| `GET /api/runs/{id}/charts/{name}?theme=light` (or `dark`) | `CHARTS[name](TableSource.from_run(run), theme).to_json()`, or `null` when the run has no data for it; cached per run |
+| `GET /api/runs/{id}/report.html`, `/report.md` (`?download=true`) | The report; the HTML is sent with a `sandbox` Content-Security-Policy |
+| `GET`/`POST /api/runs/{id}/evaluation` | The saved ground-truth evaluation; `POST` runs `evaluate(run)` and saves `evaluation.json` |
+| `POST /api/runs/{id}/chat` | `AnalystChatAgent.answer(question, history)`: one question per call |
+| `GET`/`POST /api/runs/{id}/sentiment` | Whether the run's sentiment models are on disk; score a text (label, probabilities, attention, aspects) |
+| `GET /api/runs/{id}/datasets/{name}` | The first rows of a raw dataset the run studied |
+| `GET /api/studies`, `POST /api/studies`, `GET /api/studies/{id}` | Studies started by this server; start one (409 while another runs) |
+| `GET /api/studies/{id}/events` | Server-sent events: `trace` (each trace event, its index as the event id), `state` (when the state or a waiting gate changes) and `end` |
+| `GET`/`POST /api/studies/{id}/approval` | The proposal waiting at a gate; the decision (`gate`, `approved`, `comment`, `drop`) |
+
+**Studies.** `studies.StudyRegistry` keeps every study the server started, in the server rather than in a browser session: a reload or another tab finds a running study, and one waiting at a gate. A study runs `MarketResearchSystem.run()` in a daemon thread with an `ApprovalBroker` (reviewer `web reviewer`, 30-minute timeout) when review is on. One study runs at a time, which also keeps the second-resolution run ids unique. A decision must name the gate that is waiting and only items from its proposal, and must leave at least one item. Once a proposal is answered, a second answer to it is refused, so a double click cannot answer the next gate. The event stream polls the study's tracer every 0.4 s. A browser that reconnects sends `Last-Event-ID` and gets only the events it missed. The registry is in memory: a server restart stops running studies, and saved runs are unaffected.
+
+**Safety.** `security.LocalOnlyMiddleware` answers only requests whose Host is `localhost`, `127.0.0.1` or `::1`, which keeps pages that rebind their domain to 127.0.0.1 out. It also accepts changes (POST) only as JSON and, when the browser sends an Origin, only from the same origin, so no other site can start a study. `python -m api --host 0.0.0.0` turns the host check off (`MARKETMIND_ALLOWED_HOSTS=*`) and warns. `SafeJSONResponse` and the event stream replace the value of every credential variable in the environment (`*_API_KEY`, `*_KEY`, `*_TOKEN`, `*_SECRET`) with `[redacted]`. No endpoint returns a key: this only guards against one echoed in a provider's error message.
+
+### The front end (`frontend/`)
+
+Vue 3 with `<script setup>` and TypeScript, Vite, Vue Router, Pinia, PrimeVue 4 (the Aura theme recoloured to the chart palette in `src/preset.ts`) and plotly.js (the cartesian bundle, loaded on demand). PrimeVue is pinned to 4.5.5, the last MIT-licensed release; PrimeVue 5 needs a licence key.
+
+```
+src/main.ts, App.vue         app shell: sidebar (a drawer below 1024 px), top bar on small screens, toasts
+src/router.ts                routes; RUN_VIEWS lists the twelve run views in the dashboard's order
+src/api.ts, src/types.ts     typed API client and response types
+src/stores/app.ts            config, saved runs, the studies on the server (polled every 3 s while one runs)
+src/stores/run.ts            the run on screen: summary, findings, recommendations, SWOT (cached per run)
+src/views/                   Home, Runs, NewStudy, Study (live view), RunLayout (header + tabs), NotFound
+src/views/run/               Overview, Agents, Market, Competition, Consumers, Segments, Forecast, Strategy,
+                             Report, Ask, Evaluation, Data
+src/components/              PlotlyChart, DataGrid, TableCard, FindingsList, KpiTiles, ApprovalForm, AnalystChat,
+                             SentimentTester, WorkflowGraph, SkippedNotice, RunStatus, AppSidebar, ThemeToggle
+src/lib/                     format.ts, kpis.ts (tiles, model card, price simulator), theme.ts, markdown.ts,
+                             storage.ts (chat history), tables.ts, chat.ts
+src/styles/main.css          layout, cards, tiles, chips; CSS variables for both themes
+```
+
+- **Charts.** `PlotlyChart` fetches a figure when it scrolls near the screen, moves the figure's title into the card heading (HTML wraps on a phone, a Plotly title does not), and fetches the dark or light figure again when the theme changes. Give dense charts `:min-width` so that they scroll sideways on a phone instead of shrinking. A chart without data in the run shows a short note, as the dashboard does.
+- **Tables.** `TableCard` is a collapsible card for one table artefact. It loads when opened and stays hidden if the run has no such table. `DataGrid` is the sortable, scrollable PrimeVue table underneath.
+- **Themes.** `lib/theme.ts` keeps the choice (system, light or dark) in `localStorage` and sets the `app-dark` class on `<html>`, which switches the CSS variables in `main.css` and PrimeVue's dark tokens. An inline script in `index.html` applies it before the first paint.
+- **Lessons from the dashboard's dry run, built in.** A study belongs to the server, not to the tab that started it. A chat question is sent once, when asked, and the conversation is kept in `localStorage`, so a reload never asks the LLM again. A tile appears only when the study produced its value (`overviewTiles` skips the rest), and a view whose module the plan left out says so (`SkippedNotice`). Forecast labels use the run's `horizon_months`.
+
+**Adding a view.** Add a component under `src/views/run/`, an entry to `RUN_VIEWS` and to the `views` map in `src/router.ts`. Read the run from `useRunStore()` and draw charts with `PlotlyChart` and tables with `TableCard`. If the view needs an artefact the API does not serve yet, prefer the generic `tables/{key}` and `json/{key}` endpoints to a new one.
+
+**Tests.** `tests/test_api.py` covers the API (section 9). `npm --prefix frontend test` runs the Vitest tests (`src/**/*.test.ts`, jsdom, with stand-ins for `ResizeObserver` and `scrollIntoView` in `src/test-setup.ts`), and `npm --prefix frontend run typecheck` runs the type-check alone.

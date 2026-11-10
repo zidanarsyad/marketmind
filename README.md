@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/zidanarsyad/marketmind/actions/workflows/tests.yml/badge.svg)](https://github.com/zidanarsyad/marketmind/actions/workflows/tests.yml)
 
-MarketMind runs a complete market research study end to end: a **Research Director** agent turns a business brief into a research plan, specialist agents collect and clean data, analyse the market, competitors and consumers (with **deep learning** and **machine learning**), forecast demand, build a strategy, write the report, and a **Critic** agent fact-checks every number before the report is released. Everything is visible in an interactive **Streamlit dashboard**.
+MarketMind runs a complete market research study end to end: a **Research Director** agent turns a business brief into a research plan, specialist agents collect and clean data, analyse the market, competitors and consumers (with **deep learning** and **machine learning**), forecast demand, build a strategy, write the report, and a **Critic** agent fact-checks every number before the report is released. Everything is visible in an interactive **Streamlit dashboard**, or in the new **web app** (Vue 3 on a small FastAPI layer): the same twelve views, responsive down to phone width, in light and dark.
 
 The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 - Oct 2026). The client is *Kirana Beauty*, a fictional local brand competing with five other fictional brands. All datasets are simulated but realistic (Indonesian marketplace reviews with slang and emojis, Ramadan seasonality, TikTok Shop's rise, survey data-quality problems), and macro data comes live from the **World Bank API**.
 
@@ -38,9 +38,25 @@ python run.py
 streamlit run app/dashboard.py
 ```
 
+Or the web app, which needs [Node.js](https://nodejs.org) 20.19 or newer to build once:
+
+```bash
+npm --prefix frontend install
+```
+
+```bash
+npm --prefix frontend run build
+```
+
+```bash
+python -m api
+```
+
+Then open <http://localhost:8000>. `python -m api` serves the API and the built app together, on this computer only. The web app starts studies on the server, so a reload or a second tab finds a running study again, approval gate included. The Streamlit dashboard keeps working beside it.
+
 The simulated datasets are in the repository (`python scripts/generate_data.py` regenerates them identically). `run.py` prints the live agent trace and saves everything to `outputs/runs/<run_id>/` (report.html, report.md, findings, tables, trace). The first run trains the deep-learning model (3-4 minutes on a laptop CPU); later runs reuse it (1-2 minutes). Add `--approve` to review the research plan and the recommendations yourself before the study goes on. In the dashboard you can also launch new studies with your own brief, watch the agents work live, and approve the plan and recommendations in a form. For the exact package versions the tests last passed with, install `requirements-lock.txt` instead.
 
-Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`, or just the fast ones with `python -m pytest -q -m "not slow"`. The tests cover each agent's core logic, end-to-end runs, the Critic's revision loop, the approval gates, retries, time limits and the Director's follow-ups, the schema contracts, failure paths and the dashboard. GitHub Actions runs the linter and the tests, with coverage, on every push.
+Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`, or just the fast ones with `python -m pytest -q -m "not slow"`. The tests cover each agent's core logic, end-to-end runs, the Critic's revision loop, the approval gates, retries, time limits and the Director's follow-ups, the schema contracts, failure paths, the dashboard and the web API; `npm --prefix frontend test` runs the web app's component tests. GitHub Actions runs the linter and the tests, with coverage, and type-checks, tests and builds the web app on every push.
 
 ---
 
@@ -180,9 +196,11 @@ The system is complete without an LLM. With one, the Director refines the plan, 
 
 ---
 
-## Dashboard
+## Dashboard and web app
 
-`streamlit run app/dashboard.py` - tabs: **Overview** (KPIs, key findings, priority actions) · **Agents** (workflow graph, roster, messages, approvals and follow-ups, full trace explorer) · **Market** · **Competition** · **Consumers (DL)** (model card, confusion matrix, aspect heatmap, complaint spikes, live model tester) · **Segments** (PCA small multiples, personas, concept test, Van Westendorp) · **Forecast & pricing** (forecasts with intervals, backtest, drivers, elasticities, price simulator) · **Strategy** (SWOT, recommendations, sized opportunities) · **Report** (embedded HTML + downloads) · **Ask the analyst** (chat) · **Evaluation** (ground-truth scorecard) · **Data**.
+**Web app.** `python -m api` serves a Vue 3 front end (`frontend/`, built with `npm --prefix frontend run build`) and the JSON API it uses (`api/`, FastAPI, documented at <http://localhost:8000/api/docs>). It has the dashboard's twelve views for every saved run, a runs list, a new-study form and a live view that streams the agents' trace and shows the approval forms. The charts are the same Plotly figures, drawn in the browser from the API's figure JSON. The sidebar becomes a drawer on a phone, wide tables and charts scroll inside their cards, and there are light and dark themes. Studies run on the server, so closing or reloading the page loses nothing. API keys stay in `.env` on the server and never reach the browser. See [USER_GUIDE.md](docs/USER_GUIDE.md#from-the-web-app) and [DEVELOPER_GUIDE.md §12](docs/DEVELOPER_GUIDE.md#12-the-web-api-and-the-vue-front-end).
+
+**Streamlit dashboard.** `streamlit run app/dashboard.py` - tabs: **Overview** (KPIs, key findings, priority actions) · **Agents** (workflow graph, roster, messages, approvals and follow-ups, full trace explorer) · **Market** · **Competition** · **Consumers (DL)** (model card, confusion matrix, aspect heatmap, complaint spikes, live model tester) · **Segments** (PCA small multiples, personas, concept test, Van Westendorp) · **Forecast & pricing** (forecasts with intervals, backtest, drivers, elasticities, price simulator) · **Strategy** (SWOT, recommendations, sized opportunities) · **Report** (embedded HTML + downloads) · **Ask the analyst** (chat) · **Evaluation** (ground-truth scorecard) · **Data**.
 
 ---
 
@@ -212,12 +230,14 @@ marketmind/
   sql_export.py  loads clean data and runs into the SQL model
   system.py    MarketResearchSystem entry point
 app/dashboard.py     Streamlit dashboard
+api/                 FastAPI layer for the web app: runs, charts, studies, approval gates, SSE (python -m api)
+frontend/            Vue 3 + Vite + TypeScript web app (Pinia, Vue Router, PrimeVue, plotly.js)
 scripts/             generate_data.py, evaluate_agents.py, export_sqlite.py, build_diagram_gallery.py, validate_on_real_data.py,
                      multi_seed.py, ablations.py, llm_runs.py (evaluation studies), import_tokopedia.py (real data)
 docs/                guides, architecture, agent specs, evaluation; schemas/ (JSON Schema + SQL); diagrams/
 data/raw/            datasets            data/ground_truth*  hidden labels for evaluation
 outputs/runs/        one folder per run  outputs/models/     cached deep-learning model
-tests/               unit, end-to-end, QA-loop (fake LLM) and schema-contract tests
+tests/               unit, end-to-end, QA-loop (fake LLM), schema-contract, dashboard and web API tests
 ```
 
 **Extending.** New agent: subclass `BaseAgent`, register tools in `register_tools()`, publish `Finding`s in `execute()`, and add a `Task` in `ResearchDirectorAgent.build_workflow()`. Own data: replace the CSVs in `data/raw/` keeping the column names in the data dictionary; the brief and client brand are free inputs.

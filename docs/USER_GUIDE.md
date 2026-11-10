@@ -1,6 +1,6 @@
 # MarketMind user guide
 
-This guide is for the people who run studies and read the results: marketing managers, research analysts, and students and lecturers using MarketMind as a case study. It covers installation, running a study from the command line or the dashboard, writing a good brief, reading the report, asking follow-up questions, switching on an LLM, scoring a run and troubleshooting. Developers should also read [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
+This guide is for the people who run studies and read the results: marketing managers, research analysts, and students and lecturers using MarketMind as a case study. It covers installation, running a study from the command line, the dashboard or the web app, writing a good brief, reading the report, asking follow-up questions, switching on an LLM, scoring a run and troubleshooting. Developers should also read [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
 
 ---
 
@@ -38,6 +38,8 @@ python scripts/generate_data.py
 `generate_data.py` writes the seven research datasets to `data/raw/`, and the hidden answers used for scoring to `data/ground_truth.json` and `data/ground_truth/`. It is seeded, so it produces the same data every time; the repository already includes its output, so this step is only needed if you delete or change the data. If PyTorch fails to install, install the CPU build from <https://pytorch.org> first and then run `pip install -r requirements.txt` again.
 
 `requirements.txt` allows compatible version ranges. To reproduce the exact versions under which the test suite last passed, install `requirements-lock.txt` instead.
+
+The web app (section 3, "From the web app") also needs [Node.js](https://nodejs.org) 20.19 or newer, once, to build its pages: `npm --prefix frontend install` and then `npm --prefix frontend run build`. Running it afterwards needs only Python.
 
 ## 3. Running a study
 
@@ -97,6 +99,25 @@ Open <http://localhost:8501>. In the sidebar:
 3. **LLM** shows the active provider. **Test LLM connection** sends a short test request.
 4. **Saved runs** switches between past studies. Each one is labelled with its run id, QA score and client.
 
+### From the web app
+
+The web app shows the same studies in a responsive interface that also works on a phone, in a light or a dark theme. Build it once (section 2), then start it:
+
+```bash
+python -m api
+```
+
+Open <http://localhost:8000>. It opens on the newest run with a report. In the sidebar (on a phone, behind the menu button at the top left):
+
+1. **New study** opens the study form: the brief, the client brand, the LLM switch, which reviews the sentiment models learn from, retraining, parallel analysts, and **Review the plan and recommendations myself**. **Run study** starts the study on the server and opens its live view. If the data is missing, the form offers **Generate datasets** first.
+2. The live view lists each agent's status and streams the trace as the agents think, call tools and publish findings. If you chose to review, the study pauses at each gate with a form: untick modules (plan) or recommendations to leave them out, add a comment, and press **Approve** or **Reject the study**. When the study ends, the app opens its results.
+3. **Saved runs** lists the latest studies with their QA score; **All** opens the full list, which you can filter by client, run or LLM. Switching runs keeps the view you are on.
+4. **LLM** shows the active provider, and **Test LLM connection** sends a short test request. The three buttons at the bottom choose a light, system or dark theme.
+
+The study runs on the server, not in the page. Reloading the page, closing it, or opening the app in another tab finds it again under **Study running** (or **Waiting for your approval**) at the top of the sidebar. A gate left unanswered for 30 minutes approves automatically, as in the dashboard. One study runs at a time.
+
+The app only answers on this computer. `python -m api --host 0.0.0.0` shares it on your network; anyone who can reach it can then read the runs and start studies, but API keys stay in `.env` on your computer and are never sent to a browser. `python -m api --port 8080` uses another port. The Streamlit dashboard keeps working beside it, on its own port.
+
 ## 4. Writing a good brief
 
 The Research Director reads the brief with simple rules, and refines the plan with the LLM when one is available. These parts of the brief steer the plan:
@@ -121,6 +142,8 @@ Example briefs:
 - *"Purabotanica is considering a sunscreen launch. Which consumer segments should we target, at what price, and how big is the market?"*
 
 ## 5. Touring the dashboard
+
+The web app has the same twelve views, as tabs under the run's title (on a phone, swipe the tab strip sideways). Tables open from the cards titled like the dashboard's expanders, and wide tables and charts scroll inside their card.
 
 | Tab | What to look at |
 |---|---|
@@ -246,5 +269,9 @@ Old runs are never deleted automatically. Delete a run's folder under `outputs/r
 | An analysis agent shows "failed" but the study completes | That is graceful degradation: the other agents carry on. The Agents tab shows the error and its traceback in the trace. |
 | QA certificate says NOT PASSED | Read the open issues in the certificate; each names the failing check. LLM text that fails a check is replaced during the revisions, so issues that remain usually come from the deterministic report: a missing section, a research question no finding answers (often because an analysis agent failed), or fewer than three recommendations. |
 | Port 8501 is already in use | `streamlit run app/dashboard.py --server.port 8502` |
-| Colleagues on your network cannot open the dashboard | By design: `.streamlit/config.toml` limits it to this machine. To share it, run `streamlit run app/dashboard.py --server.address 0.0.0.0`. |
+| The web app says "The web app has not been built yet" | Build it once: `npm --prefix frontend install`, then `npm --prefix frontend run build`, and reload the page. |
+| Port 8000 is already in use | `python -m api --port 8080` |
+| The web app says a study "is not running on the server" | The server was restarted while the study ran, so the study stopped. Saved runs are not affected; start the study again. |
+| The web app answers "This server only answers on this computer" | You opened it under a name other than `localhost` or `127.0.0.1`. Use <http://localhost:8000>, or start it with `--host 0.0.0.0` to share it. |
+| Colleagues on your network cannot open the dashboard or the web app | By design: both only answer on this machine. To share them, run `streamlit run app/dashboard.py --server.address 0.0.0.0` or `python -m api --host 0.0.0.0`. |
 | `python -m pytest` takes a minute or two | The end-to-end tests run the whole pipeline. That is expected. |

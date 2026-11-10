@@ -20,7 +20,7 @@ testpaths = ["tests"]
 markers = ["slow: runs the whole pipeline or the dashboard (minutes); skip with -m \"not slow\""]
 
 [tool.coverage.run]
-source = ["marketmind"]
+source = ["marketmind", "api"]
 
 [tool.coverage.report]
 skip_empty = true

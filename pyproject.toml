@@ -17,3 +17,10 @@ ignore = ["E501"]   # the code keeps long lines on purpose; line-length above ap
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: runs the whole pipeline or the dashboard (minutes); skip with -m \"not slow\""]
+
+[tool.coverage.run]
+source = ["marketmind"]
+
+[tool.coverage.report]
+skip_empty = true

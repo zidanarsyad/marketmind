@@ -197,6 +197,12 @@ An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/ll
 | `tests/test_schemas.py` (5 tests) | The contracts in [SCHEMAS.md](SCHEMAS.md) | shared run |
 | `tests/test_real_reviews.py` (5 tests) | The `--sentiment-data` option: emoji conversion, the three training modes on a small stand-in corpus, an unchanged cache key in the default mode, rejection of unknown modes, test metrics per source | seconds |
 | `tests/test_failure_paths.py` (6 tests) | Graceful degradation: client names matched ignoring case and accents; an unknown client stopping the run at planning; a missing dataset skipped with a warning; a World Bank outage falling back to the cache, then to nothing; garbled LLM output leaving the rule-based plan in place; and an end-to-end run where an analyst and the Critic crash, which must still save a schema-valid run marked `unverified` with a "NOT VERIFIED" report | about 1 minute |
+| `tests/test_agent_logic.py` (11 tests) | Each agent's core method on small synthetic inputs with a known answer: the Critic's number parsing, grounding at written precision (percentages, rupiah units, years, LLM blocks) and citation checks; the workflow's skip rules; Van Westendorp crossings against hand-solved values; elasticity estimates recovering known slopes; the constant-elasticity price scenarios; the complaint-spike detector finding exactly the planted episode; the threat index; label canonicalisation; and the Strategy agent's priority rule | seconds, plus the shared run |
+| `tests/test_dashboard.py` | Streamlit's test runner renders the real dashboard for the shared run: all 12 tabs, no exception and no tab-level error | about 30 s, plus the shared run |
+| `tests/test_llm_client.py` (6 tests) | The LLM client against a fake OpenAI-style API, with no network or key: the request sent, response parsing, token counts, caching (and that the key never reaches the cache), the retry after a rate limit, dropping JSON mode when a provider rejects it, replacing a retired model from the provider's model list, soft failure on HTTP errors, and offline mode without a key | under a second |
+| `tests/test_evaluation_and_chat.py` (2 tests) | The ground-truth evaluation on the shared run, which must recover all 25 planted insights (a regression guard for the whole system); and the Analyst Chat's offline retrieval: a pain-point question answered from weaknesses or threats with citations, a pricing question from pricing evidence, nonsense answered with "no evidence" | seconds, plus the shared run |
+
+Tests that run the pipeline or the dashboard are marked `slow`: `tests/conftest.py` marks every test that uses `offline_run`, and the two other end-to-end tests carry `@pytest.mark.slow`. `python -m pytest -q -m "not slow"` runs everything else in about half a minute, which is the loop to use while coding.
 
 `tests/conftest.py` provides the session fixture `offline_run`: one complete offline study, saved to a temporary folder (never to `outputs/runs`) and shared by every test that needs a run. Use it in new tests rather than starting another pipeline run:
 
@@ -211,8 +217,9 @@ To test LLM behaviour without a network, subclass `LLMClient` as `FakeLLM` does 
 Useful commands:
 
 ```bash
+python -m pytest -q -m "not slow"                    # fast tests, about half a minute
 python -m pytest -q                                  # everything (several minutes)
-python -m pytest -q -k "not pipeline and not critic and not schemas"   # unit tests only, seconds
+python -m pytest -q --cov --cov-report=term          # everything, with line coverage of marketmind/
 python -m pytest -q tests/test_schemas.py            # contracts
 python scripts/evaluate_agents.py                    # ground-truth score of the latest run
 ```

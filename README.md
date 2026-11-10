@@ -37,7 +37,7 @@ streamlit run app/dashboard.py
 
 The simulated datasets are in the repository (`python scripts/generate_data.py` regenerates them identically). `run.py` prints the live agent trace and saves everything to `outputs/runs/<run_id>/` (report.html, report.md, findings, tables, trace). The first run trains the deep-learning model (~2 minutes on a laptop CPU); later runs reuse it (~50 seconds). In the dashboard you can also launch new studies with your own brief and watch the agents work live. For the exact package versions the tests last passed with, install `requirements-lock.txt` instead.
 
-Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`. The tests include end-to-end runs, the Critic's revision loop, contract tests against the published schemas and failure-path tests. GitHub Actions runs both on every push.
+Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`, or just the fast ones with `python -m pytest -q -m "not slow"`. The tests cover each agent's core logic, end-to-end runs, the Critic's revision loop, the schema contracts, failure paths and a dashboard smoke test. GitHub Actions runs the linter and the tests, with coverage, on every push.
 
 ---
 

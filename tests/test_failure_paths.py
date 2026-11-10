@@ -103,6 +103,7 @@ def test_garbled_llm_output_keeps_the_rule_based_plan(tmp_path):
     assert any("deterministic reasoning" in w for w in warnings_of(ctx))
 
 
+@pytest.mark.slow
 @needs_data
 def test_failed_analyst_and_critic_still_produce_an_honest_report(tmp_path, monkeypatch):
     from jsonschema import Draft202012Validator

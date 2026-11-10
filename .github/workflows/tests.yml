@@ -26,5 +26,8 @@ jobs:
       - name: Lint
         run: ruff check .
 
-      - name: Test
-        run: python -m pytest -q
+      - name: Fast tests
+        run: python -m pytest -q -m "not slow"
+
+      - name: Full test suite with coverage
+        run: python -m pytest -q --cov --cov-report=term

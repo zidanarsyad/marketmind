@@ -40,6 +40,10 @@ This report measures how well MarketMind does its job. The question is not only 
 | Level | What is tested | How | Pass criterion |
 |---|---|---|---|
 | Unit | Text normalisation and aspect lexicon, Ramadan/Eid calendar features, LLM JSON parsing, workflow cycle detection, offline LLM behaviour | `tests/test_system.py`, 5 tests | Exact expected outputs |
+| Agent logic | Each agent's core method on synthetic inputs with a known answer: Critic grounding and citations, workflow skip rules, Van Westendorp crossings, elasticity recovery, price scenarios, the complaint-spike detector, the threat index, label cleaning, the priority rule | `tests/test_agent_logic.py`, 11 tests | The known answer, e.g. the planted spike months, hand-solved price points, elasticities within 0.1 of the truth |
+| Dashboard | The real Streamlit app rendering a saved run | `tests/test_dashboard.py` | All 12 tabs render with no exception or tab-level error |
+| LLM client | Requests, parsing, caching, retries and fallbacks against a fake provider API | `tests/test_llm_client.py`, 6 tests | Each behaviour as specified, with no network and no key |
+| Regression | The 25 ground-truth checks and the Analyst Chat on a fresh offline run | `tests/test_evaluation_and_chat.py`, 2 tests | 25 / 25 checks pass; chat answers cite relevant evidence |
 | End to end | A complete offline study | `test_full_pipeline_offline` | Status completed, QA passed with a score of at least 85, key findings present, at least 3 recommendations, files saved |
 | Agent cooperation | The Critic, the Director and the Report Writer reflection loop, with a scripted LLM that invents a number | `test_critic_catches_invented_numbers_and_revision_fixes_them` | First QA pass fails; the revised report passes without the invented number; a revision message was sent |
 | Contracts | Every artefact, row and SQL table against the published schemas | `tests/test_schemas.py`, 5 tests | No schema errors; no foreign-key violations; brand shares sum to 1 |

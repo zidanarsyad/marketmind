@@ -16,6 +16,13 @@ from marketmind.config import DATA_RAW, DATASETS  # noqa: E402
 DATA_READY = all((DATA_RAW / v["file"]).exists() for v in DATASETS.values())
 
 
+def pytest_collection_modifyitems(items):
+    """Tests that use the shared pipeline run are slow; `pytest -m "not slow"` runs the rest in seconds."""
+    for item in items:
+        if "offline_run" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.slow)
+
+
 @pytest.fixture(scope="session")
 def offline_run(tmp_path_factory):
     """(system, result, RunData) for a full offline study saved outside outputs/."""

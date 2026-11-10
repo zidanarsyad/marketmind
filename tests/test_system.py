@@ -95,6 +95,7 @@ def test_full_pipeline_offline(offline_run):
     assert (res.run_dir / "report.html").exists() and (res.run_dir / "findings.json").exists()
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not DATA_READY, reason="run scripts/generate_data.py first")
 def test_critic_catches_invented_numbers_and_revision_fixes_them(tmp_path, monkeypatch):
     from marketmind.system import MarketResearchSystem

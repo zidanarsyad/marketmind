@@ -51,7 +51,7 @@ def fit_segments(X: np.ndarray, k: int, seed: int = 42) -> tuple[np.ndarray, KMe
     km = KMeans(n_clusters=k, n_init=20, random_state=seed).fit(X)
     order = np.argsort(-np.bincount(km.labels_))  # segment 1 = largest
     remap = {old: new for new, old in enumerate(order)}
-    return np.array([remap[l] + 1 for l in km.labels_]), km
+    return np.array([remap[lab] + 1 for lab in km.labels_]), km
 
 
 def pca_coords(X: np.ndarray, seed: int = 42) -> tuple[np.ndarray, list[float]]:

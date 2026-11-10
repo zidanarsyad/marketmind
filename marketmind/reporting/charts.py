@@ -175,7 +175,7 @@ def brand_share(df: pd.DataFrame, client: str, mode="light") -> go.Figure:
     d = df.sort_values("share_l12")
     colors = [t["series"][0] if b == client else t["neutral"] for b in d["brand"]]
     fig = go.Figure(go.Bar(x=d["share_l12"], y=d["brand"], orientation="h", marker=dict(color=colors, cornerradius=4),
-                           text=[f"{s * 100:.1f}%  ({c * 100:+.1f} pp)" for s, c in zip(d["share_l12"], d["share_change_pp"])],
+                           text=[f"{s * 100:.1f}%  ({c * 100:+.1f} pp)" for s, c in zip(d["share_l12"], d["share_change_pp"], strict=True)],
                            textposition="outside", cliponaxis=False, textfont=dict(color=t["text2"]),
                            customdata=np.c_[d["revenue_l12"] / 1e9, d["growth"]],
                            hovertemplate="%{y}<br>share %{x:.1%}<br>revenue Rp %{customdata[0]:,.0f} bn<br>growth %{customdata[1]:+.1%}<extra></extra>"))

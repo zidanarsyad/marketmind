@@ -504,7 +504,7 @@ class TextEngine:
     def slangify(self, text: str, p: float) -> str:
         for pattern, alts in SLANG:
             if self.r.random() < p:
-                text = re.sub(pattern, lambda _m: self.r.choice(alts), text)
+                text = re.sub(pattern, lambda _m, alts=alts: self.r.choice(alts), text)
         return text
 
     def compose(self, parts: list[tuple[str, str]], tone: str, ctx: dict) -> str:
@@ -756,7 +756,7 @@ def build_social(catalog: pd.DataFrame, rng: np.random.Generator, pyr: random.Ra
                 buzz[CLIENT] *= 0.6
             brand = None
             if pyr.random() < 0.58:
-                names, ws = zip(*buzz.items())
+                names, ws = zip(*buzz.items(), strict=True)
                 ws = np.array(ws) / sum(ws)
                 brand = str(rng.choice(names, p=ws))
             day = int(rng.integers(1, m.days_in_month + 1))
@@ -918,7 +918,7 @@ SEGMENTS = [
 ]
 INCOME_BRACKETS = ["< Rp3 jt", "Rp3-5 jt", "Rp5-10 jt", "Rp10-20 jt", "> Rp20 jt"]
 INCOME_MID = [2.2e6, 4.0e6, 7.5e6, 14.0e6, 27.0e6]
-SURVEY_REGIONS = dict(zip(REGIONS, [0.27, 0.19, 0.13, 0.16, 0.13, 0.08, 0.04]))
+SURVEY_REGIONS = dict(zip(REGIONS, [0.27, 0.19, 0.13, 0.16, 0.13, 0.08, 0.04], strict=True))
 AWARENESS = {CLIENT: 0.58, "Lumière Lab": 0.74, "DewiSkin": 0.81, "GlowNesia": 0.69, "Aurelia Derma": 0.41,
              "Purabotanica": 0.46}
 NPS_MEAN = {CLIENT: 7.9, "Lumière Lab": 8.4, "DewiSkin": 7.7, "GlowNesia": 7.3, "Aurelia Derma": 8.6,
@@ -926,7 +926,7 @@ NPS_MEAN = {CLIENT: 7.9, "Lumière Lab": 8.4, "DewiSkin": 7.7, "GlowNesia": 7.3,
 
 
 def draw(pyr: random.Random, d: dict):
-    keys, ws = zip(*d.items())
+    keys, ws = zip(*d.items(), strict=True)
     return pyr.choices(keys, weights=ws)[0]
 
 

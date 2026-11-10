@@ -64,7 +64,7 @@ class StrategyAgent(BaseAgent):
         return {"Strengths": swot["S"], "Weaknesses": swot["W"], "Opportunities": swot["O"], "Threats": swot["T"]}
 
     def _size(self) -> pd.DataFrame:
-        comp, seg, fc, cons = self.t["competition"], self.t["segmentation"], self.t["forecast"], self.t["consumer"]
+        comp, fc = self.t["competition"], self.t["forecast"]
         rows = []
         bs = comp.get("brand_share")
         rev = float(bs.set_index("brand").loc[self.client, "revenue_l12"]) if bs is not None else 0.0

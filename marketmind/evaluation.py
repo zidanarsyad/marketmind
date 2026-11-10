@@ -125,7 +125,7 @@ def evaluate(run: RunData) -> dict:
         truth_map = {rid: dict(a.split(":") for a in gt[rid].split(";") if ":" in a) for rid in rows["review_id"].unique()}
         hit = [r.aspect in truth_map[r.review_id] for r in rows.itertuples()]
         pol = [truth_map[r.review_id][r.aspect] == ("pos" if r.polarity == "positive" else "neg")
-               for r, h in zip(rows.itertuples(), hit) if h and r.polarity != "neutral"]
+               for r, h in zip(rows.itertuples(), hit, strict=True) if h and r.polarity != "neutral"]
         prec, pacc = float(np.mean(hit)) if hit else 0.0, float(np.mean(pol)) if pol else 0.0
         check("models", "Aspect detection precision / polarity accuracy", ">= 0.80 / >= 0.85",
               f"{prec:.3f} / {pacc:.3f} (n={len(rows):,})", prec >= 0.8 and pacc >= 0.85)

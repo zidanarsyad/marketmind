@@ -209,7 +209,7 @@ class NeuralSentiment:
         self.model.eval()
         with torch.no_grad():
             _, alpha = self.model(torch.from_numpy(X[:, :len(toks)]))
-        return list(zip(toks, [round(float(a), 4) for a in alpha[0].numpy()]))
+        return list(zip(toks, [round(float(a), 4) for a in alpha[0].numpy()], strict=True))
 
     def save(self, path: Path) -> None:
         torch.save({"state_dict": self.model.state_dict(), "itos": self.vocab.itos, "cfg": self.cfg,
@@ -251,7 +251,7 @@ class SentimentSuite:
     @staticmethod
     def data_hash(texts, labels) -> str:
         h = hashlib.sha1()
-        for t, y in zip(texts, labels):
+        for t, y in zip(texts, labels, strict=True):
             h.update(f"{t}\x1f{y}\x1e".encode("utf-8"))
         return h.hexdigest()[:16]
 
@@ -277,7 +277,7 @@ class SentimentSuite:
         then stratified by source and label, and the card reports test metrics per source."""
         texts, labels = np.asarray(texts, dtype=object), np.asarray(labels)
         sources = None if sources is None else np.asarray(sources, dtype=object)
-        strata = labels if sources is None else np.array([f"{s}:{y}" for s, y in zip(sources, labels)])
+        strata = labels if sources is None else np.array([f"{s}:{y}" for s, y in zip(sources, labels, strict=True)])
         idx = np.arange(len(texts))
         tr, tmp = train_test_split(idx, test_size=0.30, random_state=seed, stratify=strata)
         va, te = train_test_split(tmp, test_size=0.50, random_state=seed, stratify=strata[tmp])
@@ -325,7 +325,7 @@ class SentimentSuite:
         )
         if sources is not None:
             probs = {"linear": p_lin_te, "bigru": p_nn_te, "ensemble": p_ens_te}
-            self.card["split_sources"] = {name: {str(s): int(n) for s, n in zip(*np.unique(sources[part], return_counts=True))}
+            self.card["split_sources"] = {name: {str(s): int(n) for s, n in zip(*np.unique(sources[part], return_counts=True), strict=True)}
                                           for name, part in (("train", tr), ("val", va), ("test", te))}
             self.card["test_metrics_by_source"] = {
                 str(s): {m: _metrics(labels[te][sources[te] == s], p[sources[te] == s]) for m, p in probs.items()}
@@ -366,7 +366,7 @@ class SentimentSuite:
         p = self._proba(clean, model or self.transfer)
         score = p[:, 2] - p[:, 0]
         labels = []
-        for text, s in zip(clean, score):
+        for text, s in zip(clean, score, strict=True):
             if (SOCIAL_QUESTION.search(text.lower()) and abs(s) < 0.8) or abs(s) < 0.2:
                 labels.append("neutral")
             else:
@@ -414,7 +414,7 @@ def aspect_mentions(reviews: pd.DataFrame, suite: SentimentSuite) -> pd.DataFram
     if df.empty:
         return df.assign(score=[], polarity=[])
     uniq = df["clause"].unique()
-    scores = dict(zip(uniq, suite.score_clauses(uniq)))
+    scores = dict(zip(uniq, suite.score_clauses(uniq), strict=True))
     df["score"] = df["clause"].map(scores).round(4)
     df["polarity"] = df["score"].map(polarity)
     return df

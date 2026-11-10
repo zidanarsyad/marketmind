@@ -210,10 +210,10 @@ class ReportWriterAgent(BaseAgent):
         llm_note = (f"LLM support: {self.llm.describe()} - used for planning and narrative only; every number comes "
                     f"from deterministic tools and is verified by the Critic.") if self.llm.available else \
                    "LLM support: none (offline mode) - all reasoning and narrative are deterministic."
-        meth = (f"Eleven cooperating agents shared a blackboard: a Research Director planned the study from the brief, a "
-                f"Data Collection Agent loaded internal data and live World Bank indicators, a Data Quality Agent cleaned "
-                f"it, five analysis agents worked in parallel, and a Strategy Agent, Report Writer and Critic turned the "
-                f"evidence into this report.\n\n"
+        meth = ("Eleven cooperating agents shared a blackboard: a Research Director planned the study from the brief, a "
+                "Data Collection Agent loaded internal data and live World Bank indicators, a Data Quality Agent cleaned "
+                "it, five analysis agents worked in parallel, and a Strategy Agent, Report Writer and Critic turned the "
+                "evidence into this report.\n\n"
                 + (md_table(cat[["dataset", "rows", "coverage", "source"]]) if cat is not None else "") + "\n\n"
                 + (f"**Data quality.** {F['DAT-02'].statement} `[DAT-02]`\n\n" if "DAT-02" in F else "")
                 + (md_table(dq[["dataset", "rows_in", "rows_out", "quality_score", "actions"]]) if dq is not None else "")
@@ -255,7 +255,7 @@ class ReportWriterAgent(BaseAgent):
                 body += "\n\n**Detected complaint spikes**\n\n" + md_table(an[["brand", "aspect_label", "period", "peak_rate", "baseline_rate", "complaints"]])
             if "example_reviews" in cs and len(cs["example_reviews"]):
                 ex = cs["example_reviews"]
-                quotes = "\n".join(f"> \"{t}\" - *{b}, {a}*" for t, b, a in zip(ex["text"].head(6), ex["brand"], ex["aspect"]))
+                quotes = "\n".join(f"> \"{t}\" - *{b}, {a}*" for t, b, a in zip(ex["text"].head(6), ex["brand"], ex["aspect"], strict=False))
                 body += f"\n\n**Voice of the customer**\n\n{quotes}"
             add("consumer", f"{n}. Consumer Insights", body,
                 ["sentiment_by_brand", "aspect_heatmap", "client_aspect_trend", "social_sentiment", "model_quality"])

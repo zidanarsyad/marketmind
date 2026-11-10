@@ -21,7 +21,9 @@ ATTENTION_EXPECTED = 4  # instructed-response item: "select 'Agree' (4) for this
 
 def _canonical_labels(series: pd.Series) -> dict[str, str]:
     """Map label variants (case, spacing, truncation) to the most frequent spelling."""
-    key = lambda s: re.sub(r"[^a-z0-9]", "", str(s).lower())
+    def key(s) -> str:
+        return re.sub(r"[^a-z0-9]", "", str(s).lower())
+
     counts = series.value_counts()
     canon_by_key: dict[str, str] = {}
     for label in counts.index:  # most frequent first

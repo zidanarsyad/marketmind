@@ -123,7 +123,9 @@ class CompetitiveIntelligenceAgent(BaseAgent):
         bs = t["brand_share"].set_index("brand")
         pos = t["price_positioning"].set_index("brand")
         cats, chans = sorted(cur["category"].unique()), sorted(cur["channel"].unique())
-        mix = lambda b, dim, keys: cur[cur["brand"] == b].groupby(dim)["revenue_idr"].sum().reindex(keys, fill_value=0).to_numpy()
+        def mix(b, dim, keys):
+            return cur[cur["brand"] == b].groupby(dim)["revenue_idr"].sum().reindex(keys, fill_value=0).to_numpy()
+
         rows = []
         for b in bs.index:
             if b == self.client:

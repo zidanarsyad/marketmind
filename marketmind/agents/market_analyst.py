@@ -7,7 +7,7 @@ import pandas as pd
 from ..core.agent import BaseAgent
 from ..core.findings import Finding
 from ..ml.calendar_id import calendar_frame
-from .common import growth, idr, pct, pp, windows
+from .common import growth, idr, pct, windows
 
 
 class MarketTrendAnalystAgent(BaseAgent):

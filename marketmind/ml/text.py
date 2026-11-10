@@ -27,10 +27,10 @@ STOPWORDS = {
     "lebih", "bisa", "atau", "dalam", "akan", "baru", "masih", "pakai", "the", "and", "is", "it", "to", "for",
     "my", "of", "a", "in", "kak", "kok", "deh", "dong", "nih", "tuh", "memang", "terus", "tapi", "aja", "ga",
     "emopos", "emoneg", "skincarelokal", "udah", "minggu", "kali", "produk", "barang", "beli", "coba", "pertama",
-    "review", "jujur", "repurchase", "ke", "hampir", "sebulan", "pemakaian", "awalnya", "ragu", "dapet", "temen",
-    "rekomendasi", "ini", "yg", "ak", "aq", "will", "after", "two", "weeks", "me", "doesn", "t", "too",
-    "tidak", "recommended", "not", "kecewa", "nyesel", "kapok", "akan", "semoga", "diperbaiki", "sekali",
-    "malah", "padahal", "worth", "it", "membuat", "muka", "kulit", "kulitku", "dipakai", "pakainya",
+    "review", "jujur", "repurchase", "hampir", "sebulan", "pemakaian", "awalnya", "ragu", "dapet", "temen",
+    "rekomendasi", "yg", "ak", "aq", "will", "after", "two", "weeks", "me", "doesn", "t", "too",
+    "tidak", "recommended", "not", "kecewa", "nyesel", "kapok", "semoga", "diperbaiki", "sekali",
+    "malah", "padahal", "worth", "membuat", "muka", "kulit", "kulitku", "dipakai", "pakainya",
 }
 
 ASPECT_LEXICON = {

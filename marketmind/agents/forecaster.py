@@ -2,7 +2,6 @@
 rolling-origin backtest, econometric price elasticities and price what-if scenarios."""
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from ..core.agent import BaseAgent

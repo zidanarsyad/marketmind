@@ -35,7 +35,7 @@ This report measures how well MarketMind does its job. The question is not only 
 5. **Efficiency.** Time per agent and per run, taken from the trace.
 6. **External validation.** The sentiment models are also scored on two real, openly licensed Indonesian datasets (section 4.6), because results on simulated text alone cannot show how the models handle real language.
 
-**Test plan.** The evaluation works at five levels. The first four run automatically with `python -m pytest -q`; the fifth runs with `scripts/evaluate_agents.py` or from the dashboard.
+**Test plan.** Every level below runs automatically with `python -m pytest -q`: 43 tests that cover 94% of the lines in `marketmind/`. The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
 
 | Level | What is tested | How | Pass criterion |
 |---|---|---|---|

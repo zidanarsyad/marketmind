@@ -138,13 +138,15 @@ def test_opp_tail_counts_show_how_many_answers_place_the_optimal_price():
     assert opp_tail_counts(df, float("nan")) == (0, 0)
 
 
-def test_elasticity_regression_recovers_known_slopes():
-    from marketmind.ml.pricing import estimate_elasticities
+ELASTICITY_TRUTH = {"Alpha": -1.5, "Beta": -0.7}
+
+
+def known_slopes_panel() -> pd.DataFrame:
+    """2 brands x 3 categories x 2 channels x 36 months whose log units fall with log price at a known slope."""
     rng = np.random.default_rng(11)
-    truth = {"Alpha": -1.5, "Beta": -0.7}
     months = pd.date_range("2023-01-01", periods=36, freq="MS")
     rows = []
-    for brand, elasticity in truth.items():
+    for brand, elasticity in ELASTICITY_TRUTH.items():
         for category in ("Serum", "Toner", "Sunscreen"):
             for channel in ("Shopee", "Offline Retail"):
                 level = rng.normal(8, 0.5)
@@ -154,12 +156,49 @@ def test_elasticity_regression_recovers_known_slopes():
                                  + elasticity * price_shock + rng.normal(0, 0.05))
                     rows.append(dict(month=month, brand=brand, category=category, channel=channel,
                                      units=float(np.exp(log_units)), price=80_000 * float(np.exp(price_shock)), oos_frac=0.0))
-    estimates, _ = estimate_elasticities(pd.DataFrame(rows))
+    return pd.DataFrame(rows)
+
+
+def test_elasticity_regression_recovers_known_slopes():
+    from marketmind.ml.pricing import estimate_elasticities
+    estimates, _ = estimate_elasticities(known_slopes_panel())
     got = estimates.set_index("brand")
-    for brand, elasticity in truth.items():
+    for brand, elasticity in ELASTICITY_TRUTH.items():
         assert abs(got.loc[brand, "elasticity"] - elasticity) < 0.1
         assert got.loc[brand, "std_err"] < 0.05
     assert (got.loc["Alpha", "interpretation"], got.loc["Beta", "interpretation"]) == ("elastic", "inelastic")
+
+
+def test_elasticity_standard_errors_match_a_direct_cluster_robust_computation():
+    """CRV1 by series, worked out by hand (Frisch-Waugh-Lovell) on the full design with its redundant columns.
+
+    statsmodels' pseudo-inverse of that design once inverted a rounding-noise singular value (numpy 2.5,
+    OpenBLAS 0.3.34), and these standard errors came out 400 times too large on Windows and NaN on Linux.
+    """
+    from marketmind.ml.pricing import _design, estimate_elasticities
+    panel = known_slopes_panel()
+    d, X = _design(panel)
+    y, groups = d["lu"].to_numpy(), pd.factorize(d["series"])[0]
+    resid = y - X.to_numpy() @ np.linalg.lstsq(X.to_numpy(), y, rcond=None)[0]
+    n, k, g = len(y), np.linalg.matrix_rank(X.to_numpy()), groups.max() + 1
+    got = estimate_elasticities(panel)[0].set_index("brand")
+    for brand in ELASTICITY_TRUTH:
+        others = X.drop(columns=f"lp|{brand}").to_numpy()
+        x = X[f"lp|{brand}"].to_numpy()
+        x = x - others @ np.linalg.lstsq(others, x, rcond=None)[0]     # the price variation the slope is estimated from
+        score = np.bincount(groups, weights=x * resid)                   # summed within each series
+        se = np.sqrt(score @ score / (x @ x) ** 2 * g / (g - 1) * (n - 1) / (n - k))
+        assert got.loc[brand, "std_err"] == pytest.approx(se, abs=5e-4)
+
+
+def test_a_brand_whose_price_never_moves_has_no_identified_elasticity():
+    """A price that is constant within each series is absorbed by the series effects: say so, do not invent a slope."""
+    from marketmind.ml.pricing import estimate_elasticities
+    panel = known_slopes_panel()
+    panel.loc[panel["brand"] == "Beta", "price"] = 80_000.0
+    got = estimate_elasticities(panel)[0].set_index("brand")
+    assert got.loc["Beta", "interpretation"] == "not identified" and np.isnan(got.loc["Beta", "elasticity"])
+    assert abs(got.loc["Alpha", "elasticity"] + 1.5) < 0.1 and got.loc["Alpha", "std_err"] < 0.05
 
 
 def test_price_scenarios_follow_the_constant_elasticity_formula():

@@ -1,11 +1,54 @@
 """Pricing analytics: econometric price elasticity, what-if scenarios and Van Westendorp PSM."""
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+
+
+def _independent_columns(X: np.ndarray, tol: float = 1e-7) -> list[int]:
+    """Indices of the columns of X that are not linear combinations of the columns before them.
+
+    Going left to right, a column is kept when the part of it orthogonal to the columns already kept is at least
+    `tol` times its own length, the rule R's lm() uses to drop aliased terms; all-zero columns are dropped too.
+    Exact collinearity leaves about 1e-15 of a column and real regressors leave far more than 1e-7, so the choice
+    does not depend on rounding.
+    """
+    basis = np.zeros((X.shape[1], X.shape[0]))      # orthonormal rows spanning the kept columns
+    keep: list[int] = []
+    for j in range(X.shape[1]):
+        length = np.linalg.norm(X[:, j])
+        if length == 0:
+            continue
+        v, q = X[:, j] / length, basis[:len(keep)]
+        for _ in range(2):                            # Gram-Schmidt twice keeps the basis orthogonal in floating point
+            v = v - q.T @ (q @ v)
+        rest = np.linalg.norm(v)
+        if rest > tol:
+            basis[len(keep)] = v / rest
+            keep.append(j)
+    return keep
+
+
+def _design(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Estimation sample and full design of the demand model: fixed effects, trends and stock-outs first, log prices last."""
+    d = panel[(panel["units"] > 0) & (panel["price"] > 0)].copy()
+    d["lu"] = np.log(d["units"])
+    d["lp"] = np.log(d["price"])
+    d["loos"] = np.log((1 - d["oos_frac"]).clip(lower=0.05))
+    d["series"] = d["brand"] + "|" + d["category"] + "|" + d["channel"]
+    d["time_group"] = d["month"].astype(str) + "_" + d["channel"]
+    d["t"] = (d["month"].rank(method="dense") - 1) / 12.0
+    X = sm.add_constant(pd.get_dummies(d[["series", "time_group"]], drop_first=True, dtype=float), has_constant="add")
+    brands = sorted(d["brand"].unique())
+    is_b = {b: (d["brand"] == b).astype(float) for b in brands}
+    for b in brands:
+        X[f"trend|{b}"] = d["t"] * is_b[b]
+        X[f"trend2|{b}"] = d["t"] ** 2 * is_b[b]
+    X["loos"] = d["loos"]
+    for b in brands:
+        X[f"lp|{b}"] = d["lp"] * is_b[b]
+    return d, X
 
 
 def estimate_elasticities(panel: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
@@ -19,37 +62,27 @@ def estimate_elasticities(panel: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     brand's growth path, so the beta_b are identified from promotional and list-price variation.
     Standard errors are clustered by series. With month x online/offline effects instead, channel-specific
     peaks leaked into the price coefficients (mean error 0.15 against the planted elasticities; 0.06 now).
+
+    The design is collinear by construction: both sets of fixed effects contain the channel means, the brand
+    trends add up to a common trend that the month effects absorb, and the stock-out term is all zero when
+    nothing went out of stock. Columns that add nothing to the ones before them are dropped before fitting, so
+    the clustered covariance comes from a full-rank design. With them in, it depended on how a pseudo-inverse treated rounding noise, and under
+    numpy 2.5 (OpenBLAS 0.3.34) the standard errors came out NaN or far too large. The log-price terms come last,
+    so one is dropped only when the other terms explain that brand's price completely (for example a price that
+    never changes within a series); that brand's elasticity is then reported as not identified.
     """
-    d = panel[(panel["units"] > 0) & (panel["price"] > 0)].copy()
-    d["lu"] = np.log(d["units"])
-    d["lp"] = np.log(d["price"])
-    d["loos"] = np.log((1 - d["oos_frac"]).clip(lower=0.05))
-    d["series"] = d["brand"] + "|" + d["category"] + "|" + d["channel"]
-    d["time_group"] = d["month"].astype(str) + "_" + d["channel"]
-    d["t"] = (d["month"].rank(method="dense") - 1) / 12.0
-    X = pd.get_dummies(d[["series", "time_group"]], drop_first=True, dtype=float)
-    brands = sorted(d["brand"].unique())
-    for b in brands:
-        is_b = (d["brand"] == b).astype(float)
-        X[f"trend|{b}"] = d["t"] * is_b
-        X[f"trend2|{b}"] = d["t"] ** 2 * is_b
-        X[f"lp|{b}"] = d["lp"] * is_b
-    X["loos"] = d["loos"]
-    X = sm.add_constant(X, has_constant="add")
-    with warnings.catch_warnings():  # FE dummies are collinear by design; pinv identifies the elasticities
-        warnings.simplefilter("ignore")
-        res = sm.OLS(d["lu"].values, X.values).fit(cov_type="cluster", cov_kwds={"groups": pd.factorize(d["series"])[0]})
-        params, bse = np.asarray(res.params), np.asarray(res.bse)  # bse is lazy: compute inside the filter
-    cols = list(X.columns)
+    d, X = _design(panel)
+    X = X.iloc[:, _independent_columns(X.to_numpy())]
+    res = sm.OLS(d["lu"].to_numpy(), X.to_numpy()).fit(cov_type="cluster", cov_kwds={"groups": pd.factorize(d["series"])[0]})
+    coef, se = pd.Series(res.params, index=X.columns), pd.Series(res.bse, index=X.columns)
     rows = []
-    for b in brands:
-        i = cols.index(f"lp|{b}")
-        beta, se = float(params[i]), float(bse[i])
-        rows.append(dict(brand=b, elasticity=round(beta, 3), std_err=round(se, 3), ci_low=round(beta - 1.96 * se, 3),
-                         ci_high=round(beta + 1.96 * se, 3), n_obs=int((d["brand"] == b).sum()),
-                         interpretation="elastic" if beta < -1 else "inelastic"))
-    info = dict(r_squared=round(float(res.rsquared), 4), n_obs=int(res.nobs), n_params=len(cols),
-                stockout_coef=round(float(params[cols.index("loos")]), 3), std_errors="clustered by series")
+    for b in sorted(d["brand"].unique()):
+        beta, s = float(coef.get(f"lp|{b}", np.nan)), float(se.get(f"lp|{b}", np.nan))
+        rows.append(dict(brand=b, elasticity=round(beta, 3), std_err=round(s, 3), ci_low=round(beta - 1.96 * s, 3),
+                         ci_high=round(beta + 1.96 * s, 3), n_obs=int((d["brand"] == b).sum()),
+                         interpretation="not identified" if np.isnan(beta) else "elastic" if beta < -1 else "inelastic"))
+    info = dict(r_squared=round(float(res.rsquared), 4), n_obs=int(res.nobs), n_params=X.shape[1],
+                stockout_coef=round(float(coef["loos"]), 3) if "loos" in coef else None, std_errors="clustered by series")
     return pd.DataFrame(rows), info
 
 

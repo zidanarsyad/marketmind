@@ -233,9 +233,18 @@ def test_the_critic_gives_half_credit_to_open_questions(tmp_path):
 @pytest.mark.slow
 @pytest.mark.skipif(not DATA_READY, reason="run scripts/generate_data.py first")
 def test_the_director_sends_a_failed_agent_back_and_the_reviewer_shapes_the_plan(tmp_path, monkeypatch):
+    import pandas as pd
+
     from marketmind import system as system_module
+    from marketmind.agents.data_collector import DataCollectionAgent
     from marketmind.agents.market_analyst import MarketTrendAnalystAgent
 
+    # The Data Collector's macro finding (MAC-01) keeps the market question answered while the market agent is down,
+    # so the Director asks only for the missing section. MAC-01 needs World Bank data, which the GitHub runner could
+    # not fetch (and the cache in data/external/ is not committed): give it fixed figures instead of the live API.
+    macro = pd.DataFrame([dict(indicator="Population", code="SP.POP.TOTL", unit="people", year=2025, value=285_721_236.0),
+                          dict(indicator="Internet users", code="IT.NET.USER.ZS", unit="% of population", year=2024, value=72.8)])
+    monkeypatch.setattr(DataCollectionAgent, "_fetch_world_bank", lambda self: (macro, "fixed figures for this test"))
     original, calls = MarketTrendAnalystAgent.execute, []
 
     def fails_twice(self):              # the first attempt and the workflow's retry fail; the Director's re-dispatch works

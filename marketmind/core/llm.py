@@ -1,9 +1,9 @@
 """Provider-agnostic LLM client.
 
-Supported providers (pick with ``LLM_PROVIDER`` in ``.env``; ``auto`` uses the first key found):
+Supported providers (pick with ``LLM_PROVIDER`` in ``.env``; ``auto`` uses the first key found, in AUTO_ORDER):
 
-* ``gemini``      Google AI Studio free tier       (GEMINI_API_KEY)
 * ``groq``        Groq free tier                   (GROQ_API_KEY)
+* ``gemini``      Google AI Studio free tier       (GEMINI_API_KEY)
 * ``openrouter``  OpenRouter ``:free`` models      (OPENROUTER_API_KEY)
 * ``ollama``      local models, no key             (OLLAMA_BASE_URL optional)
 * ``openai_compatible``  any OpenAI-style endpoint (LLM_BASE_URL + LLM_API_KEY + LLM_MODEL)
@@ -49,7 +49,9 @@ RETIRED_MODEL = re.compile(r"not found|does not exist|decommission|no longer|dep
                            r"invalid model|unknown model|model_not_found", re.IGNORECASE)
 ANTHROPIC_DEFAULT_MODEL = "claude-opus-5-5"
 ANTHROPIC_FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"}
-AUTO_ORDER = ["gemini", "groq", "openrouter", "anthropic", "openai_compatible"]
+# Groq first: the fastest in the real-LLM runs (EVALUATION.md section 9: 74 s of LLM time per study, about 1 s per
+# call) with every number grounded, while Gemini's main model was often overloaded and answered through its fallback.
+AUTO_ORDER = ["groq", "gemini", "openrouter", "anthropic", "openai_compatible"]
 SKIP_MODEL_WORDS = ("embed", "tts", "image", "audio", "live", "vision", "guard", "whisper", "aqa", "imagen", "veo",
                     "learnlm", "native", "transcribe", "moderation")
 

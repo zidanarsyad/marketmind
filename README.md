@@ -176,7 +176,7 @@ The system is complete without an LLM. With one, the Director refines the plan, 
 | Ollama (local) | free, offline | `LLM_PROVIDER=ollama` | https://ollama.com |
 | Claude (official Anthropic SDK) | paid | `ANTHROPIC_API_KEY` | https://console.anthropic.com |
 
-`LLM_PROVIDER=auto` picks the first key found. `<PROVIDER>_MODEL` and `<PROVIDER>_FALLBACK_MODEL` (for example `GROQ_MODEL`) choose the models. Responses are cached, free-tier rate limits are respected, a busy or hung model hands the call to the fallback, retired model names are replaced automatically, and any failure falls back to deterministic reasoning. For Claude the client uses `claude-opus-5-5` with server-side refusal fallbacks enabled. Test the connection from the dashboard sidebar.
+`LLM_PROVIDER=auto` picks the first key found, in the order Groq, Gemini, OpenRouter, Claude (Groq first because it was the fastest in the real-LLM runs, with every number grounded). `<PROVIDER>_MODEL` and `<PROVIDER>_FALLBACK_MODEL` (for example `GROQ_MODEL`) choose the models. Responses are cached, free-tier rate limits are respected, a busy or hung model hands the call to the fallback, retired model names are replaced automatically, and any failure falls back to deterministic reasoning. For Claude the client uses `claude-opus-5-5` with server-side refusal fallbacks enabled. Test the connection from the dashboard sidebar.
 
 ---
 

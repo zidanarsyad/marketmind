@@ -208,9 +208,13 @@ class ReportWriterAgent(BaseAgent):
         if fmc:
             cards.append(f"- **Demand Forecasting Agent (machine learning):** candidates {', '.join(fmc['candidates'])}; "
                          f"winner `{fmc['model']}` by 3-fold rolling-origin backtest; fixed-effects log-log price elasticities.")
-        llm_note = (f"LLM support: `{self.llm.describe()}` - used for planning and narrative only; every number comes "
-                    f"from deterministic tools and is verified by the Critic.") if self.llm.available else \
-                   "LLM support: none (offline mode) - all reasoning and narrative are deterministic."
+        if self.llm.available and self.options.get("use_llm", True):
+            llm_note = (f"LLM support: `{self.llm.describe()}` - used for planning and narrative only; every number "
+                        f"comes from deterministic tools and is verified by the Critic.")
+        elif self.llm.available:   # a key is configured, but this run switched the LLM off
+            llm_note = "LLM support: switched off for this run - all reasoning and narrative are deterministic."
+        else:
+            llm_note = "LLM support: none (offline mode) - all reasoning and narrative are deterministic."
         meth = (self._team_sentence() + "\n\n"
                 + (md_table(cat[["dataset", "rows", "coverage", "source"]]) if cat is not None else "") + "\n\n"
                 + (f"**Data quality.** {F['DAT-02'].statement} `[DAT-02]`\n\n" if "DAT-02" in F else "")

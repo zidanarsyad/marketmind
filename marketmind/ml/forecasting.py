@@ -175,6 +175,11 @@ class DemandForecaster:
         folds_df = pd.DataFrame(fold_rows)
         summary = folds_df.groupby("model")[["series_wape", "market_mape", "client_mape"]].mean().round(4)
         best = str(summary["series_wape"].idxmin())
+        # the client's own total can favour another candidate; record it (and how consistently) rather than switching,
+        # because three folds are too few to pick a separate model for one aggregate
+        client_best = str(summary["client_mape"].idxmin())
+        per_fold = folds_df.pivot(index="fold", columns="model", values="client_mape")
+        client_wins = int((per_fold[client_best] < per_fold[best]).sum()) if client_best != best else folds
         hz = np.arange(1, steps + 1)
         be, me = np.array(errs[best]["brand"]), np.array(errs[best]["market"])
         self.sigma = dict(brand=max(float(np.sqrt(np.mean(be ** 2 / hz[None, :]))), 0.02),
@@ -189,7 +194,8 @@ class DemandForecaster:
                                          scoring="neg_mean_absolute_error")
         importance = pd.DataFrame(dict(feature=FEATURES, label=[FEATURE_LABELS[f] for f in FEATURES],
                                        importance=imp.importances_mean.round(5))).sort_values("importance", ascending=False)
-        return dict(metrics=summary.to_dict(orient="index"), best=best, folds=folds_df.round(4),
+        return dict(metrics=summary.to_dict(orient="index"), best=best, client_best=client_best, client_wins=client_wins,
+                    folds=folds_df.round(4),
                     detail=pd.DataFrame(detail), importance=importance, sigma=self.sigma, n_series=k,
                     backtest_window=[self.months[n - steps * folds].date().isoformat(), self.months[n - 1].date().isoformat()])
 

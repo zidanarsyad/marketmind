@@ -101,6 +101,7 @@ def test_garbled_llm_output_keeps_the_rule_based_plan(tmp_path):
     plan = director._rule_plan("Grow Kirana Beauty", CATALOG)
     assert director._llm_refine("Grow Kirana Beauty", CATALOG, plan) == plan
     assert any("deterministic reasoning" in w for w in warnings_of(ctx))
+    assert any(e.kind == "thought" and "keeping the rule-based plan" in e.message for e in ctx.tracer.snapshot())
 
 
 @pytest.mark.slow

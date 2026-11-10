@@ -6,3 +6,5 @@ outputs/
 data/external/
 .claude/
 .streamlit/secrets.toml
+.coverage
+htmlcov/

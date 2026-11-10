@@ -14,7 +14,7 @@ python -m ruff check .
 python -m pytest -q
 ```
 
-The repository includes the generated datasets, so `scripts/generate_data.py` is only needed after changing the generator. The full test suite takes several minutes (8 on the development laptop), because three tests run the whole pipeline (see section 9). GitHub Actions (`.github/workflows/tests.yml`) runs `ruff check` and the full suite on every push and pull request. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
+The repository includes the generated datasets, so `scripts/generate_data.py` is only needed after changing the generator. The full test suite takes several minutes (8 to 17 on the development laptop), because three tests run the whole pipeline (see section 9). GitHub Actions (`.github/workflows/tests.yml`) runs `ruff check` and the full suite on every push and pull request. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
 
 **Dependencies.** `requirements.txt` holds compatible ranges, each capped below the next major version. `requirements-lock.txt` pins every package, including transitive ones, to the versions the suite last passed with. When you upgrade a library, run the tests, then regenerate the lock from the working environment.
 
@@ -45,7 +45,7 @@ marketmind/
     charts.py                Plotly chart functions, TableSource and the CHARTS registry
     html_report.py           self-contained HTML report
 scripts/                     generate_data.py, evaluate_agents.py, export_sqlite.py, build_diagram_gallery.py,
-                             validate_on_real_data.py
+                             validate_on_real_data.py, multi_seed.py, ablations.py, llm_runs.py
 tests/                       conftest.py (shared offline run), test_system.py, test_schemas.py
 docs/                        design documents, schemas/ (JSON Schemas and SQL), diagrams/ (gallery)
 data/raw/                    the seven research datasets      data/ground_truth*   hidden answers
@@ -81,6 +81,8 @@ outputs/                     runs/, models/, cache/llm/, marketmind.db   (git-ig
 ### LLMClient (`core/llm.py`)
 
 `LLMClient(provider=None, model=None, api_key=None, ...)` resolves the provider from `LLM_PROVIDER` and the keys in `.env`. Its methods are `available`, `describe()`, `complete(system, prompt, max_tokens, json_mode, temperature, agent)`, `complete_json(...)`, `ping()` and `stats`. Every failure sets `last_error` and returns `None`; it never raises into an agent. Responses are cached under `outputs/cache/llm`, keyed by a hash of the request. `parse_json` extracts JSON from fenced or chatty replies.
+
+The model is chosen in this order: the `model` argument, `<PROVIDER>_MODEL` (for example `GROQ_MODEL`), `LLM_MODEL`, then the provider's default; the fallback model likewise from `<PROVIDER>_FALLBACK_MODEL`, `LLM_FALLBACK_MODEL` or the default. A call makes up to five attempts. A busy model (HTTP 429 or 5xx) or a hung one (timeout, dropped connection) hands that one call to the fallback at once; a model the provider has retired (a 400 or 404 saying the model is not found, decommissioned, no longer available and so on) is replaced for good, by the fallback or, without one, by the best match in the provider's model list (preview and experimental models are skipped, `latest` aliases and higher version numbers win). `last_model` records the model that answered, and every entry in `stats.log` carries it.
 
 ### Run store (`core/store.py`)
 
@@ -185,7 +187,7 @@ If you replace the bundled data with real data, keep the column names and the ca
 
 ## 8. Adding an LLM provider
 
-An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/llm.py`: `base_url`, `key_env`, a default `model`, `prefer` (substrings used to pick a replacement when the default model is retired) and `min_interval` (seconds between calls). Then add it to `AUTO_ORDER` if it should be picked automatically, and add its key to `.env.example`. Other APIs need their own `_call_<provider>` method. Follow `_call_anthropic`: lazy import, mapping every error to `last_error` and returning `None`, and recording token usage in `self.stats`. The Anthropic path uses the official SDK with `claude-opus-5-5`, `output_config={"effort": "medium"}` and the server-side fallback beta.
+An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/llm.py`: `base_url`, `key_env`, a default `model`, a `fallback` model (or `None`), `prefer` (substrings used to pick a replacement when the default model is retired) and `min_interval` (seconds between calls). Then add it to `AUTO_ORDER` if it should be picked automatically, and add its key to `.env.example`. Other APIs need their own `_call_<provider>` method. Follow `_call_anthropic`: lazy import, mapping every error to `last_error` and returning `None`, and recording token usage in `self.stats`. The Anthropic path uses the official SDK with `claude-opus-5-5`, `output_config={"effort": "medium"}` and the server-side fallback beta.
 
 ## 9. Testing
 
@@ -197,10 +199,10 @@ An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/ll
 | `tests/test_schemas.py` (5 tests) | The contracts in [SCHEMAS.md](SCHEMAS.md) | shared run |
 | `tests/test_real_reviews.py` (5 tests) | The `--sentiment-data` option: emoji conversion, the three training modes on a small stand-in corpus, an unchanged cache key in the default mode, rejection of unknown modes, test metrics per source | seconds |
 | `tests/test_failure_paths.py` (6 tests) | Graceful degradation: client names matched ignoring case and accents; an unknown client stopping the run at planning; a missing dataset skipped with a warning; a World Bank outage falling back to the cache, then to nothing; garbled LLM output leaving the rule-based plan in place; and an end-to-end run where an analyst and the Critic crash, which must still save a schema-valid run marked `unverified` with a "NOT VERIFIED" report | about 1 minute |
-| `tests/test_agent_logic.py` (11 tests) | Each agent's core method on small synthetic inputs with a known answer: the Critic's number parsing, grounding at written precision (percentages, rupiah units, years, LLM blocks) and citation checks; the workflow's skip rules; Van Westendorp crossings against hand-solved values; elasticity estimates recovering known slopes; the constant-elasticity price scenarios; the complaint-spike detector finding exactly the planted episode; the threat index; label canonicalisation; and the Strategy agent's priority rule | seconds, plus the shared run |
+| `tests/test_agent_logic.py` (14 tests) | Each agent's core method on small synthetic inputs with a known answer: the Critic's number parsing, grounding at written precision (percentages, rupiah units, years, LLM blocks, code spans) and citation checks; the workflow's skip rules; Van Westendorp crossings against hand-solved values, the middle of a tied stretch of curves, the bootstrap of the recommended price and the count of answers that place the optimal price point; elasticity estimates recovering known slopes; the constant-elasticity price scenarios; the complaint-spike detector finding exactly the planted episode; the threat index; label canonicalisation; and the Strategy agent's priority rule | seconds, plus the shared run |
 | `tests/test_dashboard.py` | Streamlit's test runner renders the real dashboard for the shared run: all 12 tabs, no exception and no tab-level error | about 30 s, plus the shared run |
-| `tests/test_llm_client.py` (6 tests) | The LLM client against a fake OpenAI-style API, with no network or key: the request sent, response parsing, token counts, caching (and that the key never reaches the cache), the retry after a rate limit, dropping JSON mode when a provider rejects it, replacing a retired model from the provider's model list, soft failure on HTTP errors, and offline mode without a key | under a second |
-| `tests/test_evaluation_and_chat.py` (2 tests) | The ground-truth evaluation on the shared run, which must recover all 25 planted insights (a regression guard for the whole system); and the Analyst Chat's offline retrieval: a pain-point question answered from weaknesses or threats with citations, a pricing question from pricing evidence, nonsense answered with "no evidence" | seconds, plus the shared run |
+| `tests/test_llm_client.py` (12 tests) | The LLM client against a fake OpenAI-style API, with no network or key: the request sent, response parsing, token counts, caching (and that the key never reaches the cache), the retry after a rate limit, dropping JSON mode when a provider rejects it, per-provider model settings winning over the global ones, a busy (503) or hung (timeout) model handing the call to the fallback, a retired model replaced for good, an unrelated bad request that mentions the model leaving it in place, rediscovery preferring `latest` aliases over previews, soft failure on HTTP errors, and offline mode without a key | under a second |
+| `tests/test_evaluation_and_chat.py` (2 tests) | The ground-truth evaluation on the shared run, which must recover every planted insight (a regression guard for the whole system). The one exception is the concept price, a documented noise-driven miss on the bundled data ([EVALUATION.md §4.5](EVALUATION.md#45-concept-pricing)); when it misses, SEG-04 must say the pick is not settled and name a runner-up inside the true band; and the Analyst Chat's offline retrieval: a pain-point question answered from weaknesses or threats with citations, a pricing question from pricing evidence, nonsense answered with "no evidence" | seconds, plus the shared run |
 
 Tests that run the pipeline or the dashboard are marked `slow`: `tests/conftest.py` marks every test that uses `offline_run`, and the two other end-to-end tests carry `@pytest.mark.slow`. `python -m pytest -q -m "not slow"` runs everything else in about half a minute, which is the loop to use while coding.
 
@@ -223,6 +225,16 @@ python -m pytest -q --cov --cov-report=term          # everything, with line cov
 python -m pytest -q tests/test_schemas.py            # contracts
 python scripts/evaluate_agents.py                    # ground-truth score of the latest run
 ```
+
+**Evaluation studies.** Three scripts measure more than one run can ([EVALUATION.md](EVALUATION.md) reports their results):
+
+```bash
+python scripts/multi_seed.py                         # regenerate the data with seeds 1-5 and re-run the study on each
+python scripts/ablations.py                          # switch off one design choice at a time
+python scripts/llm_runs.py --providers gemini groq   # full studies with real LLMs; what the Critic catches
+```
+
+`multi_seed.py` keeps every seed apart through two environment variables that `marketmind/config.py` reads: `MARKETMIND_DATA_DIR` (the folder holding `raw/` and the ground truth) and `MARKETMIND_OUTPUTS` (runs, model cache, LLM cache). Use them for any experiment that must not touch the bundled data or its runs; `scripts/generate_data.py --seed N --out <folder>/raw` writes a fresh dataset with the same planted effects. Each script writes a `summary.json` under `outputs/seeds`, `outputs/ablations` or `outputs/llm_runs`.
 
 ## 10. Debugging
 

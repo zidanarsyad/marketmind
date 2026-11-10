@@ -153,10 +153,14 @@ class StrategyAgent(BaseAgent):
                 "0-3 months", "Operations & Quality", "Low")
         if "SEG-02" in F and "SEG-04" in F:
             p, v = F["SEG-02"].metrics, F["SEG-04"].metrics
+            close_call = not v.get("price_settled", True) and v.get("alternative_price")
             add(f"Launch the fragrance-free barrier-repair moisturizer at {idr(v['recommended_price'])}",
                 f"Position it on ceramide + skin-barrier repair, fragrance-free and dermatologically tested; target "
                 f"'{p['segment']}' first, seed through dermatologist and creator content, launch on Shopee and TikTok Shop "
-                f"before Ramadan.",
+                f"before Ramadan."
+                + (f" The price research does not settle between {idr(v['recommended_price'])} and "
+                   f"{idr(v['alternative_price'])}: test both in the first month before fixing the list price."
+                   if close_call else ""),
                 f"{pct(p['concept_t2b'], 0, sign=False)} top-2-box intent in the primary segment; acceptable price range "
                 f"{idr(v['pmc'])}-{idr(v['pme'])}; the white space has little competing supply.",
                 ["SEG-02", "SEG-04", "CMP-08", "CON-07", "MKT-06"], f"Year-1 revenue of {idr(ov.get('OPP-2', 0))} "

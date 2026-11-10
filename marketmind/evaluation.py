@@ -12,10 +12,10 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, adjusted_rand_score, f1_score
 
-from .config import GROUND_TRUTH, ROOT
+from .config import DATA_DIR, GROUND_TRUTH
 from .core.store import RunData
 
-GT_DIR = ROOT / "data" / "ground_truth"
+GT_DIR = DATA_DIR / "ground_truth"
 
 
 def _f(run: RunData) -> dict:
@@ -89,7 +89,9 @@ def evaluate(run: RunData) -> dict:
           target_true == exp["target_segment_for_concept"])
     price = metric("SEG-04", "recommended_price")
     lo, hi = exp["concept_optimal_price_band_idr"]
-    check("pricing", "Recommended concept price", f"Rp {lo:,}-{hi:,}", price, price is not None and lo <= price <= hi)
+    support, alt = metric("SEG-04", "price_support"), metric("SEG-04", "alternative_price")
+    found = f"{price}" + (f" (wins {support:.0%} of bootstrap resamples; runner-up {alt})" if support is not None and alt else "")
+    check("pricing", "Recommended concept price", f"Rp {lo:,}-{hi:,}", found, price is not None and lo <= price <= hi)
     el = run.table("forecast.tables.elasticities")
     if el is not None:
         el = el.assign(true=el["brand"].map(truth["price_elasticity"]))

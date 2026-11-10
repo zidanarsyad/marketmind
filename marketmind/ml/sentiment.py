@@ -359,10 +359,16 @@ class SentimentSuite:
             return self.neural.predict_proba(texts)
         return 0.5 * self.linear.predict_proba(texts) + 0.5 * self.neural.predict_proba(texts)
 
+    social_rules = True   # the domain rules below; scripts/ablations.py switches them off to measure what they buy
+
     def score_social(self, texts, model: str | None = None) -> tuple[list[str], np.ndarray]:
         """Domain-adapted social scoring: strip hashtags/mentions/URLs (topic tags, not sentiment), treat
         questions and informational posts as neutral unless strongly polar, and use a neutral band."""
-        clean = [SOCIAL_NOISE.sub(" ", t if isinstance(t, str) else "").strip() for t in texts]
+        texts = [t if isinstance(t, str) else "" for t in texts]
+        if not self.social_rules:                       # the review model as it is: plain argmax
+            p = self._proba(texts, model or self.transfer)
+            return [LABELS[i] for i in p.argmax(1)], p[:, 2] - p[:, 0]
+        clean = [SOCIAL_NOISE.sub(" ", t).strip() for t in texts]
         p = self._proba(clean, model or self.transfer)
         score = p[:, 2] - p[:, 0]
         labels = []

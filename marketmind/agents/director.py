@@ -121,6 +121,7 @@ class ResearchDirectorAgent(BaseAgent):
                      modules=plan["modules"], draft_questions=plan["questions"], draft_objectives=plan["objectives"])
         out = self.ask_llm(task, facts, max_tokens=900, as_json=True)
         if not isinstance(out, dict):
+            self.think("The LLM's plan refinement was not usable JSON; keeping the rule-based plan.")
             return plan
         refined = dict(plan)
         objectives = [str(o) for o in out.get("objectives", []) if isinstance(o, str)]
@@ -133,6 +134,9 @@ class ResearchDirectorAgent(BaseAgent):
         if qs and needed <= covered:
             refined["questions"] = [dict(id=f"Q{i + 1}", area=q["area"], question=q["question"].strip())
                                     for i, q in enumerate(qs) if plan["modules"].get(q["area"], True)]
+        else:
+            self.think(f"The LLM's questions leave out {', '.join(sorted(needed - covered)) or 'every area'}; "
+                       f"keeping the rule-based questions.")
         if isinstance(out.get("concept"), str) and out["concept"].strip():
             refined["concept"] = out["concept"].strip()
         refined["planner"] = "rule-based + LLM refinement"

@@ -134,20 +134,20 @@ ZAP's sample is urban and beauty-engaged, so treat its spending figures as an up
 
 ## 7. How the simulated data compares
 
-Comparing MarketMind's simulated data with the real figures above shows where the simulator is realistic and where it should be recalibrated. The simulated values come from the bundled data (`scripts/generate_data.py`, seed 2026) after cleaning.
+Comparing MarketMind's simulated data with the real figures above shows where the simulator is realistic and where it needed recalibrating. The simulated values come from the bundled data (`scripts/generate_data.py`, seed 2026) after cleaning. On 10 November 2026 the three statistics marked "Recalibrate" in the first comparison were corrected in the generator: half of each brand's Tokopedia share moved to Shopee, Lazada and more offline buyers were added to the survey segments, and the importance of a halal claim was raised in four of the five segments. The table shows the values before and after; all 25 ground-truth checks were re-run on the new data ([EVALUATION.md](EVALUATION.md)).
 
-| Statistic | MarketMind simulation | Real benchmark | Verdict |
+| Statistic | MarketMind simulation (before, if recalibrated, then now) | Real benchmark | Verdict |
 |---|---|---|---|
 | Skin-care market size, 2019 | Rp23.4 trillion | Rp24.1 trillion (GlobalData) | Close |
 | Market size, 2024 and 2026 | Rp35.1 trillion; Rp41.6 trillion (estimate) | US$2.52bn (MarketLine, 2024) and US$2.55bn (Statista, 2026), about Rp40-41 trillion at Rp16,000 per US$ | In range; 2024 about 13% low |
 | Market growth | 8.6% a year, 2019-2025 | +7.0% in 2026, then 3.55% a year (Statista) | Plausible, slightly high |
-| Marketplace shares, Feb 2024 (online channels only) | Shopee 44.7%, Tokopedia 22.5%, TikTok Shop 22.3%, Lazada 10.5% | Shopee 63.5%, TikTok Shop 18.2%, Lazada 13.8%, Tokopedia 4.26% (Compas) | **Recalibrate:** Tokopedia too high, Shopee too low |
-| Star mix of reviews with text, 1-2 / 3 / 4-5 stars | 14.6% / 8.6% / 76.9% | 10.8% / 17.6% / 71.7% (Female Daily, a review community) | Check against the Tokopedia 2025 reviews before changing (the Shopee/Tokopedia beauty set is balanced by rating, so it cannot show the natural mix) |
-| Monthly skincare spend of Rp250k or less | 71% | 8 in 10 (Populix 2021-22); ZAP shows a richer, urban sample | Consistent with the broad sample |
+| Marketplace shares, Feb 2024 (online channels only) | Before: Shopee 44.7%, Tokopedia 22.5%, TikTok Shop 22.3%, Lazada 10.5%. Now: Shopee 56.1%, TikTok Shop 22.3%, Tokopedia 11.2%, Lazada 10.5% | Shopee 63.5%, TikTok Shop 18.2%, Lazada 13.8%, Tokopedia 4.26% (Compas) | **Recalibrated:** much closer; Tokopedia is still high and Shopee a little low |
+| Star mix of reviews with text, 1-2 / 3 / 4-5 stars | 14.9% / 8.3% / 76.9% | 10.8% / 17.6% / 71.7% (Female Daily, a review community) | Check against the Tokopedia 2025 reviews before changing (the Shopee/Tokopedia beauty set is balanced by rating, so it cannot show the natural mix) |
+| Monthly skincare spend of Rp250k or less | 69% | 8 in 10 (Populix 2021-22); ZAP shows a richer, urban sample | Consistent with the broad sample |
 | Buy skincare at least once a month | 81% | 77% (Populix 2021-22); 33% of all respondents (38% of users) in Populix 2024 | The sources disagree; the simulator matches the larger 2021-22 tracking |
-| Halal claim important (rated 4-5 of 5) | 49% | 75% (Jakpat 2024) | **Recalibrate:** too low |
-| Prefer buying online | 76% (24% prefer offline retail) | e-commerce 57% (Populix 2021-22), 62% (Populix 2024) | Somewhat high |
-| Lazada as the preferred channel | 0% of respondents | 9.1% name it their most-used platform (APJII 2025) | **Recalibrate:** add Lazada |
+| Halal claim important (rated 4-5 of 5) | Before: 49%. Now: 75% | 75% (Jakpat 2024) | **Recalibrated:** matches |
+| Prefer buying online | Before: 76%. Now: 69% (31% prefer offline retail) | e-commerce 57% (Populix 2021-22), 62% (Populix 2024) | Closer; still somewhat high |
+| Lazada as the preferred channel | Before: 0%. Now: 7.5% of respondents | 9.1% name it their most-used platform (APJII 2025) | **Recalibrated:** close |
 
 ## 8. Licences, terms and personal data
 
@@ -168,5 +168,5 @@ Also note:
 1. **Validate the sentiment agent on real text.** Done on 4 November 2026 with `scripts/validate_on_real_data.py`, on the Shopee/Tokopedia beauty reviews and IndoNLU SmSA ([EVALUATION.md §4.6](EVALUATION.md#46-sentiment-on-real-text-external-validation)). The models trained on simulated reviews reach only macro-F1 0.43-0.47 on the real reviews. Adding the real reviews to the training data (`--sentiment-data study+real`) raises this to 0.662 while keeping 0.820 on the study's reviews and passing all 25 ground-truth checks.
 2. **Test the weak-supervision assumption.** On PRDECT-ID, measure how often star-derived labels agree with the human sentiment labels.
 3. **Test the transfer check on real social text.** Map the Natasha Skincare emotions to three classes and score them with the transfer model.
-4. **Recalibrate the simulator** with the benchmarks marked "Recalibrate" in section 7 (channel shares, halal importance, Lazada), then re-run `python scripts/evaluate_agents.py` to confirm that the 25 checks still pass.
+4. **Recalibrate the simulator.** Done on 10 November 2026 for channel shares, halal importance and Lazada (section 7). The ground-truth checks were re-run on the new data and across five more data seeds ([EVALUATION.md](EVALUATION.md)). Tokopedia's online share (11%) is still above the 2024 benchmark (4%).
 5. **Add a real-data mode.** Done for the sentiment models: `python run.py --sentiment-data study+real` trains them on the study's reviews plus the real beauty reviews, and `real` on the real reviews only ([EVALUATION.md §4.6](EVALUATION.md#46-sentiment-on-real-text-external-validation)). Still open: an adapter that loads the Tokopedia 2025 beauty subset as real reviews and catalogue rows, filling in or marking the columns it lacks, so that a whole study can run on real marketplace data (for non-commercial use).

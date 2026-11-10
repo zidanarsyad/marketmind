@@ -28,16 +28,25 @@ import requests
 
 from ..config import CACHE_DIR, env
 
+# Default model and fallback per provider. Each can be overridden in .env with <PROVIDER>_MODEL and
+# <PROVIDER>_FALLBACK_MODEL (for example OPENROUTER_MODEL), or for every provider with LLM_MODEL and LLM_FALLBACK_MODEL.
+# Gemini's "-latest" aliases are maintained by Google, so they survive model retirements.
 OPENAI_STYLE = {
     "gemini": dict(base_url="https://generativelanguage.googleapis.com/v1beta/openai", key_env="GEMINI_API_KEY",
-                   model="gemini-2.5-flash", prefer=["flash"], min_interval=4.0),
+                   model="gemini-flash-latest", fallback="gemini-flash-lite-latest", prefer=["flash"], min_interval=4.0),
     "groq": dict(base_url="https://api.groq.com/openai/v1", key_env="GROQ_API_KEY",
-                 model="llama-3.3-70b-versatile", prefer=["llama-3.3-70b", "70b", "llama", "qwen"], min_interval=2.0),
+                 model="qwen/qwen3.8-27b", fallback=None, prefer=["qwen", "llama", "70b"], min_interval=2.0),
     "openrouter": dict(base_url="https://openrouter.ai/api/v1", key_env="OPENROUTER_API_KEY",
-                       model="meta-llama/llama-3.3-70b-instruct:free", prefer=[":free"], min_interval=3.0),
-    "ollama": dict(base_url="http://localhost:11434/v1", key_env=None, model="llama3.1", prefer=[], min_interval=0.0),
-    "openai_compatible": dict(base_url=None, key_env="LLM_API_KEY", model=None, prefer=[], min_interval=1.0),
+                       model="nvidia/nemotron-3.5-super-vl:free", fallback="google/gemma-4-26b-a4b-it:free",
+                       prefer=[":free"], min_interval=3.0),  # free line-ups change often: openrouter.ai/models?q=:free
+    "ollama": dict(base_url="http://localhost:11434/v1", key_env=None, model="llama3.1", fallback=None, prefer=[],
+                   min_interval=0.0),
+    "openai_compatible": dict(base_url=None, key_env="LLM_API_KEY", model=None, fallback=None, prefer=[], min_interval=1.0),
 }
+TRANSIENT_STATUS = (429, 500, 502, 503, 504)   # rate limits and temporary server errors: retry, or use the fallback
+# How providers say a model is gone (retired, renamed, or no longer free), as opposed to any other bad request
+RETIRED_MODEL = re.compile(r"not found|does not exist|decommission|no longer|deprecated|unavailable|not available|"
+                           r"invalid model|unknown model|model_not_found", re.IGNORECASE)
 ANTHROPIC_DEFAULT_MODEL = "claude-opus-5-5"
 ANTHROPIC_FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"}
 AUTO_ORDER = ["gemini", "groq", "openrouter", "anthropic", "openai_compatible"]
@@ -63,12 +72,14 @@ class LLMStats:
 
 class LLMClient:
     def __init__(self, provider: str | None = None, model: str | None = None, api_key: str | None = None,
-                 base_url: str | None = None, use_cache: bool = True, timeout: float = 90.0):
+                 base_url: str | None = None, use_cache: bool = True, timeout: float = 60.0):
         requested = (provider or env("LLM_PROVIDER", "auto")).strip().lower()
         self.provider = self._resolve(requested, api_key)
         self.api_key = api_key
         self.base_url = base_url
-        self.model = model or env("LLM_MODEL")
+        self.model = model                 # an explicit model wins; otherwise _configure reads .env, then the default
+        self.fallback_model: str | None = None
+        self.last_model: str | None = None  # the model that produced the last answer (the fallback, if it was used)
         self.timeout = timeout
         self.use_cache = use_cache
         self.cache_dir = CACHE_DIR / "llm"
@@ -100,7 +111,7 @@ class LLMClient:
             return
         if p == "anthropic":
             self.api_key = self.api_key or env("ANTHROPIC_API_KEY")
-            self.model = self.model or ANTHROPIC_DEFAULT_MODEL
+            self.model = self.model or env("ANTHROPIC_MODEL") or env("LLM_MODEL") or ANTHROPIC_DEFAULT_MODEL
             self.min_interval = float(env("LLM_MIN_INTERVAL", "0.5"))
             return
         if p not in OPENAI_STYLE:
@@ -116,7 +127,11 @@ class LLMClient:
             self.base_url = self.base_url or spec["base_url"]
         if spec["key_env"]:
             self.api_key = self.api_key or env(spec["key_env"])
-        self.model = self.model or spec["model"]
+        prefix = p.upper()
+        self.model = self.model or env(f"{prefix}_MODEL") or env("LLM_MODEL") or spec["model"]
+        self.fallback_model = env(f"{prefix}_FALLBACK_MODEL") or env("LLM_FALLBACK_MODEL") or spec["fallback"]
+        if self.fallback_model == self.model:
+            self.fallback_model = None
         self.min_interval = float(env("LLM_MIN_INTERVAL", str(spec["min_interval"])))
         if p != "ollama" and not self.api_key:
             self.last_error = f"{p}: no API key found ({spec['key_env']})"
@@ -132,7 +147,7 @@ class LLMClient:
     def describe(self) -> str:
         if not self.available:
             return "offline (deterministic reasoning)" + (f" - {self.last_error}" if self.last_error else "")
-        return f"{self.provider} / {self.model}"
+        return f"{self.provider} / {self.model}" + (f" (fallback {self.fallback_model})" if self.fallback_model else "")
 
     # ------------------------------------------------------------------ public API
     def complete(self, system: str, prompt: str, max_tokens: int = 1200, json_mode: bool = False,
@@ -147,9 +162,11 @@ class LLMClient:
             return cached
         self._throttle()
         t0 = time.time()
+        self.last_model = None
         try:
             if self.provider == "anthropic":
                 text = self._call_anthropic(system, prompt)
+                self.last_model = self.model if text else None
             else:
                 text = self._call_openai_style(system, prompt, max_tokens, json_mode, temperature)
         except Exception as exc:  # network errors, malformed responses, SDK errors
@@ -161,7 +178,8 @@ class LLMClient:
             self.stats.seconds += dt
             if not text:
                 self.stats.failures += 1
-            self.stats.log.append(dict(agent=agent, ok=bool(text), seconds=round(dt, 2), chars=len(text or "")))
+            self.stats.log.append(dict(agent=agent, ok=bool(text), seconds=round(dt, 2), chars=len(text or ""),
+                                       model=self.last_model))
         if text:
             text = text.strip()
             self._cache_put(key, text)
@@ -200,24 +218,41 @@ class LLMClient:
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
-        rediscovered = False
-        for attempt in range(4):
-            r = requests.post(f"{self.base_url.rstrip('/')}/chat/completions", json=payload, headers=headers,
-                              timeout=self.timeout)
-            if r.status_code == 429:
+        rediscovered = fell_back = False
+        for attempt in range(5):
+            try:
+                r = requests.post(f"{self.base_url.rstrip('/')}/chat/completions", json=payload, headers=headers,
+                                  timeout=self.timeout)
+            except (requests.Timeout, requests.ConnectionError) as exc:  # a hung or unreachable model is transient too
+                if self.fallback_model and not fell_back:
+                    self.last_error = f"{type(exc).__name__} from {payload['model']}; trying {self.fallback_model}"
+                    payload["model"], fell_back = self.fallback_model, True
+                    continue
+                raise
+            if r.status_code in TRANSIENT_STATUS:
+                if self.fallback_model and not fell_back:     # busy or rate-limited: try the fallback model at once
+                    self.last_error = f"HTTP {r.status_code} from {payload['model']}; trying {self.fallback_model}"
+                    payload["model"], fell_back = self.fallback_model, True
+                    continue
                 wait = float(r.headers.get("retry-after", 0) or 0) or min(5 * 2 ** attempt, 30)
-                self.last_error = f"rate limited, retrying in {wait:.0f}s"
+                reason = "rate limited" if r.status_code == 429 else f"HTTP {r.status_code}"
+                self.last_error = f"{reason}, retrying in {wait:.0f}s"
                 time.sleep(wait)
                 continue
             if r.status_code in (400, 404) and "response_format" in payload and "response_format" in r.text:
                 payload.pop("response_format")
                 continue
-            if r.status_code in (400, 404) and not rediscovered and "model" in r.text.lower():
-                new_model = self._discover_model()
-                rediscovered = True
-                if new_model and new_model != self.model:
-                    self.model = payload["model"] = new_model
+            if r.status_code in (400, 404) and "model" in r.text.lower() and RETIRED_MODEL.search(r.text):
+                if self.fallback_model and not fell_back:     # the configured model is gone: switch for good
+                    self.model = payload["model"] = self.fallback_model
+                    self.fallback_model, fell_back = None, True
                     continue
+                if not rediscovered:
+                    new_model = self._discover_model()
+                    rediscovered = True
+                    if new_model and new_model != payload["model"]:
+                        self.model = payload["model"] = new_model
+                        continue
             if r.status_code >= 400:
                 self.last_error = f"HTTP {r.status_code}: {r.text[:240]}"
                 return None
@@ -230,11 +265,17 @@ class LLMClient:
             content = (choice.get("message") or {}).get("content")
             if isinstance(content, list):
                 content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-            if not content and choice.get("finish_reason") == "length" and attempt < 3:
+            if not content and choice.get("finish_reason") == "length" and attempt < 4:
                 payload["max_tokens"] = payload["max_tokens"] * 2
                 continue
+            self.last_model = payload["model"] if content else None
             return content
         return None
+
+    @staticmethod
+    def _rank(model_id: str) -> tuple:
+        """Prefer maintained "-latest" aliases, then higher version numbers, then the plainer (shorter) name."""
+        return ("latest" in model_id, [int(n) for n in re.findall(r"\d+", model_id)], -len(model_id))
 
     def _discover_model(self) -> str | None:
         """Pick a currently served chat model when the configured one has been retired."""
@@ -245,11 +286,12 @@ class LLMClient:
         except Exception:
             return None
         ids = [i.removeprefix("models/") for i in ids if i and not any(w in i.lower() for w in SKIP_MODEL_WORDS)]
+        stable = [i for i in ids if not re.search(r"\b(preview|exp|experimental|beta)\b", i.lower())] or ids
         for pattern in OPENAI_STYLE.get(self.provider, {}).get("prefer", []):
-            matches = sorted((i for i in ids if pattern in i.lower()), reverse=True)
+            matches = [i for i in stable if pattern in i.lower()]
             if matches:
-                return matches[0]
-        return ids[0] if ids else None
+                return max(matches, key=self._rank)
+        return max(stable, key=self._rank) if stable else None
 
     def _call_anthropic(self, system: str, prompt: str) -> str | None:
         import anthropic  # optional dependency, imported lazily

@@ -311,7 +311,7 @@ python scripts/export_sqlite.py
 
 This rebuilds `outputs/marketmind.db` from scratch: it creates the schema, runs the Data Quality agent on `data/raw`, loads the clean datasets and the latest run, and reports the row counts and any foreign-key violations (it exits with a non-zero code if there are any). Options: `--run <run_id>` for a specific run, `--all-runs` for every saved run, and `--db <path>` for another file. The same functions are available from Python in `marketmind/sql_export.py` (`connect`, `create_schema`, `clean_datasets`, `load_datasets`, `load_run`).
 
-Row counts for the bundled data and the reference run: 48,280 sales rows, 20,106 reviews, 10,958 social posts, 400 social labels, 2,215 survey responses, 49 products and 40 market-size rows. The run adds 11 agent results, 37 findings, 8 recommendations, 21 evidence links, 6 QA checks and 173 trace events, with 0 foreign-key violations.
+Row counts for the bundled data (recalibrated on 10 November 2026) and the reference run: 48,280 sales rows, 20,182 reviews, 10,912 social posts, 400 social labels, 2,214 survey responses, 49 products and 40 market-size rows. The run adds 11 agent results, 37 findings, 8 recommendations, 21 evidence links, 6 QA checks and 174 trace events, with 0 foreign-key violations.
 
 ### Example queries
 
@@ -359,7 +359,7 @@ registry = Registry().with_resources([(s["$id"], Resource.from_contents(s)) for 
 finding_schema = next(s for s in schemas if s["title"] == "Finding")
 validator = Draft202012Validator(finding_schema, registry=registry)
 
-run = Path("outputs/runs") / "20261104-144556"          # any saved run
+run = Path("outputs/runs") / "20261110-182213"          # any saved run
 for finding in json.loads((run / "findings.json").read_text(encoding="utf-8")):
     for error in validator.iter_errors(finding):
         print(finding["id"], error.message)

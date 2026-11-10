@@ -78,14 +78,21 @@ class ConsumerInsightAgent(BaseAgent):
             mode=mode, study_reviews=int((sources == "study").sum()), real_reviews=int((sources == "real").sum()),
             real_source=None if mode == "study" else real_reviews.SOURCE,
             model_dir=real_reviews.model_dir(mode).relative_to(ROOT).as_posix())
+        self.suite.social_rules = not self.options.get("no_social_rules")   # ablation option
         labels_df = data.get("social_labels")
-        if labels_df is not None and "social" in data:
+        if labels_df is not None and "social" in data and not self.options.get("skip_transfer_check"):
             sample = labels_df.merge(data["social"][["post_id", "post_text"]], on="post_id")
             if len(sample) >= 50:
                 tr = self.use("validate_transfer", sample)
                 self.think(f"Transfer check on {len(sample)} hand-labelled social posts: "
                            + ", ".join(f"{m} macro-F1 {v['macro_f1']:.3f}" for m, v in tr.items())
                            + f" -> using '{self.suite.transfer}' for social posts and review clauses.")
+        # ablation options (scripts/ablations.py): assume the review-selected model transfers, or force one candidate
+        if self.options.get("skip_transfer_check"):
+            self.suite.transfer = self.suite.selected
+        if self.options.get("sentiment_model"):
+            self.suite.selected = self.suite.transfer = self.suite.card["selected"] = self.options["sentiment_model"]
+            self.suite.card["transfer_model"] = self.options["sentiment_model"]
         card = self.suite.card
         t = {}
         scored = self.use("score_reviews", text)
@@ -382,7 +389,8 @@ class ConsumerInsightAgent(BaseAgent):
                     id="CON-06", agent=self.name, area="consumer", title="Value-for-money perception is slipping",
                     statement=(f"Net sentiment on {c}'s price/value fell from {p['net_p12']:+.2f} to {p['net_l12']:+.2f} "
                                f"over the last 12 months - consumers increasingly mention price increases."),
-                    metrics=dict(net_prior=round(p["net_p12"], 3), net_recent=round(p["net_l12"], 3), change=round(p["change"], 3)),
+                    metrics=dict(aspect=ASPECT_LABELS["harga"], net_prior=round(p["net_p12"], 3),
+                                 net_recent=round(p["net_l12"], 3), change=round(p["change"], 3)),
                     evidence=["product_reviews.csv (aspect-based sentiment)"], impact=4, confidence=0.8, swot="W",
                     tags=["price", "pain point"]))
 

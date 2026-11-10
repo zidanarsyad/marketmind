@@ -12,6 +12,7 @@ import re
 from ..core.agent import BaseAgent
 
 CITE = re.compile(r"\[([A-Z]{2,4}-\d{2})\]")
+CODE_SPAN = re.compile(r"`[^`\n]*`")   # identifiers (model names, IDs, files), not claims: not checked
 NUM = re.compile(r"(?<![\w.])[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
 LLM_BLOCK = re.compile(r"<!-- llm:(?P<key>[\w-]+) -->(?P<body>.*?)<!-- /llm -->", re.S)
 REQUIRED = ["Executive Summary", "Research Objectives", "Methodology", "SWOT", "Recommendations", "Risks and Limitations"]
@@ -132,7 +133,7 @@ class QualityAssuranceAgent(BaseAgent):
         blocks.append(("deterministic_text", prose))
         per_block = {}
         for key, text in blocks:
-            text = CITE.sub("", text).replace(self.ctx.run_id, "")
+            text = CODE_SPAN.sub(" ", CITE.sub("", text)).replace(self.ctx.run_id, "")
             bad = []
             for x, dec, raw in _numbers(text):
                 checked += 1

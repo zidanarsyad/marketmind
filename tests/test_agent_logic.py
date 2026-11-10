@@ -41,6 +41,7 @@ def test_critic_grounds_numbers_at_their_written_precision(tmp_path):
         "Revenue reached Rp 1.2 billion.",            # 1,234,000,000 rupiah, written to one decimal
         "Macro-F1 is 0.82.",                          # 0.8213 to two decimals
         "In 2025, 3 brands grew.",                    # years and small counts always pass
+        "LLM support: `groq / qwen/qwen3.8-27b`.",    # code spans are identifiers, not claims
         "Macro-F1 is 0.84 and 999 stores opened.",    # neither is in the evidence
         "<!-- llm:exec_summary -->Sales will hit 4,321 units.<!-- /llm -->",
     ])
@@ -104,6 +105,37 @@ def test_van_westendorp_price_points_match_the_analytic_crossings():
     for key, expected in (("pmc", 60_000), ("opp", 90_000), ("ipp", 85_000), ("pme", 115_000)):
         assert abs(points[key] - expected) < 1_500, (key, points[key])
     assert points["n"] == n and curves["too_cheap"].is_monotonic_decreasing
+
+
+def test_curve_crossing_takes_the_middle_of_a_tied_stretch():
+    from marketmind.ml.pricing import _cross
+    x = np.arange(6.0)
+    # clean sign change: linear interpolation
+    assert _cross(x, np.array([1, .8, .6, .4, .2, 0]), np.array([0, .2, .4, .6, .8, 1])) == 2.5
+    # both curves at zero from 2 to 3 (sparse tails): the middle of the tie, not its left end
+    assert _cross(x, np.array([1, .5, 0, 0, 0, 0]), np.array([0, 0, 0, 0, .5, 1])) == 2.5
+    assert np.isnan(_cross(x, np.ones(6), np.zeros(6)))
+
+
+def test_price_bootstrap_reports_how_often_each_price_wins():
+    from marketmind.agents.segmentation import recommend_price
+    from marketmind.ml.pricing import van_westendorp, van_westendorp_bootstrap
+    rng = np.random.default_rng(3)
+    df = pd.DataFrame({col: rng.normal(mean, 15_000, 1500).clip(1_000) for col, mean in
+                       (("a", 45_000), ("b", 70_000), ("c", 110_000), ("d", 145_000))})
+    points, _ = van_westendorp(df, "a", "b", "c", "d")
+    st = van_westendorp_bootstrap(df, "a", "b", "c", "d", recommend=recommend_price, n_boot=50)
+    assert abs(sum(st["price_shares"].values()) - 1) < 0.01 and st["n_boot"] == 50
+    assert st["opp_90"][0] <= points["opp"] <= st["opp_90"][1] and st["ipp_90"][0] <= points["ipp"] <= st["ipp_90"][1]
+    assert recommend_price(points) in st["price_shares"]
+
+
+def test_opp_tail_counts_show_how_many_answers_place_the_optimal_price():
+    from marketmind.agents.segmentation import VW_COLS, opp_tail_counts
+    df = pd.DataFrame({VW_COLS[0]: [40_000, 76_000, 80_000, 30_000], VW_COLS[1]: 0, VW_COLS[2]: 0,
+                       VW_COLS[3]: [150_000, 82_000, 120_000, 84_000]})
+    assert opp_tail_counts(df, 80_000) == (2, 2)          # too cheap at >= 76,000; too expensive at <= 84,000
+    assert opp_tail_counts(df, float("nan")) == (0, 0)
 
 
 def test_elasticity_regression_recovers_known_slopes():

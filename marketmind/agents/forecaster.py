@@ -152,12 +152,18 @@ class DemandForecastingAgent(BaseAgent):
         m = bt["metrics"]
         best = bt["best"]
         imp = bt["importance"].head(3)["label"].str.lower().tolist()
+        cb = bt.get("client_best", best)
+        caveat = "" if cb == best else (
+            f" For {c}'s own total, the {MODEL_NAMES[cb]} was more accurate in {bt['client_wins']} of 3 folds (mean error "
+            f"{pct(m[cb]['client_mape'], sign=False)} versus {pct(m[best]['client_mape'], sign=False)}), so the client-level "
+            f"outlook is less certain than the market view.")
         self.publish(Finding(
             id="FCT-05", agent=self.name, area="forecast", title="Forecast model quality",
             statement=(f"Model selection by rolling-origin backtest (3 x 6-month folds) picked the {MODEL_NAMES[best]}: "
                        f"WAPE {pct(m[best]['series_wape'], sign=False)} at brand-category-channel level versus "
                        f"{pct(m['seasonal_naive']['series_wape'], sign=False)} for a seasonal-naive benchmark; "
-                       f"the strongest drivers are {', '.join(imp)}."),
+                       f"the strongest drivers are {', '.join(imp)}." + caveat),
             metrics=dict(model=MODEL_NAMES[best], wape=m[best]["series_wape"], naive_wape=m["seasonal_naive"]["series_wape"],
-                         market_mape=m[best]["market_mape"]),
+                         market_mape=m[best]["market_mape"], client_mape=m[best]["client_mape"],
+                         client_best_model=MODEL_NAMES[cb], client_best_mape=m[cb]["client_mape"], client_wins=bt.get("client_wins")),
             evidence=["backtest"], impact=2, confidence=0.9, tags=["methodology", "model"]))

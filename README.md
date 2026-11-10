@@ -13,7 +13,7 @@ The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 -
 | **Machine learning** | K-Means segmentation, gradient-boosting demand forecasting, NMF topic mining, Poisson anomaly detection, fixed-effects price elasticity |
 | **LLM** | Optional - free Gemini / Groq / OpenRouter / local Ollama, or Claude. Fully functional offline. |
 | **Quality gate** | Critic agent verifies numeric grounding, coverage, citations and evidence; failed reports go back for revision |
-| **Effectiveness** | 25 / 25 planted ground-truth insights recovered (see [Evaluation](#evaluation)) |
+| **Effectiveness** | 24 / 25 planted ground-truth insights recovered on the reference data; 23.6 / 25 on average over five more data seeds (see [Evaluation](#evaluation)) |
 
 ---
 
@@ -169,7 +169,7 @@ The system is complete without an LLM. With one, the Director refines the plan, 
 | Ollama (local) | free, offline | `LLM_PROVIDER=ollama` | https://ollama.com |
 | Claude (official Anthropic SDK) | paid | `ANTHROPIC_API_KEY` | https://console.anthropic.com |
 
-`LLM_PROVIDER=auto` picks the first key found. Responses are cached, free-tier rate limits are respected, retired model names are replaced automatically from the provider's model list, and any failure falls back to deterministic reasoning. For Claude the client uses `claude-opus-5-5` with server-side refusal fallbacks enabled. Test the connection from the dashboard sidebar.
+`LLM_PROVIDER=auto` picks the first key found. `<PROVIDER>_MODEL` and `<PROVIDER>_FALLBACK_MODEL` (for example `GROQ_MODEL`) choose the models. Responses are cached, free-tier rate limits are respected, a busy or hung model hands the call to the fallback, retired model names are replaced automatically, and any failure falls back to deterministic reasoning. For Claude the client uses `claude-opus-5-5` with server-side refusal fallbacks enabled. Test the connection from the dashboard sidebar.
 
 ---
 
@@ -187,7 +187,9 @@ Because the data is simulated, the true market facts are known, so the whole mul
 python scripts/evaluate_agents.py
 ```
 
-Latest run: **25 / 25 checks passed**. These cover the fastest-growing category, channel and regions; rising and declining topics; the client's under-indexed channel; the top threat; the white space; the client's main pain point and its timing; the competitor's counterfeit crisis; the price-increase backlash; the number of segments (ARI 0.99 against true segments); the concept target and price band; the client price elasticity (estimated -1.37 vs true -1.30); sentiment quality, social transfer accuracy (0.91 on about 11k posts with hidden labels) and aspect detection (precision 0.92, polarity accuracy 0.98); forecast versus naive benchmark (WAPE 13.7% vs 17.5%); data-defect detection; and the QA gate.
+Reference run: **24 / 25 checks passed**. These cover the fastest-growing category, channel and regions; rising and declining topics; the client's under-indexed channel; the top threat; the white space; the client's main pain point and its timing; the competitor's counterfeit crisis; the price-increase backlash; the number of segments (ARI 0.985 against true segments); the concept target and price band; the client price elasticity (estimated -1.29 vs true -1.30); sentiment quality, social transfer accuracy (0.94 on about 11k posts with hidden labels) and aspect detection (precision 0.91, polarity accuracy 0.99); forecast versus naive benchmark (WAPE 13.5% vs 17.5%); data-defect detection; and the QA gate. The miss is the concept price: Rp 79,900 against a true band of Rp 80,000-100,000. The optimal price point rests on just 3 and 1 survey answers near it, so a respondent or two decide between two charm prices; the agent reports the pick as not settled and recommends testing both.
+
+Beyond one run: `scripts/multi_seed.py` regenerates the market with five more seeds. The system averages 23.6 / 25 there, and 21 of the checks pass in every dataset; the misses are effects planted close to the noise level. `scripts/ablations.py` measures what each design choice buys, and `scripts/llm_runs.py` runs the study with real LLMs and records what the Critic catches ([docs/EVALUATION.md](docs/EVALUATION.md), sections 7-9).
 
 ---
 
@@ -203,7 +205,8 @@ marketmind/
   sql_export.py  loads clean data and runs into the SQL model
   system.py    MarketResearchSystem entry point
 app/dashboard.py     Streamlit dashboard
-scripts/             generate_data.py, evaluate_agents.py, export_sqlite.py, build_diagram_gallery.py, validate_on_real_data.py
+scripts/             generate_data.py, evaluate_agents.py, export_sqlite.py, build_diagram_gallery.py, validate_on_real_data.py,
+                     multi_seed.py, ablations.py, llm_runs.py (evaluation studies)
 docs/                guides, architecture, agent specs, evaluation; schemas/ (JSON Schema + SQL); diagrams/
 data/raw/            datasets            data/ground_truth*  hidden labels for evaluation
 outputs/runs/        one folder per run  outputs/models/     cached deep-learning model

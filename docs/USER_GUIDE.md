@@ -143,14 +143,14 @@ Copy `.env.example` to `.env` and set **one** of these:
 
 | Provider | Cost | Setting | Get a key |
 |---|---|---|---|
-| Google Gemini | free tier | `GEMINI_API_KEY=...` | <https://aistudio.google.com/apikey> |
-| Groq | free tier | `GROQ_API_KEY=...` | <https://console.groq.com/keys> |
-| OpenRouter (`:free` models) | free | `OPENROUTER_API_KEY=...` | <https://openrouter.ai/keys> |
+| Google Gemini | free tier | `GEMINI_API_KEY=...` (default model `gemini-flash-latest`, fallback `gemini-flash-lite-latest`) | <https://aistudio.google.com/apikey> |
+| Groq | free tier | `GROQ_API_KEY=...` (default `qwen/qwen3.8-27b`) | <https://console.groq.com/keys> |
+| OpenRouter (`:free` models) | free | `OPENROUTER_API_KEY=...` (default `nvidia/nemotron-3.5-super-vl:free`, fallback `google/gemma-4-26b-a4b-it:free`) | <https://openrouter.ai/keys> |
 | Ollama (runs locally) | free | `LLM_PROVIDER=ollama` | <https://ollama.com> |
 | Any OpenAI-compatible endpoint | varies | `LLM_PROVIDER=openai_compatible`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | |
 | Claude (Anthropic SDK) | paid | `ANTHROPIC_API_KEY=...` | <https://console.anthropic.com> |
 
-With `LLM_PROVIDER=auto` (the default), MarketMind uses the first key it finds. `LLM_MODEL` overrides the provider's default model, and `LLM_MIN_INTERVAL` sets the number of seconds between calls, for free tiers with per-minute limits. Responses are cached in `outputs/cache/llm`, so re-running the same study does not use up your quota. Restart the dashboard after editing `.env`, then use **Test LLM connection**.
+With `LLM_PROVIDER=auto` (the default), MarketMind uses the first key it finds, in the order Gemini, Groq, OpenRouter, Claude. To choose models, set `<PROVIDER>_MODEL` and `<PROVIDER>_FALLBACK_MODEL` (for example `OPENROUTER_MODEL`), or `LLM_MODEL` and `LLM_FALLBACK_MODEL` for whichever provider is used. The fallback answers when the main model is busy, rate-limited or hung, and replaces it for good if the provider has retired it; with no fallback, MarketMind picks a replacement from the provider's model list. Free model line-ups change often: if a model you set stops working, check the provider's list (for OpenRouter, <https://openrouter.ai/models?q=:free>). Paste only the key after the `=`; a line such as `OPENROUTER_API_KEY=OPENROUTER_API_KEY=sk-or-...` is rejected by the provider. `LLM_MIN_INTERVAL` sets the number of seconds between calls, for free tiers with per-minute limits. Responses are cached in `outputs/cache/llm`, so re-running the same study does not use up your quota. Restart the dashboard after editing `.env`, then use **Test LLM connection**.
 
 **Privacy.** When an LLM is on, the brief, the plan, the findings, the recommendations, aggregate segment profiles and your chat questions are sent to that provider. The raw datasets are never sent. To keep everything on your machine, use Ollama or `--no-llm`.
 
@@ -162,7 +162,9 @@ Because the data is simulated, the true answers are known, so you can check whet
 python scripts/evaluate_agents.py
 ```
 
-This scores the latest run. To score an earlier one, add its run id (for example `python scripts/evaluate_agents.py 20261104-144556`). The Evaluation tab does the same. The 25 checks, and the results of the reference run, are described in [EVALUATION.md](EVALUATION.md). The scores are saved to `evaluation.json` in the run folder.
+This scores the latest run. To score an earlier one, add its run id (for example `python scripts/evaluate_agents.py 20261110-182213`). The Evaluation tab does the same. The 25 checks, and the results of the reference run, are described in [EVALUATION.md](EVALUATION.md). The scores are saved to `evaluation.json` in the run folder.
+
+One run is one sample. Three scripts measure more: `python scripts/multi_seed.py` regenerates the market with five other random seeds and runs the study on each (5 to 10 minutes per seed, since each new dataset trains its own models), `python scripts/ablations.py` switches off one design choice at a time, and `python scripts/llm_runs.py` runs the study with each LLM provider that has a key and records what the Critic caught. Their results are in [EVALUATION.md](EVALUATION.md).
 
 ## 10. Exporting to SQL
 

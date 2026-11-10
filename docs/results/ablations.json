@@ -1,0 +1,86 @@
+[
+  {
+    "variant": "full system",
+    "options": {},
+    "checks_passed": 24,
+    "checks_total": 25,
+    "failed": [
+      "Recommended concept price"
+    ],
+    "qa_score": 100.0,
+    "scorer": "ensemble",
+    "social_scorer": "ensemble",
+    "review_macro_f1": 0.8165,
+    "social_accuracy": 0.94,
+    "aspect_polarity": 0.987
+  },
+  {
+    "variant": "no transfer check",
+    "options": {
+      "skip_transfer_check": true
+    },
+    "checks_passed": 24,
+    "checks_total": 25,
+    "failed": [
+      "Recommended concept price"
+    ],
+    "qa_score": 100.0,
+    "scorer": "ensemble",
+    "social_scorer": "ensemble",
+    "review_macro_f1": 0.8165,
+    "social_accuracy": 0.94,
+    "aspect_polarity": 0.987
+  },
+  {
+    "variant": "BiGRU only",
+    "options": {
+      "sentiment_model": "bigru"
+    },
+    "checks_passed": 24,
+    "checks_total": 25,
+    "failed": [
+      "Recommended concept price"
+    ],
+    "qa_score": 100.0,
+    "scorer": "bigru",
+    "social_scorer": "bigru",
+    "review_macro_f1": 0.8163,
+    "social_accuracy": 0.93,
+    "aspect_polarity": 0.979
+  },
+  {
+    "variant": "linear model only",
+    "options": {
+      "sentiment_model": "linear"
+    },
+    "checks_passed": 24,
+    "checks_total": 25,
+    "failed": [
+      "Recommended concept price"
+    ],
+    "qa_score": 100.0,
+    "scorer": "linear",
+    "social_scorer": "linear",
+    "review_macro_f1": 0.8006,
+    "social_accuracy": 0.916,
+    "aspect_polarity": 0.979
+  },
+  {
+    "variant": "no social-media rules",
+    "options": {
+      "no_social_rules": true
+    },
+    "checks_passed": 23,
+    "checks_total": 25,
+    "failed": [
+      "Recommended concept price",
+      "Sentiment transfer to all social posts (hidden labels)"
+    ],
+    "qa_score": 100.0,
+    "scorer": "ensemble",
+    "social_scorer": "bigru",
+    "review_macro_f1": 0.8165,
+    "social_accuracy": 0.726,
+    "aspect_polarity": 0.979
+  }
+]

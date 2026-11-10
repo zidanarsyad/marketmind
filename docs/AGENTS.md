@@ -67,7 +67,7 @@ Turns the free-text brief into a validated research plan, dispatches the special
 | Environment | The client's business brief, the available datasets, the Critic's verdicts |
 | Sensors | `options.brief`, `options.client`, the dataset catalogue (scanned from `data/raw`), `qa.result` |
 | Actuators | Tools below; writes `plan`; builds the `Workflow`; sends revision requests to the Report Writer |
-| LLM use | `refine_plan_with_llm` (JSON). The refinement is accepted only if it returns 3-8 objectives and its questions cover every area of the rule-based plan; otherwise the rule-based plan stands. |
+| LLM use | `refine_plan_with_llm` (JSON). The refinement is accepted only if it returns 3-8 objectives and its questions cover every area of the rule-based plan; otherwise the rule-based plan (or its questions) stands, and the Director records the reason as a thought in the trace. |
 | On failure | The run stops with status `failed`, and the trace is saved. |
 
 | Tool | What it does |
@@ -214,7 +214,7 @@ The system's deep-learning agent. It learns sentiment from reviews, checks that 
 | `fit_segments` | Fits the final K-Means model (k-means++, `n_init=20`) on standardised features. |
 | `profile_personas` | Profiles each segment (demographics, spend, concerns, channels, brands, distinctive drivers) and names it. |
 | `evaluate_concept` | Concept purchase intent by segment. Primary target = the segment with the highest intent among those holding at least 10% of consumers. Secondary target = the largest remaining pool of likely buyers (segment share x top-2-box intent). |
-| `price_sensitivity_meter` | Van Westendorp analysis on the target segments: the acceptable range (PMC to PME), the optimal and indifference prices, and a recommended price point. |
+| `price_sensitivity_meter` | Van Westendorp analysis on the target segments: the acceptable range (PMC to PME), the optimal and indifference prices, and a recommended price point: the charm price (Rp ...900) nearest the middle of the optimal zone, inside the acceptable range. It then checks how well the data supports that price. It resamples the respondents 200 times (bootstrap) and reports how often each price wins, with 90% intervals for the optimal and indifference prices. It also counts the answers that place the optimal price point: the 'too cheap' and 'too expensive' answers within 5% of it. SEG-04 calls the pick stable only when it wins at least 90% of resamples and at least 10 answers sit on each side. Otherwise it says the pick is not settled, names the runner-up and lowers its confidence from 0.75 to 0.6. The count matters because the bootstrap only resamples the answers that exist, so it cannot show that only a handful of respondents decide the price. |
 
 ### 3.8 Demand Forecasting Agent (machine learning)
 
@@ -232,8 +232,8 @@ The system's deep-learning agent. It learns sentiment from reviews, checks that 
 | Tool | What it does |
 |---|---|
 | `build_monthly_panel` | Aggregates sales to about 150 monthly series (brand x category x channel), with calendar features. |
-| `estimate_price_elasticity` | Fixed-effects log-log demand regression for each brand, with HC1 robust standard errors. |
-| `backtest_models` | Rolling-origin backtest (3 folds x 6 months) of four candidates: gradient boosting, seasonal naive, seasonal naive with drift, and a gradient boosting + drift ensemble. The candidate with the lowest series WAPE wins. |
+| `estimate_price_elasticity` | Fixed-effects log-log demand regression for each brand: series effects, month x channel effects (seasonal and campaign peaks differ by channel), a quadratic trend per brand and a stock-out term. Standard errors are clustered by series, since a series' errors are correlated over time. |
+| `backtest_models` | Rolling-origin backtest (3 folds x 6 months) of four candidates: gradient boosting, seasonal naive, seasonal naive with drift, and a gradient boosting + drift ensemble. The candidate with the lowest series WAPE wins. It also records which model is most accurate for the client's total and in how many folds; when that is a different model, FCT-05 says so, because a model chosen for the mix across series is not automatically the best for one total. |
 | `forecast_demand` | Forecasts the next `horizon_months` months with the winning model, with 80% intervals derived from the backtest errors. |
 | `simulate_price_scenarios` | Uses the client's elasticity to estimate the effect of price changes on volume, revenue and profit. |
 
@@ -260,7 +260,7 @@ The gradient-boosting model is a global, direct multi-horizon `HistGradientBoost
 | `apply_strategy_playbook` | Evidence-triggered rules. Each play fires only if at least one of its evidence findings exists. Its impact is the highest impact among that evidence, and its confidence is the mean confidence. The effort factor is 1.0 for Low, 0.85 for Medium and 0.7 for High effort. Recommendations are numbered R1, R2, ... in order of priority and placed on a horizon: Quick win (0-3 months), Core move (0-6 or 0-12 months) or Strategic bet. |
 | `draft_executive_summary` | Writes a deterministic summary from the key findings, and optionally an LLM version. |
 
-Playbook rules (each fires only when its evidence exists): channel growth engine (CMP-02, MKT-03, CMP-07); fix the pain point (CON-03, CON-09); launch the concept at the Van Westendorp price (SEG-02, SEG-04, CMP-08, CON-07, MKT-06); hold list prices if demand is elastic (FCT-04, CON-06); expand distribution in growth regions (CMP-04, MKT-04); defend against the top threat (CMP-05, SEG-05); win over a competitor's customers during its crisis (CON-05, SEG-05); plan stock and campaigns around Ramadan (MKT-05, CMP-09, FCT-01).
+Playbook rules (each fires only when its evidence exists): channel growth engine (CMP-02, MKT-03, CMP-07); fix the pain point (CON-03, CON-09); launch the concept at the Van Westendorp price, and test the runner-up price too when SEG-04 says the pick is not settled (SEG-02, SEG-04, CMP-08, CON-07, MKT-06); hold list prices if demand is elastic (FCT-04, CON-06); expand distribution in growth regions (CMP-04, MKT-04); defend against the top threat (CMP-05, SEG-05); win over a competitor's customers during its crisis (CON-05, SEG-05); plan stock and campaigns around Ramadan (MKT-05, CMP-09, FCT-01).
 
 ### 3.10 Report Writer Agent
 

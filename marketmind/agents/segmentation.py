@@ -8,11 +8,35 @@ import pandas as pd
 from ..core.agent import BaseAgent
 from ..core.findings import Finding
 from ..ml import segmentation as seg
-from ..ml.pricing import van_westendorp
+from ..ml.pricing import van_westendorp, van_westendorp_bootstrap
 from .common import client_key, idr, minmax, pct
 
 PRICE_POINTS = [49900, 59900, 69900, 79900, 89900, 99900, 109900, 119900, 129900, 149900, 179900, 199900]
 VW_COLS = ("vw_too_cheap_idr", "vw_cheap_idr", "vw_expensive_idr", "vw_too_expensive_idr")
+STABLE_PRICE_SUPPORT = 0.9   # share of bootstrap resamples the recommended price must win to be called stable
+MIN_TAIL_RESPONDENTS = 10    # conventional minimum base: fewer answers than this in a tail cannot place the OPP
+
+
+def ranked_prices(points: dict) -> list[int]:
+    """Charm prices inside the acceptable range, nearest the middle of the optimal zone (OPP to IPP) first."""
+    lo, hi = sorted([points["opp"], points["ipp"]])
+    mid = (lo + hi) / 2
+    allowed = [p for p in PRICE_POINTS if points["pmc"] <= p <= points["pme"]] or PRICE_POINTS
+    return sorted(allowed, key=lambda p: abs(p - mid))
+
+
+def recommend_price(points: dict) -> int:
+    """The charm price nearest the middle of the optimal zone (OPP to IPP), within the acceptable range."""
+    return ranked_prices(points)[0]
+
+
+def opp_tail_counts(df: pd.DataFrame, opp: float, window: float = 0.05) -> tuple[int, int]:
+    """How many respondents place the optimal price point: those who call prices near it (within 5%) too cheap,
+    and those who call them too expensive. The OPP is where these two sparse tails cross, so when either count is
+    tiny a single respondent can move it."""
+    if opp is None or np.isnan(opp):
+        return 0, 0
+    return (int((df[VW_COLS[0]] >= (1 - window) * opp).sum()), int((df[VW_COLS[3]] <= (1 + window) * opp).sum()))
 
 
 class SegmentationAgent(BaseAgent):
@@ -104,13 +128,17 @@ class SegmentationAgent(BaseAgent):
         overall, _ = van_westendorp(df, *VW_COLS)
         target, curves = van_westendorp(df[target_mask], *VW_COLS)
         prim, _ = van_westendorp(df[labels == int(primary["segment"])], *VW_COLS)
-        lo, hi = sorted([target["opp"], target["ipp"]])
-        mid = (lo + hi) / 2
-        allowed = [p for p in PRICE_POINTS if target["pmc"] <= p <= target["pme"]] or PRICE_POINTS
-        rec = min(allowed, key=lambda p: abs(p - mid))
+        ranked = ranked_prices(target)
+        rec = ranked[0]
+        stability = van_westendorp_bootstrap(df[target_mask], *VW_COLS, recommend=recommend_price)
+        support = stability["price_shares"].get(rec, 0.0)
+        tails = opp_tail_counts(df[target_mask], target["opp"])
+        self.think(f"Recommended price {idr(rec)} is the pick in {support:.0%} of {stability['n_boot']} bootstrap resamples; "
+                   f"the optimal price point rests on {tails[0]} 'too cheap' and {tails[1]} 'too expensive' answers near it.")
         points = pd.DataFrame([dict(group="All respondents", **overall), dict(group="Target segments", **target),
                                dict(group=f"Primary: {primary['name']}", **prim)])
-        return dict(curves=curves, points=points, target=target, overall=overall, recommended_price=rec)
+        return dict(curves=curves, points=points, target=target, overall=overall, recommended_price=rec,
+                    next_price=ranked[1] if len(ranked) > 1 else None, stability=stability, opp_tails=tails)
 
     # ------------------------------------------------------------------ findings
     def _publish_findings(self, df, ktab, k, profiles, concept, vw, brand_mix) -> None:
@@ -147,15 +175,32 @@ class SegmentationAgent(BaseAgent):
             metrics=dict(segment=s["name"], share=s["share"], concept_t2b=s["concept_t2b"], spend_idr=s["spend_mean_idr"]),
             evidence=["consumer_survey.csv (concept test)"], impact=3, confidence=0.75, swot="O", tags=["target", "concept"]))
 
-        t = vw["target"]
+        t, st, rec = vw["target"], vw["stability"], vw["recommended_price"]
+        support = st["price_shares"].get(rec, 0.0)
+        others = {p: s for p, s in st["price_shares"].items() if p != rec}
+        alt = max(others, key=others.get) if others else vw["next_price"]
+        few_cheap, few_dear = vw["opp_tails"]
+        thin = min(few_cheap, few_dear) < MIN_TAIL_RESPONDENTS
+        settled = support >= STABLE_PRICE_SUPPORT and not thin
+        thin_note = (f" The optimal price point ({idr(t['opp'])}) is poorly determined: only {few_cheap} 'too cheap' and "
+                     f"{few_dear} 'too expensive' answers fall near it." if thin else "")
+        robustness = (f" The pick is stable: {idr(rec)} wins in {pct(support, 0, sign=False)} of {st['n_boot']} bootstrap "
+                      f"resamples of the respondents." if settled else
+                      f" The pick is not settled: {idr(rec)} wins in {pct(support, 0, sign=False)} of {st['n_boot']} bootstrap "
+                      f"resamples of the respondents" + (f" and {idr(alt)} in {pct(others[alt], 0, sign=False)}" if alt in others
+                                                         else "") + (f", so test {idr(rec)} against {idr(alt)}." if alt else "."))
         self.publish(Finding(
             id="SEG-04", agent=self.name, area="pricing", title="Concept price research (Van Westendorp)",
             statement=(f"Among the two target segments (n={t['n']:,}), the acceptable price range for the concept is "
                        f"{idr(t['pmc'])}-{idr(t['pme'])} and the optimal zone {idr(min(t['opp'], t['ipp']))}-"
-                       f"{idr(max(t['opp'], t['ipp']))}; recommended launch price: {idr(vw['recommended_price'])}."),
-            metrics=dict(pmc=t["pmc"], opp=t["opp"], ipp=t["ipp"], pme=t["pme"], n=t["n"],
-                         recommended_price=vw["recommended_price"]),
-            evidence=["consumer_survey.csv (Van Westendorp PSM)"], impact=4, confidence=0.75, swot="O", tags=["price", "concept"]))
+                       f"{idr(max(t['opp'], t['ipp']))}; recommended launch price: {idr(rec)}." + thin_note + robustness),
+            metrics=dict(pmc=t["pmc"], opp=t["opp"], ipp=t["ipp"], pme=t["pme"], n=t["n"], recommended_price=rec,
+                         price_settled=settled, price_support=support, alternative_price=alt,
+                         alternative_support=others.get(alt), opp_tail_too_cheap=few_cheap, opp_tail_too_expensive=few_dear,
+                         opp_90_low=st["opp_90"][0], opp_90_high=st["opp_90"][1], ipp_90_low=st["ipp_90"][0],
+                         ipp_90_high=st["ipp_90"][1], bootstrap_resamples=st["n_boot"]),
+            evidence=["consumer_survey.csv (Van Westendorp PSM)"], impact=4, confidence=0.75 if settled else 0.6,
+            swot="O", tags=["price", "concept"]))
 
         bm = brand_mix.set_index("segment")
         for prof in profiles.sort_values("share", ascending=False).itertuples():

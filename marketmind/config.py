@@ -10,16 +10,19 @@ except ImportError:  # python-dotenv is optional
     load_dotenv = None
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_RAW = ROOT / "data" / "raw"
-DATA_EXTERNAL = ROOT / "data" / "external"
-GROUND_TRUTH = ROOT / "data" / "ground_truth.json"
-OUTPUTS = ROOT / "outputs"
+if load_dotenv is not None:
+    load_dotenv(ROOT / ".env")
+
+# MARKETMIND_DATA_DIR and MARKETMIND_OUTPUTS point a run at another dataset and output folder
+# (scripts/multi_seed.py uses them to study data generated with other seeds, in isolation)
+DATA_DIR = Path(os.getenv("MARKETMIND_DATA_DIR") or ROOT / "data")
+DATA_RAW = DATA_DIR / "raw"
+DATA_EXTERNAL = ROOT / "data" / "external"     # downloaded corpora and API caches are shared
+GROUND_TRUTH = DATA_DIR / "ground_truth.json"
+OUTPUTS = Path(os.getenv("MARKETMIND_OUTPUTS") or ROOT / "outputs")
 RUNS_DIR = OUTPUTS / "runs"
 MODELS_DIR = OUTPUTS / "models"
 CACHE_DIR = OUTPUTS / "cache"
-
-if load_dotenv is not None:
-    load_dotenv(ROOT / ".env")
 
 DATASETS = {
     "sales": dict(file="market_sales_panel.csv", description="Monthly sell-out panel by brand, category, channel and region",

@@ -10,7 +10,7 @@ The [design proposal](https://claude.ai/artifact/QY1WcVtyNZYJ5pHcy2nUEB), a Clau
 | [SCHEMAS.md](SCHEMAS.md) | Look up the data contracts: JSON Schemas for every artefact and message, the blackboard key registry, dataset row contracts, the SQL model and how to validate | Developers, data engineers |
 | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) | Look up every column of the seven research datasets | Analysts, data engineers |
 | [DATA_SOURCES.md](DATA_SOURCES.md) | Find real public datasets and statistics that can replace, validate or calibrate the simulated data, with licences and a simulated-versus-real comparison | Analysts, data engineers, reviewers |
-| [EVALUATION.md](EVALUATION.md) | See how well the system works: 25 ground-truth checks, model metrics, data quality, governance, timings and threats to validity | Reviewers, lecturers |
+| [EVALUATION.md](EVALUATION.md) | See how well the system works: 25 ground-truth checks, model metrics, robustness across data seeds, ablations, real-LLM runs, data quality, governance, timings and threats to validity (raw results in `results/`) | Reviewers, lecturers |
 | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Extend MarketMind: core APIs, adding agents, tools, charts, datasets and LLM providers, testing, debugging | Developers |
 | [schemas/](schemas/) | The machine-readable contracts: 15 JSON Schemas and `database.sql` | Tools and tests |
 | [diagrams/gallery.html](diagrams/gallery.html) | All 14 diagrams on one page, with SVG and PNG export (open it in a browser) | Everyone |

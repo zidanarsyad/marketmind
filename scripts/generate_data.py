@@ -61,7 +61,7 @@ BRANDS: dict[str, dict] = {
         price_index=1.00, base_rev=40e9, elasticity=-1.3, promo=1.0, review_rate=2.4,  # client scrapes all own reviews
         growth={2023: 0.16, 2024: 0.17, 2025: 0.13, 2026: 0.11},
         cat_mix={"Facial Wash": 0.18, "Toner": 0.10, "Serum": 0.14, "Moisturizer": 0.30, "Sunscreen": 0.28},
-        ch_start=[0.40, 0.18, 0.07, 0.08, 0.27], ch_end=[0.38, 0.11, 0.12, 0.07, 0.32],
+        ch_start=[0.49, 0.09, 0.07, 0.08, 0.27], ch_end=[0.44, 0.05, 0.12, 0.07, 0.32],
         region_tilt=[1.15, 1.40, 1.00, 0.85, 0.65, 0.55, 0.80],
         quality=dict(efektivitas=0.80, tekstur=0.88, aroma=0.74, kemasan=0.82, harga=0.66,
                      pengiriman=0.84, reaksi_kulit=0.82, keaslian=0.96, stok=0.86),
@@ -70,7 +70,7 @@ BRANDS: dict[str, dict] = {
         price_index=1.35, base_rev=96e9, elasticity=-0.9, promo=0.8, review_rate=1.0,
         growth={2023: 0.10, 2024: 0.10, 2025: 0.10, 2026: 0.11},
         cat_mix={"Facial Wash": 0.12, "Toner": 0.16, "Serum": 0.40, "Moisturizer": 0.18, "Sunscreen": 0.14},
-        ch_start=[0.38, 0.24, 0.10, 0.10, 0.18], ch_end=[0.34, 0.16, 0.24, 0.08, 0.18],
+        ch_start=[0.50, 0.12, 0.10, 0.10, 0.18], ch_end=[0.42, 0.08, 0.24, 0.08, 0.18],
         region_tilt=[1.25, 1.10, 0.95, 1.00, 0.90, 0.80, 1.00],
         quality=dict(efektivitas=0.89, tekstur=0.85, aroma=0.82, kemasan=0.86, harga=0.42,
                      pengiriman=0.86, reaksi_kulit=0.87, keaslian=0.96, stok=0.90),
@@ -79,7 +79,7 @@ BRANDS: dict[str, dict] = {
         price_index=0.75, base_rev=87.5e9, elasticity=-1.5, promo=1.0, review_rate=0.85,
         growth={2023: 0.02, 2024: 0.02, 2025: 0.01, 2026: 0.03},
         cat_mix={"Facial Wash": 0.32, "Toner": 0.14, "Serum": 0.12, "Moisturizer": 0.24, "Sunscreen": 0.18},
-        ch_start=[0.22, 0.10, 0.05, 0.06, 0.57], ch_end=[0.22, 0.07, 0.14, 0.05, 0.52],
+        ch_start=[0.27, 0.05, 0.05, 0.06, 0.57], ch_end=[0.26, 0.03, 0.14, 0.05, 0.52],
         region_tilt=[0.85, 0.95, 1.30, 1.30, 1.00, 0.90, 0.80],
         quality=dict(efektivitas=0.70, tekstur=0.75, aroma=0.72, kemasan=0.72, harga=0.88,
                      pengiriman=0.80, reaksi_kulit=0.80, keaslian=0.95, stok=0.92),
@@ -88,7 +88,7 @@ BRANDS: dict[str, dict] = {
         price_index=0.65, base_rev=35e9, elasticity=-1.8, promo=1.4, review_rate=1.3,
         growth={2023: 0.42, 2024: 0.38, 2025: 0.30, 2026: 0.22},
         cat_mix={"Facial Wash": 0.18, "Toner": 0.10, "Serum": 0.30, "Moisturizer": 0.16, "Sunscreen": 0.26},
-        ch_start=[0.30, 0.10, 0.45, 0.05, 0.10], ch_end=[0.22, 0.05, 0.62, 0.03, 0.08],
+        ch_start=[0.35, 0.05, 0.45, 0.05, 0.10], ch_end=[0.25, 0.02, 0.62, 0.03, 0.08],
         region_tilt=[0.90, 0.95, 0.95, 1.00, 1.20, 1.30, 1.00],
         quality=dict(efektivitas=0.73, tekstur=0.77, aroma=0.70, kemasan=0.68, harga=0.91,
                      pengiriman=0.74, reaksi_kulit=0.66, keaslian=0.82, stok=0.80),
@@ -97,7 +97,7 @@ BRANDS: dict[str, dict] = {
         price_index=2.10, base_rev=46.7e9, elasticity=-0.6, promo=0.7, review_rate=0.8,
         growth={2023: -0.01, 2024: -0.03, 2025: -0.05, 2026: -0.05},
         cat_mix={"Facial Wash": 0.10, "Toner": 0.12, "Serum": 0.34, "Moisturizer": 0.32, "Sunscreen": 0.12},
-        ch_start=[0.25, 0.20, 0.03, 0.07, 0.45], ch_end=[0.28, 0.14, 0.08, 0.06, 0.44],
+        ch_start=[0.35, 0.10, 0.03, 0.07, 0.45], ch_end=[0.35, 0.07, 0.08, 0.06, 0.44],
         region_tilt=[1.50, 1.00, 0.80, 0.95, 0.75, 0.70, 1.10],
         quality=dict(efektivitas=0.87, tekstur=0.83, aroma=0.84, kemasan=0.91, harga=0.33,
                      pengiriman=0.86, reaksi_kulit=0.88, keaslian=0.97, stok=0.92),
@@ -106,7 +106,7 @@ BRANDS: dict[str, dict] = {
         price_index=1.15, base_rev=25e9, elasticity=-1.1, promo=0.8, review_rate=1.0,
         growth={2023: 0.08, 2024: 0.10, 2025: 0.12, 2026: 0.14},
         cat_mix={"Facial Wash": 0.24, "Toner": 0.26, "Serum": 0.18, "Moisturizer": 0.20, "Sunscreen": 0.12},
-        ch_start=[0.42, 0.25, 0.08, 0.10, 0.15], ch_end=[0.40, 0.16, 0.20, 0.08, 0.16],
+        ch_start=[0.54, 0.13, 0.08, 0.10, 0.15], ch_end=[0.48, 0.08, 0.20, 0.08, 0.16],
         region_tilt=[1.20, 1.10, 1.00, 0.90, 0.85, 0.80, 1.40],
         quality=dict(efektivitas=0.77, tekstur=0.81, aroma=0.52, kemasan=0.83, harga=0.58,
                      pengiriman=0.80, reaksi_kulit=0.73, keaslian=0.95, stok=0.88),
@@ -858,11 +858,11 @@ SEGMENTS = [
          income=[0.55, 0.30, 0.12, 0.03, 0.00], spend=95000, steps=(2, 4), freq=1.3,
          skin={"oily": 0.50, "combination": 0.30, "normal": 0.10, "sensitive": 0.07, "dry": 0.03},
          concern={"Acne & breakouts": 0.65, "Oil control": 0.20, "Dullness": 0.15},
-         channel={"TikTok Shop": 0.55, "Shopee": 0.35, "Offline Retail": 0.05, "Tokopedia": 0.05},
+         channel={"TikTok Shop": 0.50, "Shopee": 0.30, "Offline Retail": 0.12, "Lazada": 0.05, "Tokopedia": 0.03},
          brand={"GlowNesia": 0.45, CLIENT: 0.18, "DewiSkin": 0.15, "Lumière Lab": 0.10, "Purabotanica": 0.05,
                 "Other local brand": 0.07},
          social=5.2, platform={"TikTok": 0.70, "Instagram": 0.25, "YouTube": 0.05}, trust=4.1,
-         imp=dict(price=4.7, halal=3.4, ingredients=3.2, brand_reputation=2.7, packaging=3.2, reviews_influencers=4.5,
+         imp=dict(price=4.7, halal=3.9, ingredients=3.2, brand_reputation=2.7, packaging=3.2, reviews_influencers=4.5,
                   local_brand=3.6, sustainability=2.3, fragrance_free=2.5, fast_results=4.6),
          intent=3.0, vw=(30000, 50000, 80000, 105000)),
     dict(name="Ingredient-Savvy Professionals", share=0.24, age=(27.5, 3.0, 22, 36), female=0.80,
@@ -871,11 +871,11 @@ SEGMENTS = [
          skin={"combination": 0.35, "normal": 0.25, "oily": 0.20, "dry": 0.10, "sensitive": 0.10},
          concern={"Dullness": 0.35, "Dark spots": 0.35, "Acne & breakouts": 0.15, "Fine lines & aging": 0.10,
                   "Dryness & barrier": 0.05},
-         channel={"Shopee": 0.45, "Tokopedia": 0.25, "TikTok Shop": 0.20, "Offline Retail": 0.10},
+         channel={"Shopee": 0.42, "TikTok Shop": 0.20, "Offline Retail": 0.20, "Lazada": 0.10, "Tokopedia": 0.08},
          brand={"Lumière Lab": 0.45, CLIENT: 0.22, "GlowNesia": 0.10, "Purabotanica": 0.10, "Aurelia Derma": 0.05,
                 "DewiSkin": 0.05, "Other local brand": 0.03},
          social=4.2, platform={"Instagram": 0.45, "TikTok": 0.40, "YouTube": 0.15}, trust=3.4,
-         imp=dict(price=3.5, halal=3.0, ingredients=4.8, brand_reputation=3.2, packaging=3.0, reviews_influencers=4.3,
+         imp=dict(price=3.5, halal=3.8, ingredients=4.8, brand_reputation=3.2, packaging=3.0, reviews_influencers=4.3,
                   local_brand=3.6, sustainability=2.8, fragrance_free=2.9, fast_results=4.2),
          intent=3.6, vw=(45000, 70000, 115000, 150000)),
     dict(name="Halal Value Seekers", share=0.22, age=(35, 6.0, 24, 52), female=0.90,
@@ -884,7 +884,7 @@ SEGMENTS = [
          skin={"normal": 0.35, "combination": 0.25, "dry": 0.20, "oily": 0.15, "sensitive": 0.05},
          concern={"Dullness": 0.40, "Dryness & barrier": 0.20, "Dark spots": 0.20, "Fine lines & aging": 0.15,
                   "Acne & breakouts": 0.05},
-         channel={"Offline Retail": 0.55, "Shopee": 0.30, "TikTok Shop": 0.10, "Tokopedia": 0.05},
+         channel={"Offline Retail": 0.62, "Shopee": 0.22, "TikTok Shop": 0.08, "Lazada": 0.05, "Tokopedia": 0.03},
          brand={"DewiSkin": 0.50, CLIENT: 0.25, "GlowNesia": 0.07, "Lumière Lab": 0.08, "Purabotanica": 0.05,
                 "Aurelia Derma": 0.02, "Other local brand": 0.03},
          social=2.6, platform={"Instagram": 0.40, "YouTube": 0.30, "TikTok": 0.25, "Facebook": 0.05}, trust=2.9,
@@ -896,11 +896,11 @@ SEGMENTS = [
          income=[0.00, 0.03, 0.17, 0.45, 0.35], spend=560000, steps=(5, 7), freq=1.6,
          skin={"dry": 0.40, "normal": 0.30, "combination": 0.20, "sensitive": 0.10},
          concern={"Fine lines & aging": 0.70, "Dark spots": 0.20, "Dryness & barrier": 0.10},
-         channel={"Offline Retail": 0.45, "Shopee": 0.30, "Tokopedia": 0.20, "TikTok Shop": 0.05},
+         channel={"Offline Retail": 0.55, "Shopee": 0.25, "Lazada": 0.10, "Tokopedia": 0.07, "TikTok Shop": 0.03},
          brand={"Aurelia Derma": 0.45, "Lumière Lab": 0.30, CLIENT: 0.10, "Purabotanica": 0.08, "DewiSkin": 0.05,
                 "Other local brand": 0.02},
          social=2.0, platform={"Instagram": 0.55, "YouTube": 0.30, "TikTok": 0.15}, trust=2.3,
-         imp=dict(price=2.0, halal=3.3, ingredients=4.2, brand_reputation=4.9, packaging=4.5, reviews_influencers=2.6,
+         imp=dict(price=2.0, halal=3.8, ingredients=4.2, brand_reputation=4.9, packaging=4.5, reviews_influencers=2.6,
                   local_brand=2.3, sustainability=3.3, fragrance_free=3.2, fast_results=3.2),
          intent=2.9, vw=(70000, 100000, 160000, 220000)),
     dict(name="Sensitive-Skin Minimalists", share=0.15, age=(27, 4.0, 19, 38), female=0.78,
@@ -908,11 +908,11 @@ SEGMENTS = [
          income=[0.08, 0.25, 0.40, 0.22, 0.05], spend=210000, steps=(2, 3), freq=1.2,
          skin={"sensitive": 0.65, "dry": 0.20, "combination": 0.10, "normal": 0.05},
          concern={"Sensitivity & redness": 0.60, "Dryness & barrier": 0.25, "Acne & breakouts": 0.15},
-         channel={"Shopee": 0.40, "TikTok Shop": 0.25, "Tokopedia": 0.20, "Offline Retail": 0.15},
+         channel={"Shopee": 0.38, "TikTok Shop": 0.22, "Offline Retail": 0.22, "Lazada": 0.10, "Tokopedia": 0.08},
          brand={"Purabotanica": 0.30, CLIENT: 0.30, "Lumière Lab": 0.20, "DewiSkin": 0.08, "GlowNesia": 0.07,
                 "Aurelia Derma": 0.03, "Other local brand": 0.02},
          social=3.3, platform={"Instagram": 0.40, "TikTok": 0.40, "YouTube": 0.15, "X": 0.05}, trust=2.8,
-         imp=dict(price=3.4, halal=3.2, ingredients=4.4, brand_reputation=3.3, packaging=3.0, reviews_influencers=3.6,
+         imp=dict(price=3.4, halal=3.9, ingredients=4.4, brand_reputation=3.3, packaging=3.0, reviews_influencers=3.6,
                   local_brand=3.6, sustainability=4.4, fragrance_free=4.9, fast_results=2.6),
          intent=4.4, vw=(45000, 70000, 110000, 145000)),
 ]
@@ -1039,9 +1039,12 @@ def build_market_size() -> pd.DataFrame:
 # ----------------------------------------------------------------------------- main
 
 def main() -> None:
+    global SEED
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--out", type=Path, default=RAW)
+    ap.add_argument("--out", type=Path, default=RAW, help="folder for the raw files; ground truth goes next to it")
+    ap.add_argument("--seed", type=int, default=SEED, help="random seed (the bundled data uses 2026)")
     args = ap.parse_args()
+    SEED = args.seed
     args.out.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(SEED)
     pyr = random.Random(SEED)

@@ -207,7 +207,7 @@ class ReportWriterAgent(BaseAgent):
         if fmc:
             cards.append(f"- **Demand Forecasting Agent (machine learning):** candidates {', '.join(fmc['candidates'])}; "
                          f"winner `{fmc['model']}` by 3-fold rolling-origin backtest; fixed-effects log-log price elasticities.")
-        llm_note = (f"LLM support: {self.llm.describe()} - used for planning and narrative only; every number comes "
+        llm_note = (f"LLM support: `{self.llm.describe()}` - used for planning and narrative only; every number comes "
                     f"from deterministic tools and is verified by the Critic.") if self.llm.available else \
                    "LLM support: none (offline mode) - all reasoning and narrative are deterministic."
         meth = ("Eleven cooperating agents shared a blackboard: a Research Director planned the study from the brief, a "

@@ -1,0 +1,236 @@
+{
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "runs": [
+    {
+      "seed": 1,
+      "status": "completed",
+      "exit_code": 0,
+      "minutes": 7.9,
+      "checks_passed": 22,
+      "checks_total": 25,
+      "qa_score": 100.0,
+      "failed": [
+        "Fastest-growing category",
+        "Declining topics recalled",
+        "Recommended concept price"
+      ],
+      "sentiment_selected": "bigru",
+      "sentiment_macro_f1": 0.8228,
+      "transfer_macro_f1": 0.8973,
+      "social_accuracy": 0.926,
+      "aspect_precision": 0.924,
+      "aspect_polarity": 0.989,
+      "segment_ari": 0.988,
+      "forecast_wape": 0.14,
+      "naive_wape": 0.1802,
+      "client_elasticity_error": -0.017,
+      "elasticity_mae": 0.056,
+      "elasticity_ci_coverage": 3,
+      "recommended_price": 79900.0
+    },
+    {
+      "seed": 2,
+      "status": "completed",
+      "exit_code": 0,
+      "minutes": 8.6,
+      "checks_passed": 25,
+      "checks_total": 25,
+      "qa_score": 100.0,
+      "failed": [],
+      "sentiment_selected": "ensemble",
+      "sentiment_macro_f1": 0.819,
+      "transfer_macro_f1": 0.8993,
+      "social_accuracy": 0.939,
+      "aspect_precision": 0.91,
+      "aspect_polarity": 0.977,
+      "segment_ari": 0.986,
+      "forecast_wape": 0.1503,
+      "naive_wape": 0.1773,
+      "client_elasticity_error": -0.088,
+      "elasticity_mae": 0.057,
+      "elasticity_ci_coverage": 5,
+      "recommended_price": 89900.0
+    },
+    {
+      "seed": 3,
+      "status": "completed",
+      "exit_code": 0,
+      "minutes": 9.7,
+      "checks_passed": 24,
+      "checks_total": 25,
+      "qa_score": 100.0,
+      "failed": [
+        "Recommended concept price"
+      ],
+      "sentiment_selected": "ensemble",
+      "sentiment_macro_f1": 0.8369,
+      "transfer_macro_f1": 0.8732,
+      "social_accuracy": 0.901,
+      "aspect_precision": 0.907,
+      "aspect_polarity": 0.975,
+      "segment_ari": 0.985,
+      "forecast_wape": 0.1469,
+      "naive_wape": 0.1735,
+      "client_elasticity_error": -0.132,
+      "elasticity_mae": 0.066,
+      "elasticity_ci_coverage": 3,
+      "recommended_price": 79900.0
+    },
+    {
+      "seed": 4,
+      "status": "completed",
+      "exit_code": 0,
+      "minutes": 11.2,
+      "checks_passed": 22,
+      "checks_total": 25,
+      "qa_score": 100.0,
+      "failed": [
+        "Rising topics recalled",
+        "Declining topics recalled",
+        "Recommended concept price"
+      ],
+      "sentiment_selected": "ensemble",
+      "sentiment_macro_f1": 0.8136,
+      "transfer_macro_f1": 0.889,
+      "social_accuracy": 0.915,
+      "aspect_precision": 0.914,
+      "aspect_polarity": 0.986,
+      "segment_ari": 0.986,
+      "forecast_wape": 0.1496,
+      "naive_wape": 0.1777,
+      "client_elasticity_error": -0.029,
+      "elasticity_mae": 0.048,
+      "elasticity_ci_coverage": 5,
+      "recommended_price": 79900.0
+    },
+    {
+      "seed": 5,
+      "status": "completed",
+      "exit_code": 0,
+      "minutes": 11.3,
+      "checks_passed": 25,
+      "checks_total": 25,
+      "qa_score": 100.0,
+      "failed": [],
+      "sentiment_selected": "ensemble",
+      "sentiment_macro_f1": 0.83,
+      "transfer_macro_f1": 0.9222,
+      "social_accuracy": 0.913,
+      "aspect_precision": 0.909,
+      "aspect_polarity": 0.989,
+      "segment_ari": 0.981,
+      "forecast_wape": 0.148,
+      "naive_wape": 0.1836,
+      "client_elasticity_error": -0.039,
+      "elasticity_mae": 0.075,
+      "elasticity_ci_coverage": 5,
+      "recommended_price": 89900.0
+    }
+  ],
+  "stats": {
+    "minutes": {
+      "mean": 9.74,
+      "std": 1.5209,
+      "min": 7.9,
+      "max": 11.3
+    },
+    "checks_passed": {
+      "mean": 23.6,
+      "std": 1.5166,
+      "min": 22.0,
+      "max": 25.0
+    },
+    "qa_score": {
+      "mean": 100.0,
+      "std": 0.0,
+      "min": 100.0,
+      "max": 100.0
+    },
+    "sentiment_macro_f1": {
+      "mean": 0.8245,
+      "std": 0.0092,
+      "min": 0.8136,
+      "max": 0.8369
+    },
+    "transfer_macro_f1": {
+      "mean": 0.8962,
+      "std": 0.0178,
+      "min": 0.8732,
+      "max": 0.9222
+    },
+    "social_accuracy": {
+      "mean": 0.9188,
+      "std": 0.0144,
+      "min": 0.901,
+      "max": 0.939
+    },
+    "aspect_precision": {
+      "mean": 0.9128,
+      "std": 0.0068,
+      "min": 0.907,
+      "max": 0.924
+    },
+    "aspect_polarity": {
+      "mean": 0.9832,
+      "std": 0.0067,
+      "min": 0.975,
+      "max": 0.989
+    },
+    "segment_ari": {
+      "mean": 0.9852,
+      "std": 0.0026,
+      "min": 0.981,
+      "max": 0.988
+    },
+    "forecast_wape": {
+      "mean": 0.147,
+      "std": 0.0041,
+      "min": 0.14,
+      "max": 0.1503
+    },
+    "naive_wape": {
+      "mean": 0.1785,
+      "std": 0.0037,
+      "min": 0.1735,
+      "max": 0.1836
+    },
+    "client_elasticity_error": {
+      "mean": -0.061,
+      "std": 0.048,
+      "min": -0.132,
+      "max": -0.017
+    },
+    "elasticity_mae": {
+      "mean": 0.0604,
+      "std": 0.0104,
+      "min": 0.048,
+      "max": 0.075
+    },
+    "elasticity_ci_coverage": {
+      "mean": 4.2,
+      "std": 1.0954,
+      "min": 3.0,
+      "max": 5.0
+    },
+    "recommended_price": {
+      "mean": 83900.0,
+      "std": 5477.2256,
+      "min": 79900.0,
+      "max": 89900.0
+    }
+  },
+  "failures": {
+    "Fastest-growing category": 1,
+    "Declining topics recalled": 2,
+    "Recommended concept price": 3,
+    "Rising topics recalled": 1
+  },
+  "all_checks_passed": 2,
+  "elasticity_ci_coverage_rate": 0.7
+}

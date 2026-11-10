@@ -225,7 +225,7 @@ A study can run on real data kept in its own folder, next to the bundled simulat
 
 1. Download `archive.zip` of the Tokopedia Product and Review Dataset from Kaggle (an account is needed; CC BY-NC 4.0, research and education only).
 2. Import it: `python scripts/import_tokopedia.py path/to/archive.zip`. This writes `data/real/tokopedia-2025/` with the facial-skincare reviews and products in MarketMind's formats, checks every row, and lists the brands with the most reviews.
-3. Study it: `python run.py --data-dir data/real/tokopedia-2025 --client "<one of those brands>"`. For the dashboard, set the folder first: `MARKETMIND_DATA_DIR=data/real/tokopedia-2025 streamlit run app/dashboard.py`.
+3. Study it: `python run.py --data-dir data/real/tokopedia-2025 --client "<one of those brands>"`. For the dashboard, set the folder first: `MARKETMIND_DATA_DIR=data/real/tokopedia-2025 streamlit run app/dashboard.py`; for the web app, `MARKETMIND_DATA_DIR=data/real/tokopedia-2025 python -m api`.
 
 What changes with real data:
 

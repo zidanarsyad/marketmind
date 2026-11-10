@@ -121,7 +121,7 @@ flowchart LR
 | Competitive Intelligence | Competitive analyst | share & momentum, channel/region over-indexing, price-value map, share of voice, multi-factor threat index, white-space scan, stock-out losses | 9 competition findings |
 | **Consumer Insight (DL)** | NLP specialist | BiGRU-attention + TF-IDF/LogReg + ensemble, aspect-based sentiment, Poisson complaint-spike detection, NMF topics, social transfer | sentiment, pain points, crises |
 | **Consumer Segmentation (ML)** | Quant researcher | K-Means (k by silhouette), PCA, persona naming, concept test, **Van Westendorp** | segments, target, launch price |
-| **Demand Forecasting (ML)** | Forecasting economist | global direct multi-horizon gradient boosting, rolling-origin backtest, intervals, FE log-log **price elasticity** | 12-month outlook, scenarios |
+| **Demand Forecasting (ML)** | Forecasting economist | global direct multi-horizon gradient boosting, rolling-origin backtest, intervals, FE log-log **price elasticity** | demand outlook (3-12 months, 12 by default), scenarios |
 | Strategy | Strategy consultant | finding ranking, SWOT, opportunity sizing, evidence-linked recommendation playbook | SWOT, 8 recommendations, KPIs |
 | Report Writer | Research writer | Markdown + self-contained interactive HTML (offline Plotly) | `report.md`, `report.html` |
 | Critic (QA) | Reviewer | numeric grounding, coverage, citation & evidence checks | QA verdict, revision issues |

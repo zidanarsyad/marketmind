@@ -1,5 +1,9 @@
-"""Demand Forecasting Agent (machine learning): 12-month demand forecast with model selection by
-rolling-origin backtest, econometric price elasticities and price what-if scenarios."""
+"""Demand Forecasting Agent (machine learning): demand forecast over the plan's horizon (3-12 months, 12 by default)
+with model selection by rolling-origin backtest, econometric price elasticities and price what-if scenarios.
+
+Growth compares the forecast months with the same calendar months a year earlier, so a 6-month forecast is measured
+against 6 months, not against a whole year. With the default 12 months that is simply the last 12 months. The summary
+columns keep their historical names: ``*_next12`` holds the forecast months, ``*_last12`` the comparison months."""
 from __future__ import annotations
 
 import pandas as pd
@@ -14,12 +18,23 @@ MODEL_NAMES = {"gradient_boosting": "gradient boosting", "seasonal_naive": "seas
                "seasonal_naive_drift": "seasonal naive with drift", "ensemble": "gradient boosting + drift ensemble"}
 
 
+def comparison_window(months: pd.Series, horizon: int) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """[start, end) of the actual months that growth is measured against: the forecast months one year earlier.
+
+    The forecast covers the `horizon` months after the last actual month, so the comparison starts 11 months before
+    that last month and runs for `horizon` months. For 12 months this is the last 12 months; for 6 months it is the
+    same 6 calendar months a year earlier, which also keeps the seasonal peaks (Ramadan, 11.11) in step.
+    """
+    _, l12, _ = windows(months)
+    return l12, l12 + pd.DateOffset(months=int(horizon))
+
+
 class DemandForecastingAgent(BaseAgent):
     name = "Demand Forecasting Agent"
     finding_prefix = "FCT"
     requires = ("sales",)
     role = "Forecasting and pricing economist. Builds ML demand forecasts and measures price sensitivity."
-    goal = "Quantify the 12-month outlook for the market and the client, and how price moves change volume and revenue."
+    goal = "Quantify the demand outlook for the market and the client, and how price moves change volume and revenue."
     ml_capability = ("Machine learning: global direct multi-horizon gradient boosting (HistGradientBoosting) with "
                      "rolling-origin backtesting and model selection; fixed-effects log-log price elasticity model")
 
@@ -27,7 +42,7 @@ class DemandForecastingAgent(BaseAgent):
         self.tool("build_monthly_panel", make_panel, "aggregate sales to brand x category x channel monthly series + calendar")
         self.tool("estimate_price_elasticity", estimate_elasticities, "fixed-effects log-log demand regression per brand")
         self.tool("backtest_models", self._backtest, "rolling-origin backtest of 4 candidate models")
-        self.tool("forecast_demand", self._forecast, "12-month forecast with the winning model + 80% intervals")
+        self.tool("forecast_demand", self._forecast, "forecast over the plan's horizon with the winning model + 80% intervals")
         self.tool("simulate_price_scenarios", price_scenarios, "volume / revenue / profit impact of price changes")
 
     def execute(self) -> str:
@@ -64,8 +79,8 @@ class DemandForecastingAgent(BaseAgent):
 
     def _tables(self, panel: pd.DataFrame, fut: pd.DataFrame, bt: dict, el: pd.DataFrame) -> dict:
         sig = bt["sigma"]
-        last, l12, _ = windows(panel["month"])
-        hist = panel[panel["month"] >= l12]
+        start, end = comparison_window(panel["month"], self.horizon)
+        hist = panel[(panel["month"] >= start) & (panel["month"] < end)]
         sb = pd.DataFrame({"revenue_last12": hist.groupby("brand")["revenue"].sum(),
                            "revenue_next12": fut.groupby("brand")["revenue"].sum(),
                            "units_last12": hist.groupby("brand")["units"].sum(),
@@ -108,11 +123,15 @@ class DemandForecastingAgent(BaseAgent):
         f = mo[mo["type"] == "forecast"]
         tot_now, tot_next = sb["revenue_last12"].sum(), sb["revenue_next12"].sum()
         g_mkt = tot_next / tot_now - 1
+        h = self.horizon
+        # 12 months compare with the last 12; a shorter horizon says what it is compared with
+        vs = "" if h == 12 else " on the same months a year earlier"
+        outlook_text = (f"grow {pct(g_mkt)} over the next 12 months to {idr(tot_next)}" if h == 12 else
+                        f"reach {idr(tot_next)} over the next {h} months, {pct(g_mkt)}{vs}")
         self.publish(Finding(
             id="FCT-01", agent=self.name, area="forecast", title="Market outlook",
-            statement=(f"Tracked-panel revenue is forecast to grow {pct(g_mkt)} over the next {self.horizon} months to "
-                       f"{idr(tot_next)} (80% interval for the final month: {idr(f['revenue_lo'].iloc[-1])}-"
-                       f"{idr(f['revenue_hi'].iloc[-1])})."),
+            statement=(f"Tracked-panel revenue is forecast to {outlook_text} (80% interval for the final month: "
+                       f"{idr(f['revenue_lo'].iloc[-1])}-{idr(f['revenue_hi'].iloc[-1])})."),
             metrics=dict(growth=round(g_mkt, 4), revenue_next12_idr=round(tot_next), revenue_last12_idr=round(tot_now),
                          final_month_lo_idr=round(f["revenue_lo"].iloc[-1]), final_month_hi_idr=round(f["revenue_hi"].iloc[-1])),
             evidence=["market_sales_panel.csv", "forecast model"], impact=4, confidence=0.7, swot="O", tags=["outlook"]))
@@ -120,7 +139,7 @@ class DemandForecastingAgent(BaseAgent):
         self.publish(Finding(
             id="FCT-02", agent=self.name, area="forecast", title=f"{c} baseline outlook",
             statement=(f"On current plans, {c}'s revenue is forecast at {idr(me['revenue_next12'])} over the next "
-                       f"{self.horizon} months ({pct(me['revenue_growth'])}), moving its panel share from "
+                       f"{h} months ({pct(me['revenue_growth'])}{vs}), moving its panel share from "
                        f"{pct(me['share_last12'], sign=False)} to {pct(me['share_next12'], sign=False)}."),
             metrics=dict(revenue_next12_idr=round(me["revenue_next12"]), growth=round(me["revenue_growth"], 4),
                          share_last12=round(me["share_last12"], 4), share_next12=round(me["share_next12"], 4)),
@@ -131,7 +150,8 @@ class DemandForecastingAgent(BaseAgent):
             id="FCT-03", agent=self.name, area="forecast", title="Category outlook",
             statement=(f"{sc.iloc[0]['category']} ({pct(sc.iloc[0]['revenue_growth'])}) and {sc.iloc[1]['category']} "
                        f"({pct(sc.iloc[1]['revenue_growth'])}) lead forecast growth; {sc.iloc[-1]['category']} trails "
-                       f"({pct(sc.iloc[-1]['revenue_growth'])})."),
+                       f"({pct(sc.iloc[-1]['revenue_growth'])})"
+                       + ("." if h == 12 else f", comparing the next {h} months with the same months a year earlier.")),
             metrics=dict(top_category=sc.iloc[0]["category"], top_growth=round(sc.iloc[0]["revenue_growth"], 4),
                          second_category=sc.iloc[1]["category"], second_growth=round(sc.iloc[1]["revenue_growth"], 4),
                          last_category=sc.iloc[-1]["category"], last_growth=round(sc.iloc[-1]["revenue_growth"], 4)),

@@ -597,6 +597,11 @@ class TableSource:
         return cls(lambda g, n: run.table(f"{g}.tables.{n}"), lambda k: run.json(k), run.table, run.meta.get("client", ""))
 
 
+def _months(outlook_df: pd.DataFrame) -> int:
+    """Forecast months in an outlook table (one row per month), i.e. the plan's horizon."""
+    return int((outlook_df["type"] == "forecast").sum())
+
+
 def _safe(fn):
     def wrapped(src: TableSource, mode: str = "light"):
         try:
@@ -634,8 +639,10 @@ CHARTS: dict[str, Callable] = {
     "van_westendorp": _safe(lambda s, m: van_westendorp(s.t("segmentation", "vw_curves"), s.t("segmentation", "vw_points"), m)),
     "elasticities": _safe(lambda s, m: elasticities(s.t("forecast", "elasticities"), s.client, m)),
     "price_scenarios": _safe(lambda s, m: price_scenarios(s.t("forecast", "price_scenarios"), m)),
-    "market_forecast": _safe(lambda s, m: outlook(s.t("forecast", "market_outlook"), "Tracked-panel revenue: actual and 12-month forecast (Rp bn)", m)),
-    "client_forecast": _safe(lambda s, m: outlook(s.t("forecast", "client_outlook"), f"{s.client}: actual and 12-month revenue forecast (Rp bn)", m)),
+    "market_forecast": _safe(lambda s, m: outlook(df := s.t("forecast", "market_outlook"),
+                                                  f"Tracked-panel revenue: actual and {_months(df)}-month forecast (Rp bn)", m)),
+    "client_forecast": _safe(lambda s, m: outlook(df := s.t("forecast", "client_outlook"),
+                                                  f"{s.client}: actual and {_months(df)}-month revenue forecast (Rp bn)", m)),
     "backtest": _safe(lambda s, m: backtest(s.t("forecast", "backtest_detail"), (s.j("forecast.model_card") or {}).get("model_key"), m)),
     "feature_importance": _safe(lambda s, m: feature_importance(s.t("forecast", "feature_importance"), m)),
     "opportunities": _safe(lambda s, m: opportunities(s.df("strategy.opportunities"), m)),

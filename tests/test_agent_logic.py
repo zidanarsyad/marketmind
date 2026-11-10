@@ -169,6 +169,31 @@ def test_price_scenarios_follow_the_constant_elasticity_formula():
     assert row["revenue_change_pct"] == pytest.approx((1.1 ** -0.5 - 1) * 100, abs=0.05)   # -4.7
 
 
+@pytest.mark.parametrize("horizon", [3, 6, 12])
+def test_forecast_growth_compares_the_same_months_a_year_earlier(horizon):
+    """A flat market forecast to stay flat grows 0%, whatever the horizon (a 6-month brief once showed -50%)."""
+    from marketmind.agents.forecaster import DemandForecastingAgent, comparison_window
+    months = pd.date_range("2024-11-01", "2026-10-01", freq="MS")            # 24 actual months
+    start, end = comparison_window(pd.Series(months), horizon)
+    assert start == pd.Timestamp("2025-11-01")                              # 12 months before the first forecast month
+    assert end == start + pd.DateOffset(months=horizon)
+    rows = [dict(month=m, brand=b, category=c, units=10.0, revenue=100.0)
+            for m in months for b in ("Alpha", "Beta") for c in ("Serum", "Toner")]
+    panel = pd.DataFrame(rows)
+    future = pd.date_range("2026-11-01", periods=horizon, freq="MS")
+    fut = pd.DataFrame([dict(month=m, brand=b, category=c, units=10.0, revenue=100.0, horizon=i + 1)
+                        for i, m in enumerate(future) for b in ("Alpha", "Beta") for c in ("Serum", "Toner")])
+    agent = DemandForecastingAgent.__new__(DemandForecastingAgent)          # just the table logic, no run context
+    agent.client, agent.horizon = "Alpha", horizon
+    bt = dict(sigma=dict(market=0.1, brand=0.1), metrics={}, folds=[], detail=pd.DataFrame(), importance=pd.DataFrame())
+    tables = agent._tables(panel, fut, bt, pd.DataFrame())
+    brands = tables["forecast_summary_brand"].set_index("brand")
+    assert brands.loc["Alpha", "revenue_last12"] == brands.loc["Alpha", "revenue_next12"] == 200.0 * horizon
+    assert np.allclose(brands["revenue_growth"], 0.0)
+    assert np.allclose(tables["forecast_summary_category"]["revenue_growth"], 0.0)
+    assert np.allclose(tables["client_category_outlook"]["revenue_growth"], 0.0)
+
+
 # ---------------------------------------------------------------- consumer insight
 def test_complaint_spike_detector_finds_the_planted_episode_and_nothing_else(tmp_path):
     from marketmind.agents.consumer_insight import ConsumerInsightAgent

@@ -166,7 +166,10 @@ def render_progress(events, grid, feed) -> None:
             status[ev.agent] = ev.message
             if "seconds" in ev.data:
                 seconds[ev.agent] = ev.data["seconds"]
-    rows = [dict(Agent=a, Status=STATUS_ICON.get(s, s), Seconds=seconds.get(a, "")) for a, s in status.items()]
+    # all text, blank while an agent runs: a column mixing numbers and "" made Streamlit repair (and log) it on every
+    # refresh, and None would show as the word "None"
+    rows = [dict(Agent=a, Status=STATUS_ICON.get(s, s), Seconds=str(seconds[a]) if a in seconds else "")
+            for a, s in status.items()]
     if rows:
         grid.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     recent = [e for e in events if e.kind in ("thought", "action", "finding", "message", "warning", "error", "llm")][-12:]
@@ -246,11 +249,15 @@ def follow_active_run() -> str | None:
         with c2:
             st.caption("Live trace (thoughts, tool calls, findings)")
             feed = st.empty()
+        # The approval form lives in this slot. After a decision the page reruns and the slot starts out empty, which
+        # replaces the decided form at once; without it, a faded copy stayed on screen while the agents worked on.
+        gate = st.empty()
         while th.is_alive():
             render_progress(system.tracer.snapshot(), grid, feed)
             if broker is not None and broker.pending:
                 box.update(label=f"Run {system.run_id}: waiting for your approval", state="running", expanded=True)
-                approval_form(broker, system.run_id)
+                with gate.container():
+                    approval_form(broker, system.run_id)
                 st.stop()          # the study waits on the gate; submitting the form reruns the page
             time.sleep(0.6)
         th.join()
@@ -313,7 +320,8 @@ with st.sidebar:
     if runs:
         labels = {r["run_id"]: f"{r['run_id']} · QA {r['qa_score'] if r['qa_score'] is not None else '-'} · {r['client']}" for r in runs}
         ids = list(labels)
-        default = st.session_state.get("run_id", ids[0])
+        # open on the newest run that produced a report, not on a study a reviewer stopped
+        default = st.session_state.get("run_id") or next((r["run_id"] for r in runs if r["status"] != "rejected"), ids[0])
         run_id = st.selectbox("Saved runs", ids, index=ids.index(default) if default in ids else 0, format_func=labels.get)
         st.session_state["run_id"] = run_id
 
@@ -336,6 +344,7 @@ run = get_run(st.session_state["run_id"])
 src = TableSource.from_run(run)
 meta = run.meta
 kpis = run.json("strategy.kpis", {}) or {}
+horizon = kpis.get("horizon_months") or (run.json("plan", {}) or {}).get("horizon_months") or 12   # forecast months
 client = meta.get("client", "")
 qa = meta.get("qa", {})
 
@@ -345,7 +354,7 @@ llm_chip = (meta.get("llm", {}).get("description", "") if meta.get("options", {}
             else "LLM off (deterministic run)")
 chips = [f"Run {run.run_id}", f"{meta.get('seconds')}s", llm_chip,
          f"QA {qa.get('score')}/100 {'passed' if qa.get('passed') else 'not passed'}" if qa.get("score") is not None
-         else "QA not run - unverified",
+         else "stopped by the reviewer" if meta.get("status") == "rejected" else "QA not run - unverified",
          f"{len(run.findings)} findings", f"{len(run.json('strategy.recommendations', []) or [])} recommendations"]
 st.markdown("".join(f'<span class="mm-chip">{html.escape(str(c))}</span>' for c in chips if c), unsafe_allow_html=True)
 if meta.get("status") == "unverified":
@@ -366,17 +375,30 @@ with tabs[0], guard("Overview"):
     with st.expander("Research brief", expanded=False):
         st.write(meta.get("brief", ""))
     el_txt = f"elasticity {kpis['elasticity']:.2f}" if kpis.get("elasticity") is not None else ""
-    kpi_tiles([
-        (f"Market size {kpis.get('market_year', '')}", fmt_idr((kpis.get("market_size_idr_bn") or 0) * 1e9),
-         f"CAGR {pct(kpis.get('market_cagr'), False)} since 2019"),
-        (f"{client} panel share", f"{pct(kpis.get('client_share'), False)} (#{kpis.get('client_rank', '-')})",
-         f"growth {pct(kpis.get('client_growth'))} vs panel {pct(kpis.get('panel_growth'))}"),
-        ("Forecast growth, next 12 months", pct(kpis.get("forecast_client_growth")),
-         f"market {pct(kpis.get('forecast_market_growth'))}"),
-        ("Top competitive threat", kpis.get("top_threat") or "n/a", f"weakest channel: {kpis.get('weakest_channel') or 'n/a'}"),
-        ("Concept target segment", kpis.get("target_segment") or "n/a", f"purchase intent {pct(kpis.get('concept_t2b'), False)}"),
-        ("Recommended launch price", fmt_idr(kpis.get("recommended_price_idr")), el_txt),
-    ])
+    # one tile per headline the study produced: a brief that skips a module shows no empty "n/a" or "Rp 0" tile for it
+    tiles = [
+        (kpis.get("market_size_idr_bn"),
+         (f"Market size {kpis.get('market_year') or ''}".strip(), fmt_idr((kpis.get("market_size_idr_bn") or 0) * 1e9),
+          f"CAGR {pct(kpis.get('market_cagr'), False)} since 2019")),
+        (kpis.get("client_share"),
+         (f"{client} panel share", pct(kpis.get("client_share"), False)
+          + (f" (#{kpis['client_rank']})" if kpis.get("client_rank") else ""),
+          f"growth {pct(kpis.get('client_growth'))} vs panel {pct(kpis.get('panel_growth'))}")),
+        (kpis.get("forecast_client_growth"),
+         (f"Forecast growth, next {horizon} months", pct(kpis.get("forecast_client_growth")),
+          f"market {pct(kpis.get('forecast_market_growth'))}")),
+        (kpis.get("top_threat"),
+         ("Top competitive threat", kpis.get("top_threat") or "n/a",
+          f"weakest channel: {kpis.get('weakest_channel') or 'n/a'}")),
+        (kpis.get("target_segment"),
+         ("Concept target segment", kpis.get("target_segment") or "n/a",
+          f"purchase intent {pct(kpis.get('concept_t2b'), False)}")),
+        (kpis.get("recommended_price_idr"),
+         ("Recommended launch price", fmt_idr(kpis.get("recommended_price_idr")), el_txt)),
+    ]
+    shown = [tile for value, tile in tiles if value is not None]
+    if shown:
+        kpi_tiles(shown)
     left, right = st.columns([1.15, 1])
     with left:
         st.subheader("Key findings")
@@ -611,7 +633,7 @@ with tabs[6], guard("Forecast & pricing"):
     el = src.t("forecast", "elasticities")
     fsb = src.t("forecast", "forecast_summary_brand")
     if el is not None and fsb is not None and client in set(el["brand"]):
-        st.markdown(f"**Price simulator for {client}** (constant-elasticity demand on the 12-month forecast baseline)")
+        st.markdown(f"**Price simulator for {client}** (constant-elasticity demand on the {horizon}-month forecast baseline)")
         e = float(el.set_index("brand").loc[client, "elasticity"])
         base = float(fsb.set_index("brand").loc[client, "revenue_next12"])
         s1, s2 = st.columns(2)
@@ -622,7 +644,7 @@ with tabs[6], guard("Forecast & pricing"):
         m_cols = st.columns(4)
         m_cols[0].metric("Elasticity", f"{e:.2f}")
         m_cols[1].metric("Volume change", f"{(vol - 1) * 100:+.1f}%")
-        m_cols[2].metric("Revenue (12m)", fmt_idr(base * m * vol), f"{(m * vol - 1) * 100:+.1f}%")
+        m_cols[2].metric(f"Revenue ({horizon}m)", fmt_idr(base * m * vol), f"{(m * vol - 1) * 100:+.1f}%")
         m_cols[3].metric("Gross profit change", f"{(((m - (1 - margin)) / margin) * vol - 1) * 100:+.1f}%")
 
 # ---------------------------------------------------------------------------- strategy
@@ -671,7 +693,18 @@ with tabs[9], guard("Ask the analyst"):
     for msg in history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-    question = st.chat_input("Ask the analyst about this study") or (picked if picked and (not history or history[-1].get("q") != picked) else None)
+            if msg.get("sources"):
+                st.caption(msg["sources"])           # keep the citations visible after the page reruns
+    # A suggestion stays selected after it is answered, and every click elsewhere reruns the page. Remember which pick
+    # was asked, so it is asked once rather than again (with another LLM call) on every rerun; unselecting resets it.
+    pick_key = f"pick-asked-{run.run_id}"
+    if not picked:
+        st.session_state.pop(pick_key, None)
+    question = st.chat_input("Ask the analyst about this study")
+    if not question and picked and st.session_state.get(pick_key) != picked:
+        question = picked
+    if picked:
+        st.session_state[pick_key] = picked
     if question:
         history.append(dict(role="user", content=question, q=question))
         with st.chat_message("user"):
@@ -680,9 +713,11 @@ with tabs[9], guard("Ask the analyst"):
         out = agent.answer(question, history[:-1])
         with st.chat_message("assistant"):
             st.markdown(out["answer"])
-            if out["sources"]:
-                st.caption("Sources: " + ", ".join(f"{s['id']} ({s['kind']})" for s in out["sources"]) + f" · {out['mode']}")
-        history.append(dict(role="assistant", content=out["answer"]))
+            sources = ("Sources: " + ", ".join(f"{s['id']} ({s['kind']})" for s in out["sources"]) + f" · {out['mode']}"
+                       if out["sources"] else "")
+            if sources:
+                st.caption(sources)
+        history.append(dict(role="assistant", content=out["answer"], sources=sources))
 
 # ---------------------------------------------------------------------------- evaluation
 with tabs[10], guard("Evaluation"):

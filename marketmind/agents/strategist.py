@@ -144,10 +144,14 @@ class StrategyAgent(BaseAgent):
         if "FCT-04" in self.F and fc:
             ps = fc["price_scenarios"].set_index("price_change_pct")
             base = float(fc["forecast_summary_brand"].set_index("brand").loc[self.client, "revenue_next12"])
+            el_txt = f"elasticity {self.F['FCT-04'].metrics['elasticity']:.2f}"
+            basis = f"{el_txt} applied to the {idr(base)} baseline"
+            h = int(self.plan.get("horizon_months", 12))
+            if h != 12:  # the forecast covers h months, but opportunities are sized over 12
+                base = base * 12 / h
+                basis = f"{el_txt} applied to a {idr(base)} 12-month baseline (the {h}-month forecast scaled to a year)"
             rows.append(dict(id="OPP-5", opportunity="Avoid a further 5% list-price rise (revenue protected)",
-                             value_idr=-base * ps.loc[5.0, "revenue_change_pct"] / 100,
-                             basis=f"elasticity {self.F['FCT-04'].metrics['elasticity']:.2f} applied to the {idr(base)} baseline",
-                             evidence="FCT-04"))
+                             value_idr=-base * ps.loc[5.0, "revenue_change_pct"] / 100, basis=basis, evidence="FCT-04"))
         opps = pd.DataFrame(rows)
         if len(opps):
             opps["value_idr"] = opps["value_idr"].round(-6)
@@ -260,7 +264,8 @@ class StrategyAgent(BaseAgent):
             target_segment=m("SEG-02", "segment"), concept_t2b=m("SEG-02", "concept_t2b"),
             recommended_price_idr=m("SEG-04", "recommended_price"), forecast_market_growth=m("FCT-01", "growth"),
             forecast_client_growth=m("FCT-02", "growth"), elasticity=m("FCT-04", "elasticity"),
-            fastest_category=m("MKT-02", "top_category"), fastest_channel=m("MKT-03", "fastest_channel"))
+            fastest_category=m("MKT-02", "top_category"), fastest_channel=m("MKT-03", "fastest_channel"),
+            horizon_months=int(self.plan.get("horizon_months", 12)))
 
     def _exec_summary(self, recs: list[dict], kpis: dict) -> tuple[str, str | None]:
         F, c = self.F, self.client

@@ -44,7 +44,7 @@ One run on one dataset is a single sample, so the report also measures how the r
 8. **Real LLMs.** `scripts/llm_runs.py` runs the full study with each free LLM provider and records what the Critic catches before the report is released (section 9).
 9. **Efficiency.** Time per agent and per run, taken from the trace (section 10).
 
-**Test plan.** Every level below runs automatically with `python -m pytest -q`: 69 tests that cover 94% of the lines in `marketmind/`. The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
+**Test plan.** Every level below runs automatically with `python -m pytest -q`: 72 tests that cover 94% of the lines in `marketmind/`. The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
 
 | Level | What is tested | How | Pass criterion |
 |---|---|---|---|
@@ -335,6 +335,7 @@ The three study scripts write `summary.json` files under `outputs/seeds`, `outpu
 - **The thresholds were set by the designers** (for example a macro-F1 of at least 0.75, an ARI of at least 0.80). They are conventional, but they are choices. Some checks sit close to a decision boundary in the planted data (the concept price, section 4.5; the fastest-growing category and the declining topics, section 7), so a single run cannot settle them.
 - **Five seeds is a small sample.** Section 7 gives failure rates per check, but with five runs a check that fails one time in ten may simply not have failed yet, and the failure rates themselves are rough (3 of 5 could be anything from about 15% to 95%).
 - **The labels are proxies.** Star ratings are a noisy stand-in for the sentiment of the text, and the aspect lexicon covers only 9 aspects.
+- **The QA gate checks where numbers come from, not whether the tools computed them right.** A dashboard dry run found that a brief asking for a 6-month forecast reported growth of -43%, because six forecast months were compared with twelve actual months. Every number was grounded in tool output, so QA scored the report 100. The comparison now uses the same months a year earlier, and a test pins it for 3, 6 and 12 months; the ground-truth checks use the default 12 months, so they could not have caught it.
 - **LLM quality is measured by the Critic, not by people.** Section 9 counts grounding failures and revisions; the usefulness and clarity of the LLM's narrative have not been rated by human readers. Free LLM tiers change their models and limits often, so those runs are snapshots.
 - **Known weaknesses:** two brands' elasticity intervals miss the truth because of bias (section 4.4); shocks such as the packaging crisis cannot be forecast (section 4.3); the concept price sits near a charm-price boundary, where four misassigned respondents decide it (section 4.5); and the concept revenue relies on an explicit 5% conversion assumption.
 

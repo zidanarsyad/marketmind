@@ -76,7 +76,7 @@ footer{color:var(--muted);font-size:13px;text-align:center;padding:24px 16px}
 {{ body }}
 <section id="qa"><h2>QA Certificate</h2><!--QA-CERTIFICATE--></section>
 </main>
-<footer>All data is simulated for demonstration; brands and products are fictional. Generated {{ date }}.</footer>
+<footer>{{ data_note }} Generated {{ date }}.</footer>
 </body>
 </html>""")
 
@@ -95,7 +95,8 @@ def _kpi_tiles(k: dict) -> list[dict]:
         tiles.append(dict(label=f"{k['client']} panel share", value=f"{k['client_share'] * 100:.1f}%",
                           note=f"#{k.get('client_rank')} | growth {k['client_growth'] * 100:+.1f}%"))
     if k.get("forecast_client_growth") is not None:
-        tiles.append(dict(label="Forecast growth, next 12m", value=f"{k['forecast_client_growth'] * 100:+.1f}%",
+        tiles.append(dict(label=f"Forecast growth, next {k.get('horizon_months') or 12}m",
+                          value=f"{k['forecast_client_growth'] * 100:+.1f}%",
                           note=f"market {k['forecast_market_growth'] * 100:+.1f}%"))
     if k.get("top_threat"):
         tiles.append(dict(label="Top threat", value=k["top_threat"], note=""))
@@ -140,7 +141,12 @@ def render_html(sections: list[dict], bb, title: str, run_id: str) -> str:
         body.append(f'<section id="{s["key"]}">{inner}' + (f'<div class="charts">{"".join(charts)}</div>' if charts else "") + "</section>")
         toc.append(dict(key=s["key"], title=s["title"].split(". ", 1)[-1]))
     llm = bb.get("plan", {}).get("planner", "")
+    data = bb.get("plan", {}).get("data") or {}
+    data_note = (f"Data: real marketplace data from {data.get('source', 'a third-party source')}; see Methodology and "
+                 "Limitations for its caveats." if data.get("kind") == "real" else
+                 "All data is simulated for demonstration; brands and products are fictional.")
     return TEMPLATE.render(title=title, date=time.strftime("%d %B %Y"), run_id=run_id, plotlyjs=get_plotlyjs(),
+                           data_note=data_note,
                            kpis=_kpi_tiles(bb.get("strategy.kpis") or {}), toc=toc, body="\n".join(body),
                            llm=("LLM-assisted" if "LLM" in llm else "Offline deterministic mode"),
                            n_findings=len(bb.findings()), n_recs=len(bb.get("strategy.recommendations") or []))

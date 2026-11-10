@@ -152,6 +152,8 @@ def test_a_study_on_a_real_data_folder_runs_the_modules_its_data_supports(tmp_pa
     report = (res.run_dir / "report.md").read_text(encoding="utf-8")
     assert "Not studied for lack of data" in report and "real marketplace data" in report
     assert "simulated reviews only" not in report        # the models learned from the folder's own reviews
+    assert "all data in this report is simulated" not in report                     # the title note says real data
+    assert "All data is simulated" not in (res.run_dir / "report.html").read_text(encoding="utf-8")   # and the footer
     meta = json.loads((res.run_dir / "run_meta.json").read_text(encoding="utf-8"))
     assert meta["options"]["data_dir"] == str(raw.parent)
     assert evaluate(RunData(run_id=res.run_id, path=res.run_dir, meta=meta))["available"] is False

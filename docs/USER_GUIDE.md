@@ -103,8 +103,8 @@ The Research Director reads the brief with simple rules, and refines the plan wi
 
 | What you write | What the Director does |
 |---|---|
-| A brand name from the data ("GlowNesia wants to ...") | Makes that brand the client, unless you pass `--client` |
-| "next 6 months" or "6 bulan" | Sets the forecast horizon (between 3 and 12 months; the default is 12) |
+| A brand name from the data ("GlowNesia wants to ...") | Makes that brand the client, unless you pass `--client`. In the dashboard the **Client brand** menu always decides, so pick the brand there |
+| "next 6 months" or "6 bulan" | Sets the forecast horizon (between 3 and 12 months; the default is 12). Growth is then measured against the same months a year earlier, and the report and dashboard label the forecast with the horizon |
 | Market words (market size, trend, growth, category, channel, region) | Switches on the market analysis |
 | Competition words (competitor, rival, share, position, benchmark) | Switches on the competitive analysis |
 | Consumer words (consumer, sentiment, review, pain point, complaint, social) | Switches on the consumer analysis |

@@ -148,22 +148,30 @@ class ReportWriterAgent(BaseAgent):
 
         # -- title + executive summary
         date = time.strftime("%d %B %Y")
+        plan = bb.get("plan") or {}
+        h = int(plan.get("horizon_months", 12))
+        data = plan.get("data") or {}
+        note = ("> **Note:** all data in this report is simulated for demonstration; brands and products are fictional."
+                if data.get("kind") != "real" else
+                f"> **Note:** this report studies real marketplace data ({data.get('source', 'see Methodology')}); "
+                "its caveats are listed under Methodology and Limitations.")
         title = (f"# {c} - Market Research Report\n### Indonesian local facial-skincare market\n\n"
-                 f"*Prepared by the MarketMind multi-agent system on {date} - run `{self.ctx.run_id}`*\n\n"
-                 "> **Note:** all data in this report is simulated for demonstration; brands and products are fictional.")
+                 f"*Prepared by the MarketMind multi-agent system on {date} - run `{self.ctx.run_id}`*\n\n" + note)
         sections.append(dict(key="title", title="Title", charts=[], markdown=title))
         llm_sum = bb.get("strategy.exec_summary_llm")
         summary = (f"{LLM_OPEN.format(key='exec_summary')}\n{llm_sum}\n{LLM_CLOSE}"
                    if llm_sum and "exec_summary" not in rejected else bb.get("strategy.exec_summary", ""))
-        kpi_rows = [("Market size", f"{idr((kpis.get('market_size_idr_bn') or 0) * 1e9)} ({kpis.get('market_year')})"),
+        kpi_rows = [("Market size", f"{idr(kpis['market_size_idr_bn'] * 1e9)} ({kpis.get('market_year')})"
+                     if kpis.get("market_size_idr_bn") else "n/a"),
                     ("Market CAGR", p1(kpis["market_cagr"]) if kpis.get("market_cagr") is not None else "n/a"),
-                    (f"{c} panel share", f"{p1(kpis['client_share'])} (#{kpis.get('client_rank')})" if kpis.get("client_share") else "n/a"),
+                    (f"{c} panel share", f"{p1(kpis['client_share'])}" + (f" (#{kpis['client_rank']})" if kpis.get("client_rank") else "")
+                     if kpis.get("client_share") else "n/a"),
                     (f"{c} growth (last 12m)", g1(kpis["client_growth"]) if kpis.get("client_growth") is not None else "n/a"),
                     ("Top competitive threat", kpis.get("top_threat") or "n/a"),
                     ("Top consumer pain point", kpis.get("top_pain_point") or "n/a"),
                     ("Concept target segment", kpis.get("target_segment") or "n/a"),
                     ("Recommended concept price", idr(kpis["recommended_price_idr"]) if kpis.get("recommended_price_idr") else "n/a"),
-                    ("Forecast market growth (next 12m)", g1(kpis["forecast_market_growth"]) if kpis.get("forecast_market_growth") is not None else "n/a"),
+                    (f"Forecast market growth (next {h}m)", g1(kpis["forecast_market_growth"]) if kpis.get("forecast_market_growth") is not None else "n/a"),
                     (f"{c} price elasticity", f"{kpis['elasticity']:.2f}" if kpis.get("elasticity") is not None else "n/a")]
         kpi_md = md_table(pd.DataFrame(kpi_rows, columns=["Headline KPI", "Value"]))
         add("executive_summary", "1. Executive Summary", f"{summary}\n\n{kpi_md}", ["kpi_strip"])
@@ -273,15 +281,17 @@ class ReportWriterAgent(BaseAgent):
             if sg and "vw_points" in sg:
                 body += "\n\n**Van Westendorp price points**\n\n" + md_table(sg["vw_points"], dict(pmc=idr, opp=idr, ipp=idr, pme=idr))
             if fc and "price_scenarios" in fc:
-                body += f"\n\n**{c} price scenarios (next 12 months, elasticity-based)**\n\n" + md_table(fc["price_scenarios"])
+                body += f"\n\n**{c} price scenarios (next {h} months, elasticity-based)**\n\n" + md_table(fc["price_scenarios"])
             add("pricing", f"{n}. Pricing", body, ["van_westendorp", "elasticities", "price_scenarios"])
             n += 1
         if fc:
             body = bullets("forecast") + llm_block("forecast")
-            body += "\n\n" + md_table(fc["forecast_summary_brand"][["brand", "revenue_last12", "revenue_next12", "revenue_growth"]],
-                                      dict(revenue_last12=idr, revenue_next12=idr, revenue_growth=g1))
-            body += "\n\n" + md_table(fc["forecast_summary_category"][["category", "revenue_last12", "revenue_next12", "revenue_growth"]],
-                                      dict(revenue_last12=idr, revenue_next12=idr, revenue_growth=g1))
+            names = {"revenue_last12": "revenue, last 12 months" if h == 12 else f"revenue, same {h} months a year earlier",
+                     "revenue_next12": f"revenue, next {h} months (forecast)", "revenue_growth": "growth"}
+            fmt = {names["revenue_last12"]: idr, names["revenue_next12"]: idr, "growth": g1}
+            for table, key in (("forecast_summary_brand", "brand"), ("forecast_summary_category", "category")):
+                cols = [key, "revenue_last12", "revenue_next12", "revenue_growth"]
+                body += "\n\n" + md_table(fc[table][cols].rename(columns=names), fmt)
             add("forecast", f"{n}. Demand Forecast", body, ["market_forecast", "client_forecast", "backtest", "feature_importance"])
             n += 1
 

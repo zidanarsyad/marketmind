@@ -40,7 +40,7 @@ QUESTION_TEMPLATES = {
     "consumer": "What do consumers love and dislike about {client} and its competitors, and which pain points are emerging?",
     "segmentation": "Which consumer segments exist, and which should {client} target with the new concept?",
     "pricing": "How price-sensitive is demand, and at what price should the concept launch?",
-    "forecast": "What is the 12-month demand outlook for the market and for {client}?",
+    "forecast": "What is the {horizon}-month demand outlook for the market and for {client}?",
     "strategy": "Where should {client} play and how can it win over the next 12 months?",
 }
 # which analysis task answers the questions of each area, and which task writes each report section
@@ -144,7 +144,7 @@ class ResearchDirectorAgent(BaseAgent):
         if "concept" in text or "launch" in text or "new product" in text:
             m2 = re.search(r"\b(?:a|an|the)\s+([a-z\- ]{3,60}?)\s+concept", text)
             concept = (m2.group(1).strip().title() if m2 else "New product concept")
-        questions = [dict(id=f"Q{i + 1}", area=a, question=QUESTION_TEMPLATES[a].format(client=client))
+        questions = [dict(id=f"Q{i + 1}", area=a, question=QUESTION_TEMPLATES[a].format(client=client, horizon=horizon))
                      for i, a in enumerate([a for a in AREAS if modules[a]] + ["strategy"])]
         return dict(
             brief=brief, client=client, competitors=[b for b in brands if b != client],

@@ -50,6 +50,28 @@ DEFAULT_BRIEF = (
 )
 
 
+# used when the data folder holds real data (a manifest.json says so) and no brief is given
+DEFAULT_REAL_BRIEF = (
+    "Find out what consumers say about our facial skincare products in real marketplace reviews compared with "
+    "competing brands: what they love, which pain points are emerging, and what we should fix first."
+)
+SIMULATED = dict(kind="simulated", source="MarketMind simulator (scripts/generate_data.py, seeded)",
+                 licence="generated for this project", datasets={})
+
+
+def data_manifest(raw_dir: Path | None = None) -> dict:
+    """What the data folder holds: real or simulated data, its source, licence and what was filled in.
+
+    A real-data folder written by an adapter (scripts/import_tokopedia.py) carries a manifest.json next to raw/;
+    the bundled simulated data has none.
+    """
+    path = Path(raw_dir or DATA_RAW).parent / "manifest.json"
+    if path.exists():
+        import json
+        return {**SIMULATED, "datasets": {}, **json.loads(path.read_text(encoding="utf-8"))}
+    return dict(SIMULATED)
+
+
 def env(name: str, default: str | None = None) -> str | None:
     value = os.getenv(name)
     return value if value not in (None, "") else default

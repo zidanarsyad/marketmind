@@ -11,16 +11,16 @@
     "product_name": {"type": "string", "minLength": 1},
     "category": {"type": "string", "enum": ["Facial Wash", "Toner", "Serum", "Moisturizer", "Sunscreen"]},
     "key_ingredient": {"type": "string", "minLength": 1},
-    "size_ml": {"type": "number", "exclusiveMinimum": 0},
+    "size_ml": {"type": ["number", "null"], "exclusiveMinimum": 0, "description": "Pack size; null when a real-data source does not state it."},
     "price_idr": {"type": "integer", "exclusiveMinimum": 0},
-    "launch_month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
-    "fragrance_free": {"type": "boolean"},
+    "launch_month": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}$", "description": "Null when a real-data source does not state it."},
+    "fragrance_free": {"type": ["boolean", "null"], "description": "Null when a real-data source does not state it."},
     "spf": {"type": ["integer", "null"], "minimum": 15, "maximum": 100, "description": "Sun protection factor; null for non-sunscreen products."},
-    "price_per_ml_idr": {"type": "number", "exclusiveMinimum": 0},
-    "halal_certified": {"type": "boolean"},
-    "bpom_registered": {"type": "boolean", "description": "Registered with BPOM, Indonesia's food and drug authority."},
+    "price_per_ml_idr": {"type": ["number", "null"], "exclusiveMinimum": 0, "description": "Null when the pack size is unknown."},
+    "halal_certified": {"type": ["boolean", "null"], "description": "Null when a real-data source does not state it."},
+    "bpom_registered": {"type": ["boolean", "null"], "description": "Registered with BPOM, Indonesia's food and drug authority; null when a real-data source does not state it."},
     "rating_avg": {"type": ["number", "null"], "minimum": 1, "maximum": 5, "description": "Null for SKUs too new for a stable rating."},
     "review_count": {"type": "integer", "minimum": 0},
-    "units_sold_estimate": {"type": "integer", "minimum": 0}
+    "units_sold_estimate": {"type": ["integer", "null"], "minimum": 0, "description": "Null when a real-data source does not state it."}
   }
 }

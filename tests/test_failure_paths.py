@@ -50,10 +50,11 @@ def test_unknown_client_stops_the_run_at_planning_with_a_clear_message(tmp_path)
 
 @needs_data
 def test_missing_dataset_is_skipped_with_a_warning(tmp_path, monkeypatch):
+    from marketmind import config
     from marketmind.agents import data_collector
     kept = DATASETS["catalog"]["file"]
     (tmp_path / kept).write_bytes((DATA_RAW / kept).read_bytes())
-    monkeypatch.setattr(data_collector, "DATA_RAW", tmp_path)
+    monkeypatch.setattr(config, "DATA_RAW", tmp_path)   # agents read the data folder from config at run time
     ctx = context(tmp_path)
     raw, catalog = data_collector.DataCollectionAgent(ctx)._load_internal()
     assert set(raw) == {"catalog"} and list(catalog["dataset"]) == ["catalog"]

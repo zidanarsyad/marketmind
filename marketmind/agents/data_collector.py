@@ -14,7 +14,8 @@ import time
 import pandas as pd
 import requests
 
-from ..config import DATA_EXTERNAL, DATA_RAW, DATASETS, env
+from .. import config
+from ..config import DATA_EXTERNAL, DATASETS, env
 from ..core.agent import BaseAgent
 from ..core.findings import Finding
 from .common import pct
@@ -47,15 +48,19 @@ class DataCollectionAgent(BaseAgent):
         raw, catalog = self.use("load_internal_datasets")
         self.put("datasets.raw", raw, "Raw internal datasets")
         self.put("data.catalog", catalog, "Dataset inventory with provenance")
+        self.put("data.provenance", self.manifest, "What the study's data is: real or simulated, source and licence")
         macro, source = self.use("fetch_world_bank_indicators")
         self.put("external.macro", macro, f"World Bank indicators for Indonesia ({source})")
         news = self.use("fetch_news_headlines")
         self.put("external.news", news, "Recent news headlines")
         total = int(catalog["rows"].sum())
+        dated = catalog[catalog["coverage"] != "n/a"]
+        span = (f" ({'sales panel' if dated['dataset'].iloc[0] == 'sales' else dated['dataset'].iloc[0]} "
+                f"{dated['coverage'].iloc[0]})") if len(dated) else ""
+        kind = "real" if self.manifest["kind"] == "real" else "internal"
         self.publish(Finding(
             id="DAT-01", agent=self.name, area="data", title="Evidence base",
-            statement=f"The team analysed {len(raw)} internal datasets with {total:,} records "
-                      f"(sales panel {catalog['coverage'].iloc[0]}), plus "
+            statement=f"The team analysed {len(raw)} {kind} datasets with {total:,} records{span}, plus "
                       f"{macro['indicator'].nunique() if not macro.empty else 0} World Bank macro indicators ({source}).",
             metrics=dict(datasets=len(raw), records=total, macro_indicators=int(macro["indicator"].nunique()) if not macro.empty else 0),
             evidence=list(catalog["dataset"]), impact=1, confidence=1.0, tags=["methodology"]))
@@ -66,17 +71,23 @@ class DataCollectionAgent(BaseAgent):
     # ------------------------------------------------------------------ tools
     def _load_internal(self) -> tuple[dict, pd.DataFrame]:
         raw, rows = {}, []
+        self.manifest = config.data_manifest(config.DATA_RAW)
+        real = self.manifest["kind"] == "real"
         for key, spec in DATASETS.items():
-            path = DATA_RAW / spec["file"]
+            path = config.DATA_RAW / spec["file"]
             if not path.exists():
-                self.warn(f"{spec['file']} is missing - run scripts/generate_data.py")
+                if real:   # a real-data folder holds only what its source has: say so, quietly
+                    self.think(f"{spec['file']} is not part of this real-data folder; analyses that need it are left out.")
+                else:
+                    self.warn(f"{spec['file']} is missing - run scripts/generate_data.py")
                 continue
             df = pd.read_csv(path)
             raw[key] = df
             dc = spec["date_col"]
             coverage = f"{df[dc].min()} to {df[dc].max()}" if dc and dc in df else "n/a"
             rows.append(dict(dataset=key, file=spec["file"], rows=len(df), columns=df.shape[1], coverage=coverage,
-                             size_kb=round(path.stat().st_size / 1024), source=spec["source"],
+                             size_kb=round(path.stat().st_size / 1024),
+                             source=self.manifest["datasets"].get(key, {}).get("source", spec["source"]),
                              description=spec["description"],
                              modified=time.strftime("%Y-%m-%d", time.localtime(path.stat().st_mtime))))
         catalog = pd.DataFrame(rows)

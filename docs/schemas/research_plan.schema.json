@@ -13,7 +13,7 @@
     "categories": {"type": "array", "items": {"type": "string"}, "minItems": 1},
     "channels": {"type": "array", "items": {"type": "string"}, "minItems": 1},
     "horizon_months": {"type": "integer", "minimum": 3, "maximum": 12},
-    "data_window": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2, "description": "First and last month of the sales panel."},
+    "data_window": {"type": "array", "items": {"type": ["string", "null"]}, "minItems": 2, "maxItems": 2, "description": "First and last month of the sales panel, or of the reviews when there is no panel (null when neither is present)."},
     "modules": {
       "type": "object",
       "required": ["market", "competition", "consumer", "segmentation", "pricing", "forecast"],
@@ -44,6 +44,11 @@
       }
     },
     "planner": {"type": "string", "enum": ["rule-based", "rule-based + LLM refinement"]},
-    "created": {"type": "string", "description": "Local timestamp, YYYY-MM-DD HH:MM:SS."}
+    "created": {"type": "string", "description": "Local timestamp, YYYY-MM-DD HH:MM:SS."},
+    "unavailable": {"type": "object", "additionalProperties": {"type": "string"},
+                    "description": "Modules left out because their data is missing, with the reason. Absent in older runs."},
+    "data": {"type": "object", "required": ["kind", "source"],
+             "properties": {"kind": {"type": "string", "enum": ["simulated", "real"]}, "source": {"type": "string"}},
+             "description": "What the study's data is (from the data folder's manifest.json). Absent in older runs."}
   }
 }

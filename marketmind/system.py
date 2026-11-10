@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from . import config
 from .config import DEFAULT_BRIEF, RUNS_DIR, ensure_dirs
 from .core.agent import AgentResult, RunContext
 from .core.blackboard import Blackboard
@@ -55,7 +56,8 @@ class MarketResearchSystem:
         self.options = dict(brief=brief or DEFAULT_BRIEF, client=client, use_llm=use_llm and self.llm.available,
                             force_retrain=force_retrain, parallel=parallel, sentiment_data=sentiment_data,
                             retries=retries, agent_timeout=agent_timeout or DEFAULT_AGENT_TIMEOUT,
-                            budget={**DEFAULT_BUDGET, **(budget or {})}, approval="human" if approver else "auto")
+                            budget={**DEFAULT_BUDGET, **(budget or {})}, approval="human" if approver else "auto",
+                            data_dir=str(config.DATA_RAW.parent))
         self.max_revisions = max_revisions
         stats = self.llm.stats   # a dashboard reuses one client across runs: the budget counts from here
         self.ctx = RunContext(self.run_id, self.blackboard, self.tracer, self.llm, self.run_dir, self.options,

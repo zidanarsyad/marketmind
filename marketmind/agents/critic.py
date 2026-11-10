@@ -183,7 +183,7 @@ class QualityAssuranceAgent(BaseAgent):
                         issues=[dict(check="coverage", severity="major", block=None,
                                      message=f"{q['id']} not answered by any finding: {q['question']}") for q in unanswered])
         low = md.lower()
-        disclosed = ("simulated" in low) and ("limitations" in low)
+        disclosed = ("simulated" in low or "real marketplace data" in low) and ("limitations" in low)
         disclosure = dict(score=1.0 if disclosed else 0.0, issues=[] if disclosed else [
             dict(check="disclosure", severity="major", block=None, message="Data provenance / limitations disclosure missing")])
         return structure, coverage, disclosure
@@ -206,10 +206,14 @@ class QualityAssuranceAgent(BaseAgent):
         unevidenced = [r["id"] for r in recs if not [e for e in r["evidence"] if e in known]]
         rec_issues = [dict(check="recommendations", severity="major", block=None,
                            message=f"Recommendation {r} has no valid evidence") for r in unevidenced]
-        # recommendations a human reviewer dropped count as proposed: the agents did their part
+        # recommendations a human reviewer dropped count as proposed: the agents did their part. A study that the
+        # data limits to one or two analysis modules needs at least one recommendation, a fuller study three
         proposed = len(recs) + len(self.bb.get("strategy.rejected_recommendations", []))
-        if proposed < 3:
+        modules = (self.bb.get("plan") or {}).get("modules", {})
+        active = sum(bool(modules.get(a)) for a in ("market", "competition", "consumer", "segmentation", "forecast"))
+        minimum = 1 if 0 < active < 3 else 3
+        if proposed < minimum:
             rec_issues.append(dict(check="recommendations", severity="critical", block=None,
-                                   message=f"Only {len(recs)} recommendations (minimum 3)"))
-        rec_score = (1 - len(unevidenced) / max(len(recs), 1)) * (1.0 if proposed >= 3 else 0.5)
+                                   message=f"Only {len(recs)} recommendations (minimum {minimum})"))
+        rec_score = (1 - len(unevidenced) / max(len(recs), 1)) * (1.0 if proposed >= minimum else 0.5)
         return citations, dict(score=rec_score, count=len(recs), unevidenced=unevidenced, issues=rec_issues)

@@ -66,6 +66,7 @@ class BaseAgent:
     goal = ""
     ml_capability = ""           # non-empty for agents that train / apply ML or DL models
     finding_prefix = ""          # ID prefix of this agent's findings, e.g. "MKT" (used to answer follow-up requests)
+    requires: tuple[str, ...] = ()   # datasets the agent cannot work without; the Director plans around missing ones
 
     def __init__(self, ctx: RunContext):
         self.ctx = ctx

@@ -36,9 +36,13 @@ def _nss(labels: pd.Series) -> float:
     return float((labels == "positive").mean() - (labels == "negative").mean()) if len(labels) else float("nan")
 
 
+MIN_TRAINING_REVIEWS = 100   # below this the train / validation / test split cannot be stratified meaningfully
+
+
 class ConsumerInsightAgent(BaseAgent):
     name = "Consumer Insight Agent"
     finding_prefix = "CON"
+    requires = ("reviews",)
     role = "NLP / deep-learning specialist. Reads what consumers write in reviews and on social media."
     goal = "Explain what consumers love and dislike - by brand, aspect and over time - and flag emerging problems early."
     ml_capability = ("Deep learning: PyTorch BiGRU + attention sentiment classifier (with TF-IDF/LogReg baseline and "
@@ -62,7 +66,17 @@ class ConsumerInsightAgent(BaseAgent):
         text = reviews[reviews["has_text"]].reset_index(drop=True)
         labels = rating_to_label(text["rating"].values)
         mode = self._training_mode()
-        train_x, train_y, sources = real_reviews.training_set(mode, text["review_text"].values, labels)
+        counts = pd.Series(labels).value_counts()
+        if mode == "study" and (len(text) < MIN_TRAINING_REVIEWS or len(counts) < 3 or counts.min() < 5):
+            raise ValueError(
+                f"Too few labelled reviews to train the sentiment models: {len(text):,} with text ("
+                + ", ".join(f"{LABELS[k]} {counts.get(k, 0)}" for k in range(3)) + f"); at least {MIN_TRAINING_REVIEWS} "
+                "are needed, with every sentiment class represented (a few thousand give a reliable model). Import more "
+                "products, or train on the real corpus with --sentiment-data real.")
+        mix: dict = {}
+        train_x, train_y, sources = real_reviews.training_set(mode, text["review_text"].values, labels, report=mix)
+        if mix.get("overlap_removed"):
+            self.think(f"Left out {mix['overlap_removed']:,} real reviews that duplicate this study's own reviews.")
         self.suite = SentimentSuite(real_reviews.model_dir(mode))
         h = self.suite.data_hash(train_x, train_y)
         if not self.options.get("force_retrain") and self.suite.try_load(h):
@@ -77,8 +91,16 @@ class ConsumerInsightAgent(BaseAgent):
             self.suite.save(h)
         self.suite.card["training_data"] = dict(
             mode=mode, study_reviews=int((sources == "study").sum()), real_reviews=int((sources == "real").sum()),
+            overlap_removed=mix.get("overlap_removed", 0),
             real_source=None if mode == "study" else real_reviews.SOURCE,
             model_dir=real_reviews.model_dir(mode).relative_to(ROOT).as_posix())
+        if mode == "study" and (self.bb.get("data.provenance") or {}).get("kind") != "real":
+            self.suite.card["real_text_note"] = (
+                "These models learned from simulated reviews only; on real marketplace reviews they reach a macro-F1 of "
+                "only about 0.45 (docs/EVALUATION.md, section 4.6), so train them with --sentiment-data study+real "
+                "before scoring real text.")
+        else:
+            self.suite.card.pop("real_text_note", None)
         self.suite.social_rules = not self.options.get("no_social_rules")   # ablation option
         labels_df = data.get("social_labels")
         if labels_df is not None and "social" in data and not self.options.get("skip_transfer_check"):

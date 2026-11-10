@@ -149,7 +149,48 @@ Comparing MarketMind's simulated data with the real figures above shows where th
 | Prefer buying online | Before: 76%. Now: 69% (31% prefer offline retail) | e-commerce 57% (Populix 2021-22), 62% (Populix 2024) | Closer; still somewhat high |
 | Lazada as the preferred channel | Before: 0%. Now: 7.5% of respondents | 9.1% name it their most-used platform (APJII 2025) | **Recalibrated:** close |
 
-## 8. Licences, terms and personal data
+## 8. Studying real data
+
+MarketMind can run a study on real marketplace data: the agents read whatever data folder they are pointed at, and the Research Director plans the study around the datasets that folder holds. The Tokopedia 2025 dataset (section 2) is the first source with an importer, because it is the only open source with brands (through product names), dates, ratings and review text for real beauty products.
+
+**1. Download the source.** Get `archive.zip` (93 MB, about 1 GB unpacked) from [kaggle.com/datasets/musabiam/tokopedia-product-and-review-dataset](https://www.kaggle.com/datasets/musabiam/tokopedia-product-and-review-dataset). Kaggle needs an account, so this step is yours. The licence is CC BY-NC 4.0, "for research and educational purposes only": fine for a university project, but keep the files and everything made from them out of git and do not share them. `data/real/` is already git-ignored.
+
+**2. Import it.**
+
+```bash
+python scripts/import_tokopedia.py path/to/archive.zip
+```
+
+The importer (`marketmind/adapters/tokopedia.py`) reads the CSV in the archive in chunks and keeps the beauty products, so the review lists of the other 23 categories are never parsed. Then it keeps the facial-skincare products, recognising MarketMind's five categories from the product name, explodes each product's review lists into one row per review, and writes `data/real/tokopedia-2025/`:
+
+| File | Contents |
+|---|---|
+| `raw/product_reviews.csv` | One row per rated, dated review, in the review contract: brand, product, category, `channel = Tokopedia`, region, rating, text, likes as helpful votes |
+| `raw/product_catalog.csv` | One row per product, in the product contract: brand, category, price, pack size, SPF, key ingredient, average rating, review count, units sold |
+| `manifest.json` | What the data is: the source, the licence, how every derived field was made, which fields are unknown, caveats for the report, statistics and the brands with the most reviews |
+| `review_ids.csv` | MarketMind's review IDs mapped back to the source's review and product IDs |
+
+Every row is checked against the row contracts in `docs/schemas/datasets/`, and the importer prints any problem it finds.
+
+**What is derived, and what is unknown.** The source has no brand field, so the brand is the run of leading words that the shop's product names share (official stores sell one brand); a product whose shop shares no prefix keeps its first word. Check the brands in `product_catalog.csv`, and correct mistakes with `--brand-map brands.csv` (columns `pattern,brand`; the pattern is a regular expression matched against the product name). The category, pack size, SPF and key ingredient come from the product name. The region is the seller's shop location, not the reviewer's. Reviewer skin type, launch month, and halal and BPOM status are unknown (null) unless the product name states them; MarketMind never fills them with guesses. The report's limitations repeat these caveats.
+
+**3. Study it.**
+
+```bash
+python run.py --data-dir data/real/tokopedia-2025 --client "<a brand the importer listed>"
+```
+
+Pick the client from the brands the importer printed. Without a sales panel, market-size table or survey, the Research Director runs the consumer module only (sentiment, aspects, complaint spikes, competitor crises, complaint topics) and says which modules it left out and why. The Strategy agent recommends from that evidence, and the Critic checks the report as usual. The sentiment models learn from the folder's own real reviews. There is no ground truth for real data, so the Evaluation tab and `scripts/evaluate_agents.py` say so instead of scoring. To use the dashboard on the folder, start it with the folder set:
+
+```bash
+MARKETMIND_DATA_DIR=data/real/tokopedia-2025 streamlit run app/dashboard.py
+```
+
+On Windows PowerShell, run `$env:MARKETMIND_DATA_DIR="data/real/tokopedia-2025"` first.
+
+**Other sources.** An importer for another source writes the same folder layout: `raw/` with any of the seven files in their row contracts, and a `manifest.json` with `kind: "real"`, `source`, `licence`, per-dataset notes and caveats ([DEVELOPER_GUIDE.md §7](DEVELOPER_GUIDE.md#7-adding-or-replacing-a-dataset)). The agents need no changes: each analysis agent declares the datasets it requires, and the Director leaves out the modules whose data is missing.
+
+## 9. Licences, terms and personal data
 
 | Status | Sources | What it allows |
 |---|---|---|
@@ -163,10 +204,10 @@ Also note:
 - **Personal data.** Some datasets contain user names or account handles (for example Female Daily's `UserName`). Indonesia's Personal Data Protection Law (UU No. 27 Tahun 2022) applies to them, so pseudonymise reviewer identities before analysis and never publish raw rows that identify people.
 - **Keep downloads out of git.** Put downloaded files in `data/external/`, which `.gitignore` already excludes, and record the source and licence of each file next to it.
 
-## 9. Suggested next steps
+## 10. Suggested next steps
 
 1. **Validate the sentiment agent on real text.** Done on 4 November 2026 with `scripts/validate_on_real_data.py`, on the Shopee/Tokopedia beauty reviews and IndoNLU SmSA ([EVALUATION.md §4.6](EVALUATION.md#46-sentiment-on-real-text-external-validation)). The models trained on simulated reviews reach only macro-F1 0.43-0.47 on the real reviews. Adding the real reviews to the training data (`--sentiment-data study+real`) raises this to 0.662 while keeping 0.820 on the study's reviews and passing all 25 ground-truth checks.
 2. **Test the weak-supervision assumption.** On PRDECT-ID, measure how often star-derived labels agree with the human sentiment labels.
 3. **Test the transfer check on real social text.** Map the Natasha Skincare emotions to three classes and score them with the transfer model.
 4. **Recalibrate the simulator.** Done on 10 November 2026 for channel shares, halal importance and Lazada (section 7). The ground-truth checks were re-run on the new data and across five more data seeds ([EVALUATION.md](EVALUATION.md)). Tokopedia's online share (11%) is still above the 2024 benchmark (4%).
-5. **Add a real-data mode.** Done for the sentiment models: `python run.py --sentiment-data study+real` trains them on the study's reviews plus the real beauty reviews, and `real` on the real reviews only ([EVALUATION.md §4.6](EVALUATION.md#46-sentiment-on-real-text-external-validation)). Still open: an adapter that loads the Tokopedia 2025 beauty subset as real reviews and catalogue rows, filling in or marking the columns it lacks, so that a whole study can run on real marketplace data (for non-commercial use).
+5. **Add a real-data mode.** Done. For the sentiment models, `python run.py --sentiment-data study+real` trains them on the study's reviews plus the real beauty reviews, and `real` on the real reviews only ([EVALUATION.md §4.6](EVALUATION.md#46-sentiment-on-real-text-external-validation)). For whole studies, `scripts/import_tokopedia.py` turns the Tokopedia 2025 dataset into a real-data folder and `run.py --data-dir` studies it (section 8). Still open: running it on the downloaded file, and real sources for the sales panel and survey, so that more modules can run on real data.

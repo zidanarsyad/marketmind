@@ -7,23 +7,37 @@ score for the whole multi-agent system, plus model-level metrics against hidden 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, adjusted_rand_score, f1_score
 
-from .config import DATA_DIR, GROUND_TRUTH
+from .config import DATA_DIR
 from .core.store import RunData
-
-GT_DIR = DATA_DIR / "ground_truth"
 
 
 def _f(run: RunData) -> dict:
     return {f.id: f for f in run.findings}
 
 
+def data_dir_of(run: RunData) -> Path:
+    """The data folder the run studied (recorded since November 2026; older runs used the bundled data)."""
+    return Path((run.meta.get("options") or {}).get("data_dir") or DATA_DIR)
+
+
+def has_ground_truth(run: RunData) -> bool:
+    return (data_dir_of(run) / "ground_truth.json").exists()
+
+
 def evaluate(run: RunData) -> dict:
-    truth = json.loads(GROUND_TRUTH.read_text(encoding="utf-8"))
+    """Score the run against the planted truth of the data it studied; real data has none to score against."""
+    if not has_ground_truth(run):
+        return dict(score=None, passed=0, total=0, checks=[], available=False,
+                    note=f"No ground truth in {data_dir_of(run)}: real data has no planted answers. Judge the findings "
+                         "by the evidence each one cites and by the QA certificate.")
+    GT_DIR = data_dir_of(run) / "ground_truth"
+    truth = json.loads((data_dir_of(run) / "ground_truth.json").read_text(encoding="utf-8"))
     exp = truth["expected_insights"]
     F = _f(run)
     checks = []

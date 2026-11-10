@@ -198,7 +198,8 @@ class ReportWriterAgent(BaseAgent):
                          f"{mc['n_train']:,} reviews, compared with TF-IDF + logistic regression and a soft-vote ensemble; "
                          f"selected: `{mc['selected']}` (test macro-F1 {mc['test_metrics'][mc['selected']]['macro_f1']:.3f}). "
                          f"Applied to review clauses (aspect-based sentiment) and to unlabeled social posts."
-                         + self._training_mix(mc.get("training_data") or {}))
+                         + self._training_mix(mc.get("training_data") or {})
+                         + (f" {mc['real_text_note']}" if mc.get("real_text_note") else ""))
         smc = bb.get("segmentation.model_card")
         if smc:
             cards.append(f"- **Consumer Segmentation Agent (machine learning):** {smc['algorithm']}; k={smc['k']} chosen by "
@@ -210,10 +211,7 @@ class ReportWriterAgent(BaseAgent):
         llm_note = (f"LLM support: `{self.llm.describe()}` - used for planning and narrative only; every number comes "
                     f"from deterministic tools and is verified by the Critic.") if self.llm.available else \
                    "LLM support: none (offline mode) - all reasoning and narrative are deterministic."
-        meth = ("Eleven cooperating agents shared a blackboard: a Research Director planned the study from the brief, a "
-                "Data Collection Agent loaded internal data and live World Bank indicators, a Data Quality Agent cleaned "
-                "it, five analysis agents worked in parallel, and a Strategy Agent, Report Writer and Critic turned the "
-                "evidence into this report.\n\n"
+        meth = (self._team_sentence() + "\n\n"
                 + (md_table(cat[["dataset", "rows", "coverage", "source"]]) if cat is not None else "") + "\n\n"
                 + (f"**Data quality.** {F['DAT-02'].statement} `[DAT-02]`\n\n" if "DAT-02" in F else "")
                 + (md_table(dq[["dataset", "rows_in", "rows_out", "quality_score", "actions"]]) if dq is not None else "")
@@ -306,13 +304,16 @@ class ReportWriterAgent(BaseAgent):
                 + md_table(opps[["id", "opportunity", "value_idr", "basis", "evidence"]], dict(value_idr=idr)), ["opportunities"])
             n += 1
         caveats = bb.get("dq.caveats", [])
-        lim = "\n".join(f"- {x}" for x in caveats + [
-            "Forecasts assume list prices stay at current levels and promotions repeat last year's calendar; shocks like "
-            "the counterfeit crisis seen in the data are not predictable.",
-            "The concept revenue estimate uses an assumed 5% year-1 conversion of top-2-box intenders; validate with a "
-            "pilot launch.",
-            "Aspect detection is lexicon-based; aspect polarity comes from the sentiment model and inherits its error rate.",
-        ] + self._open_items())
+        mods = self.plan["modules"]
+        studied = [
+            ("Forecasts assume list prices stay at current levels and promotions repeat last year's calendar; shocks like "
+             "the counterfeit crisis seen in the data are not predictable.", mods.get("forecast") or mods.get("pricing")),
+            ("The concept revenue estimate uses an assumed 5% year-1 conversion of top-2-box intenders; validate with a "
+             "pilot launch.", mods.get("segmentation")),
+            ("Aspect detection is lexicon-based; aspect polarity comes from the sentiment model and inherits its error rate.",
+             mods.get("consumer")),
+        ]
+        lim = "\n".join(f"- {x}" for x in caveats + [s for s, on in studied if on] + self._open_items())
         add("limitations", f"{n}. Risks and Limitations", lim)
 
         # -- appendix
@@ -332,6 +333,27 @@ class ReportWriterAgent(BaseAgent):
             app += "\n\n### D. Human review and agent coordination\n\n" + log
         add("appendix", "Appendix", app)
         return sections
+
+    def _team_sentence(self) -> str:
+        """Who did the work in this run, the modules left out for lack of data, and what the data is."""
+        mods = self.plan["modules"]
+        ran = [a for a in ("market", "competition", "consumer", "segmentation") if mods.get(a)]
+        ran += ["forecast"] if (mods.get("forecast") or mods.get("pricing")) else []
+        words = {1: "one analysis agent did the analysis", 2: "two analysis agents worked in parallel",
+                 3: "three analysis agents worked in parallel", 4: "four analysis agents worked in parallel",
+                 5: "five analysis agents worked in parallel"}
+        text = (f"{len(ran) + 6} cooperating agents shared a blackboard: a Research Director planned the study from the brief, "
+                "a Data Collection Agent loaded the data and live World Bank indicators, a Data Quality Agent cleaned it, "
+                f"{words.get(len(ran), 'the analysis agents')}, and a Strategy Agent, Report Writer and Critic turned the "
+                "evidence into this report.")
+        gaps = self.plan.get("unavailable") or {}
+        if gaps:
+            text += (" **Not studied for lack of data:** " + "; ".join(f"{area} ({why})" for area, why in gaps.items())
+                     + ". The research questions of those areas were left out of the plan.")
+        data = self.plan.get("data") or {}
+        if data.get("kind") == "real":
+            text += f" **Data:** real marketplace data from {data['source']}."
+        return text
 
     # -- oversight: approval gates, follow-up requests, open questions
     def _oversight(self) -> str:

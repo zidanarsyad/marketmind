@@ -42,6 +42,7 @@ def opp_tail_counts(df: pd.DataFrame, opp: float, window: float = 0.05) -> tuple
 class SegmentationAgent(BaseAgent):
     name = "Consumer Segmentation Agent"
     finding_prefix = "SEG"
+    requires = ("survey",)
     role = "Quantitative consumer researcher. Segments consumers with machine learning and tests the concept and its price."
     goal = "Find actionable segments, choose the target for the new concept and recommend a launch price."
     ml_capability = ("Machine learning: K-Means clustering on standardised attitudes and behaviours, silhouette-based "

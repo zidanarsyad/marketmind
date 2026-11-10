@@ -44,7 +44,7 @@ One run on one dataset is a single sample, so the report also measures how the r
 8. **Real LLMs.** `scripts/llm_runs.py` runs the full study with each free LLM provider and records what the Critic catches before the report is released (section 9).
 9. **Efficiency.** Time per agent and per run, taken from the trace (section 10).
 
-**Test plan.** Every level below runs automatically with `python -m pytest -q`: 66 tests that cover 95% of the lines in `marketmind/`. The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
+**Test plan.** Every level below runs automatically with `python -m pytest -q`: 69 tests that cover 94% of the lines in `marketmind/`. The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
 
 | Level | What is tested | How | Pass criterion |
 |---|---|---|---|
@@ -58,6 +58,7 @@ One run on one dataset is a single sample, so the report also measures how the r
 | Contracts | Every artefact, row and SQL table against the published schemas | `tests/test_schemas.py`, 5 tests | No schema errors; no foreign-key violations; brand shares sum to 1 |
 | Failure paths | Unknown client, missing dataset, World Bank outage, garbled LLM output, and an analyst and the Critic crashing in one run | `tests/test_failure_paths.py`, 6 tests | Clear errors or warnings; the study completes around failed agents and is marked `unverified` when the Critic did not run |
 | Agentic behaviour | Retries and time limits, the LLM budget, the two human approval gates (terminal, dashboard and programmatic reviewers), the Director's follow-ups, open questions; end to end, a market analyst that fails twice and a reviewer who drops a recommendation, and a rejected plan | `tests/test_agentic.py`, 13 tests; `tests/test_dashboard.py` (rejected run) | A flaky agent recovers on retry; a slow one stops at its limit; the Director re-dispatches the failed analyst and the final report has its section and passes QA; the dropped recommendation is gone; a rejected study writes no report |
+| Real-data readiness | The Tokopedia importer on an archive in the dataset's layout; planning around missing data; a study on a folder with only reviews and a catalogue, marked as real data | `tests/test_real_data.py`, 3 tests | Every imported row meets the row contracts and unknown fields stay null; only the modules the data supports run, with the others named in the report; QA passes; the evaluation reports that real data has no ground truth |
 | Acceptance | Whether the system finds the planted truth | `marketmind/evaluation.py`, 25 checks | Each check's rule in section 3 |
 
 ## 3. Insight recall: 24 / 25
@@ -344,4 +345,4 @@ The three study scripts write `summary.json` files under `outputs/seeds`, `outpu
 3. Human evaluation: have marketing practitioners rate the report's usefulness and clarity, blind to whether an LLM was used.
 4. Re-run the real-text validation (section 4.6) on the recalibrated data.
 5. Make the price research robust to misassigned respondents (section 4.5), for example by running it on each segment's core members (those much closer to their own cluster centre than to the next) or by reporting how far the OPP moves when the most extreme 1% of answers are dropped, and test the change across seeds.
-6. A real-data pilot through the documented schemas, judged on whether the findings match what the client's team already knows.
+6. A real-data pilot through the documented schemas, judged on whether the findings match what the client's team already knows. The pipeline is ready (`scripts/import_tokopedia.py`, `run.py --data-dir`, [DATA_SOURCES.md §8](DATA_SOURCES.md#8-studying-real-data)); it needs the Tokopedia 2025 file, which a Kaggle account can download.

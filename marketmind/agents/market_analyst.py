@@ -13,6 +13,7 @@ from .common import growth, idr, pct, windows
 class MarketTrendAnalystAgent(BaseAgent):
     name = "Market & Trend Analyst"
     finding_prefix = "MKT"
+    requires = ("sales", "market_size")
     role = "Market analyst. Sizes the market and explains where growth comes from - categories, channels, regions, seasons and trends."
     goal = "Quantify market attractiveness and the structural shifts the client must ride."
 

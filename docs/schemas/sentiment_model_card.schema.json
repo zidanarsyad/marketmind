@@ -100,7 +100,8 @@
         "study_reviews": {"type": "integer", "minimum": 0},
         "real_reviews": {"type": "integer", "minimum": 0},
         "real_source": {"type": ["string", "null"]},
-        "model_dir": {"type": "string", "description": "Cache folder relative to the project root."}
+        "model_dir": {"type": "string", "description": "Cache folder relative to the project root."},
+        "overlap_removed": {"type": "integer", "minimum": 0, "description": "Real reviews dropped because they duplicate one of the study's reviews (study+real mode)."}
       }
     },
     "split_sources": {
@@ -129,6 +130,10 @@
         "accuracy": {"type": "number", "minimum": 0, "maximum": 1},
         "macro_f1": {"type": "number", "minimum": 0, "maximum": 1}
       }
+    },
+    "real_text_note": {
+      "type": "string",
+      "description": "Present when the models learned from simulated reviews only: a warning that they do not transfer to real text."
     }
   }
 }

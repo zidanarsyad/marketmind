@@ -9,19 +9,18 @@ Examples:
     python run.py --sentiment-data study+real       # also learn sentiment from real reviews (docs/DATA_SOURCES.md)
     python run.py --approve                         # approve the plan and the recommendations yourself
     python run.py --agent-timeout 300 --max-llm-calls 20
+    python run.py --data-dir data/real/tokopedia-2025 --client "<brand>"   # a study on imported real data
 """
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import warnings
 from pathlib import Path
 
 warnings.filterwarnings("ignore")
-
-from marketmind.config import DEFAULT_BRIEF
-from marketmind.core.approval import ConsoleApprover
-from marketmind.system import DEFAULT_BUDGET, MarketResearchSystem
+# MarketMind is imported inside main(), after --data-dir has chosen the data folder that its paths are built from
 
 
 def main() -> int:
@@ -40,21 +39,31 @@ def main() -> int:
                     help="review the research plan and the recommendations at the terminal before the study goes on")
     ap.add_argument("--retries", type=int, default=1, help="extra attempts for an agent that fails (default 1)")
     ap.add_argument("--agent-timeout", type=float, help="time limit per agent in seconds (default 900)")
-    ap.add_argument("--max-llm-calls", type=int, default=DEFAULT_BUDGET["llm_calls"],
-                    help=f"LLM calls allowed per run (default {DEFAULT_BUDGET['llm_calls']})")
-    ap.add_argument("--max-llm-tokens", type=int, default=DEFAULT_BUDGET["llm_tokens"],
-                    help=f"LLM tokens allowed per run (default {DEFAULT_BUDGET['llm_tokens']:,})")
+    ap.add_argument("--max-llm-calls", type=int, help="LLM calls allowed per run (default 40)")
+    ap.add_argument("--max-llm-tokens", type=int, help="LLM tokens allowed per run (default 300,000)")
+    ap.add_argument("--data-dir", type=Path,
+                    help="study another data folder (with raw/ inside), e.g. one written by scripts/import_tokopedia.py")
     args = ap.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if args.data_dir:
+        if not (args.data_dir / "raw").is_dir():
+            print(f"{args.data_dir} has no raw/ folder; give the folder that contains raw/ (and manifest.json).")
+            return 2
+        os.environ["MARKETMIND_DATA_DIR"] = str(args.data_dir.resolve())
+    from marketmind.config import DATA_RAW, DEFAULT_BRIEF, DEFAULT_REAL_BRIEF, data_manifest
+    from marketmind.core.approval import ConsoleApprover
+    from marketmind.system import MarketResearchSystem
 
-    brief = args.brief_file.read_text(encoding="utf-8") if args.brief_file else (args.brief or DEFAULT_BRIEF)
+    default_brief = DEFAULT_REAL_BRIEF if data_manifest(DATA_RAW)["kind"] == "real" else DEFAULT_BRIEF
+    brief = args.brief_file.read_text(encoding="utf-8") if args.brief_file else (args.brief or default_brief)
     system = MarketResearchSystem(brief=brief, client=args.client, use_llm=not args.no_llm,
                                   force_retrain=args.retrain, parallel=not args.sequential,
                                   echo=not args.quiet and not args.approve,  # keep the trace from burying the prompts
                                   sentiment_data=args.sentiment_data, approver=ConsoleApprover() if args.approve else None,
                                   retries=args.retries, agent_timeout=args.agent_timeout,
-                                  budget=dict(llm_calls=args.max_llm_calls, llm_tokens=args.max_llm_tokens))
+                                  budget={k: v for k, v in dict(llm_calls=args.max_llm_calls,
+                                                                llm_tokens=args.max_llm_tokens).items() if v is not None})
     llm_text = system.llm.describe() if system.options["use_llm"] else "off (deterministic reasoning)"
     print(f"\nMarketMind run {system.run_id} - LLM: {llm_text}\n")
     res = system.run()

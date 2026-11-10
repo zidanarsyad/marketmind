@@ -19,7 +19,8 @@ import unicodedata
 
 import pandas as pd
 
-from ..config import DATA_RAW, DATASETS, DEFAULT_CLIENT
+from .. import config
+from ..config import DATASETS, DEFAULT_CLIENT
 from ..core.agent import AgentResult, BaseAgent
 from ..core.approval import Decision, request_approval
 from ..core.orchestrator import Task, Workflow
@@ -48,6 +49,17 @@ AREA_TASKS = {"market": ("market",), "competition": ("competition",), "consumer"
 SECTION_TASKS = {"Market Overview": "market", "Competitive Landscape": "competition", "Consumer Insights": "consumer",
                  "Segments and Personas": "segmentation", "Demand Forecast": "forecast"}
 DEFAULT_AGENT_TIMEOUT = 900.0   # seconds per agent; a first run trains the deep-learning model in about 2 minutes
+DATASET_NAMES = {"sales": "the sales panel", "market_size": "the market-size table", "reviews": "product reviews",
+                 "survey": "the consumer survey", "social": "social posts", "catalog": "the product catalogue"}
+
+
+def module_requirements() -> dict[str, tuple[str, ...]]:
+    """Datasets each analysis module needs, read from its agent's `requires` (pricing needs one of two agents)."""
+    from . import (CompetitiveIntelligenceAgent, ConsumerInsightAgent, DemandForecastingAgent, MarketTrendAnalystAgent,
+                   SegmentationAgent)
+    return {"market": MarketTrendAnalystAgent.requires, "competition": CompetitiveIntelligenceAgent.requires,
+            "consumer": ConsumerInsightAgent.requires, "segmentation": SegmentationAgent.requires,
+            "forecast": DemandForecastingAgent.requires}
 
 
 def _fold(s: str) -> str:
@@ -80,11 +92,23 @@ class ResearchDirectorAgent(BaseAgent):
         return f"Planned {len(plan['questions'])} questions across {len(active)} analysis modules for {plan['client']}"
 
     def _scan_catalog(self) -> dict:
-        sales = pd.read_csv(DATA_RAW / DATASETS["sales"]["file"], usecols=["month", "brand", "category", "channel"])
-        available = {k: (DATA_RAW / v["file"]).exists() for k, v in DATASETS.items()}
-        return dict(brands=sorted(sales["brand"].unique()), categories=sorted(sales["category"].unique()),
-                    channels=sorted(sales["channel"].str.strip().unique()), first_month=sales["month"].min(),
-                    last_month=sales["month"].max(), datasets=available)
+        """Brands, categories, channels and the period, from the sales panel or, without one, the reviews or catalogue."""
+        raw = config.DATA_RAW
+        available = {k: (raw / v["file"]).exists() for k, v in DATASETS.items()}
+        source = next((k for k in ("sales", "reviews", "catalog") if available.get(k)), None)
+        if source is None:
+            raise ValueError(f"No sales panel, reviews or product catalogue in {raw}: there is nothing to study. "
+                             "Run scripts/generate_data.py, or import real data (docs/DATA_SOURCES.md).")
+        date_col = {"sales": "month", "reviews": "review_date", "catalog": None}[source]
+        cols = [c for c in (date_col, "brand", "category", "channel") if c]
+        df = pd.read_csv(raw / DATASETS[source]["file"], usecols=lambda c: c in cols)
+        dates = pd.to_datetime(df[date_col]).dt.to_period("M").dt.to_timestamp() if date_col else None
+        return dict(brands=sorted(df["brand"].dropna().unique()), categories=sorted(df["category"].dropna().unique()),
+                    channels=sorted(df["channel"].astype(str).str.strip().unique()) if "channel" in df else [],
+                    first_month=dates.min().date().isoformat() if dates is not None else None,
+                    last_month=dates.max().date().isoformat() if dates is not None else None,
+                    datasets=available, source=source, brand_counts=df["brand"].value_counts().to_dict(),
+                    data=config.data_manifest(raw))
 
     def _rule_plan(self, brief: str, catalog: dict) -> dict:
         text = _fold(brief)
@@ -94,10 +118,16 @@ class ResearchDirectorAgent(BaseAgent):
         if requested:  # case, accents and stray spaces are ignored ("lumiere lab" -> "Lumière Lab")
             matches = [b for b in brands if _fold(b) == _fold(requested)]
             if not matches:
-                raise ValueError(f"Unknown client {requested!r}; the sales data covers: {', '.join(brands)}")
+                raise ValueError(f"Unknown client {requested!r}; the data covers: {', '.join(brands)}")
             client = matches[0]
-        else:
-            client = mentioned[0] if mentioned else (DEFAULT_CLIENT if DEFAULT_CLIENT in brands else brands[0])
+        elif mentioned:
+            client = mentioned[0]
+        elif DEFAULT_CLIENT in brands:
+            client = DEFAULT_CLIENT
+        else:  # real data without a named client: the brand with the most evidence
+            counts = catalog.get("brand_counts") or {}
+            client = max(brands, key=lambda b: counts.get(b, 0))
+            self.think(f"No client named; choosing {client}, the brand with the most records in the data.")
         m = re.search(r"(\d+)\s*(?:-\s*)?(?:month|bulan)", text)
         horizon = int(m.group(1)) if m else 12
         horizon = min(max(horizon, 3), 12)
@@ -107,6 +137,9 @@ class ResearchDirectorAgent(BaseAgent):
             modules["segmentation"] = True  # pricing research (Van Westendorp) lives in the survey agent
         if modules["competition"] or modules["consumer"]:
             modules["market"] = True        # competitive and consumer findings need market context
+        # availability unknown (a hand-made catalogue) means available
+        unavailable = self._drop_unavailable(modules, catalog.get("datasets") or {k: True for k in DATASETS})
+        data = catalog.get("data") or config.SIMULATED
         concept = None
         if "concept" in text or "launch" in text or "new product" in text:
             m2 = re.search(r"\b(?:a|an|the)\s+([a-z\- ]{3,60}?)\s+concept", text)
@@ -117,13 +150,40 @@ class ResearchDirectorAgent(BaseAgent):
             brief=brief, client=client, competitors=[b for b in brands if b != client],
             categories=catalog["categories"], channels=catalog["channels"], horizon_months=horizon,
             data_window=[catalog["first_month"], catalog["last_month"]], modules=modules, concept=concept,
-            objectives=["Size the market and identify where growth is coming from",
-                        f"Benchmark {client} against {len(brands) - 1} local competitors",
-                        "Surface consumer pain points and unmet needs",
-                        "Define target segments, price and demand outlook",
-                        f"Recommend a prioritised 12-month growth plan for {client}"],
+            objectives=[o for o, on in [
+                ("Size the market and identify where growth is coming from", modules["market"]),
+                (f"Benchmark {client} against {len(brands) - 1} local competitors", modules["competition"]),
+                ("Surface consumer pain points and unmet needs", modules["consumer"]),
+                ("Define target segments, price and demand outlook",
+                 modules["segmentation"] or modules["pricing"] or modules["forecast"]),
+                (f"Recommend a prioritised 12-month growth plan for {client}", True)] if on],
             questions=questions, planner="rule-based", created=time.strftime("%Y-%m-%d %H:%M:%S"),
+            unavailable=unavailable, data=dict(kind=data["kind"], source=data["source"]),
         )
+
+    def _drop_unavailable(self, modules: dict, datasets: dict) -> dict:
+        """Switch off the modules whose data is missing, and say why: a partial study instead of failing agents."""
+        reasons, requirements = {}, module_requirements()
+        for area, needs in requirements.items():
+            missing = [d for d in needs if not datasets.get(d)]
+            if modules.get(area) and missing:
+                modules[area] = False
+                reasons[area] = "needs " + " and ".join(DATASET_NAMES.get(d, d) for d in missing)
+        if modules.get("pricing") and not (modules["segmentation"] or modules["forecast"]):
+            modules["pricing"] = False
+            reasons["pricing"] = "needs the consumer survey or the sales panel"
+        if not any(modules.values()):   # nothing asked for can run: study what the data does support
+            supported = [a for a, needs in requirements.items() if all(datasets.get(d) for d in needs)]
+            if not supported:
+                raise ValueError("No analysis can run on the data available: "
+                                 + "; ".join(f"{a} {r}" for a, r in reasons.items()))
+            for area in supported:
+                modules[area] = True
+            self.think(f"None of the analyses the brief asks for can run on this data; studying what it supports "
+                       f"instead: {', '.join(supported)}.")
+        for area, why in reasons.items():
+            self.think(f"Leaving out the {area} module: it {why}, which this data folder does not have.")
+        return reasons
 
     def _llm_refine(self, brief: str, catalog: dict, plan: dict) -> dict:
         task = ("Refine this market research plan. Return JSON with keys: objectives (list of 4-6 short strings), "

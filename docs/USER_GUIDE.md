@@ -63,6 +63,7 @@ This runs the default brief for Kirana Beauty. It prints the agents' trace live,
 | `--retries 1` | Extra attempts for an agent that fails (default 1; `0` turns retries off) |
 | `--agent-timeout 900` | Time limit per agent, in seconds (default 900). An agent over its limit stops at its next step and is reported as failed |
 | `--max-llm-calls 40`, `--max-llm-tokens 300000` | The LLM budget for one run (these are the defaults). Past it, the agents carry on without the LLM |
+| `--data-dir data/real/tokopedia-2025` | Study another data folder, for example imported real data (section 11) |
 
 The exit code is 0 when the run completes with its report checked by the Critic. It is 1 when the run fails, ends `unverified` because the Critic itself did not finish, or is rejected by a reviewer. So you can schedule `run.py` from a script and alert on a non-zero exit.
 
@@ -195,13 +196,23 @@ python scripts/export_sqlite.py
 
 This builds `outputs/marketmind.db`, a SQLite database containing the clean datasets and the latest run. Add `--all-runs` to load every saved run. Open it with any SQLite tool (for example DB Browser for SQLite) or connect it to a BI tool. [SCHEMAS.md §5](SCHEMAS.md#5-relational-model) describes the tables and gives example queries.
 
-## 11. Using your own data
+## 11. Studying real data
 
-1. Replace the CSV files in `data/raw/` with your own, keeping the file names and columns described in [DATA_DICTIONARY.md](DATA_DICTIONARY.md). The row contracts in `docs/schemas/datasets/` give the exact types and allowed values.
-2. Make sure the categories, channels and regions match the lists in the data dictionary, or extend the code that relies on them (see the developer guide).
-3. Run a study with your client brand. The Data Quality agent cleans the files and records what it fixed.
+A study can run on real data kept in its own folder, next to the bundled simulated data. Real reviews from Tokopedia take three steps ([DATA_SOURCES.md §8](DATA_SOURCES.md#8-studying-real-data) has the details):
 
-The ground-truth evaluation applies only to the bundled simulated data. With real data, judge the results by the evidence each finding cites and by the QA certificate. [DATA_SOURCES.md](DATA_SOURCES.md) lists real public datasets that fit each file, with their licences.
+1. Download `archive.zip` of the Tokopedia Product and Review Dataset from Kaggle (an account is needed; CC BY-NC 4.0, research and education only).
+2. Import it: `python scripts/import_tokopedia.py path/to/archive.zip`. This writes `data/real/tokopedia-2025/` with the facial-skincare reviews and products in MarketMind's formats, checks every row, and lists the brands with the most reviews.
+3. Study it: `python run.py --data-dir data/real/tokopedia-2025 --client "<one of those brands>"`. For the dashboard, set the folder first: `MARKETMIND_DATA_DIR=data/real/tokopedia-2025 streamlit run app/dashboard.py`.
+
+What changes with real data:
+
+- **Only the modules the data supports run.** Reviews and a product catalogue support the consumer analysis: sentiment, aspects, complaint spikes, competitor crises and complaint topics. The market, competition, segmentation, pricing and forecast modules need a sales panel, market sizes or a survey; the Research Director leaves them out, and the report says which ones and why. If the brief asks only for modules the data cannot support, the Director studies what it can and says so.
+- **The report states the source and its caveats**, for example that brands were derived from product names and that the region is the seller's location, under Methodology and Risks and Limitations.
+- **The sentiment models learn from the real reviews themselves.** By contrast, a study on the simulated data trains them on simulated reviews only, and the model card, the report and the dashboard's model tester warn that such models do not transfer to real text (use `--sentiment-data study+real` for that).
+- **There is no ground truth.** The Evaluation tab and `scripts/evaluate_agents.py` say so instead of scoring. Judge the results by the evidence each finding cites and by the QA certificate.
+- **The data stays private.** `data/real/` is git-ignored; the licence forbids redistribution.
+
+You can also bring your own files: put any of the seven CSV files in a folder's `raw/`, with the columns in [DATA_DICTIONARY.md](DATA_DICTIONARY.md) and the types in `docs/schemas/datasets/`, add a `manifest.json` with `"kind": "real"`, `"source"` and `"licence"`, and run with `--data-dir`. The categories, channels and regions must match the lists in the data dictionary, or the code that relies on them must be extended (see the developer guide). [DATA_SOURCES.md](DATA_SOURCES.md) lists real public datasets that fit each file, with their licences.
 
 ## 12. Where files are kept
 
@@ -211,7 +222,8 @@ The ground-truth evaluation applies only to the bundled simulated data. With rea
 | `outputs/models/` | Cached sentiment models, reused while the review data is unchanged |
 | `outputs/cache/llm/` | Cached LLM responses |
 | `outputs/marketmind.db` | The SQLite export |
-| `data/external/` | The cached World Bank data |
+| `data/external/` | The cached World Bank data and downloaded real corpora |
+| `data/real/<source>/` | Imported real data: `raw/` and `manifest.json` (never committed) |
 
 Old runs are never deleted automatically. Delete a run's folder under `outputs/runs/` to remove it from the dashboard.
 
@@ -220,6 +232,8 @@ Old runs are never deleted automatically. Delete a run's folder under `outputs/r
 | Symptom | What to do |
 |---|---|
 | "Datasets not found" in the dashboard | Press **Generate datasets**, or run `python scripts/generate_data.py`. |
+| "Too few labelled reviews to train the sentiment models" | The data folder has fewer than 100 reviews with text, or a sentiment class is nearly empty. Import more products (lower `--min-reviews`), or use `--sentiment-data real`. |
+| A real-data study left most modules out | Expected: they need a sales panel, market sizes or a survey, which review data does not have. The report lists them under Methodology. |
 | The first run is slow | It is training the deep-learning model (about 2 minutes on a laptop CPU). Later runs reuse it. |
 | LLM shows "offline (deterministic reasoning)" | There is no key in `.env`, or the key is wrong. Fix `.env`, restart, and use **Test LLM connection**. The text after "offline" gives the reason. |
 | "rate limited, retrying ..." in the trace | The free tier's per-minute limit was reached. MarketMind waits and retries; set `LLM_MIN_INTERVAL` (for example `4`) to space out calls. |

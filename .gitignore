@@ -8,3 +8,4 @@ data/external/
 .streamlit/secrets.toml
 .coverage
 htmlcov/
+data/real/

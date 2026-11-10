@@ -80,11 +80,16 @@ class DataQualityAgent(BaseAgent):
                              actions="; ".join(rep["actions"]) or "no changes needed"))
         scorecard = pd.DataFrame(rows)
         overall = round(float(np.average(scorecard["quality_score"], weights=scorecard["rows_in"])), 1)
-        caveats = [
-            "All datasets are simulated for demonstration purposes; brands, products and respondents are fictional.",
-            "The sales panel tracks six local brands, not the whole market; shares are shares of the tracked panel.",
-            "Review sentiment labels come from star ratings, which are a noisy proxy for what the text says.",
-        ]
+        prov = self.bb.get("data.provenance") or {"kind": "simulated"}
+        if prov["kind"] == "real":
+            caveats = [f"The data is real marketplace data from {prov['source']} (licence: {prov.get('licence', 'see the source')}); "
+                       "it covers the products and reviews the source collected, not the whole market."]
+            caveats += list(prov.get("caveats", []))
+        else:
+            caveats = ["All datasets are simulated for demonstration purposes; brands, products and respondents are fictional."]
+        if "sales" in report:
+            caveats.append("The sales panel tracks six local brands, not the whole market; shares are shares of the tracked panel.")
+        caveats.append("Review sentiment labels come from star ratings, which are a noisy proxy for what the text says.")
         if "survey" in report:
             s = report["survey"]
             caveats.append(f"Survey base after quality screening: n={s['rows_out']:,} "
@@ -93,18 +98,30 @@ class DataQualityAgent(BaseAgent):
         self.put("dq.report", report, "Per-dataset data quality report")
         self.put("dq.scorecard", scorecard, "Data quality scorecard")
         self.put("dq.caveats", caveats, "Limitations to disclose in the report")
-        sales, survey = report.get("sales", {}), report.get("survey", {})
+        survey = report.get("survey", {})
         self.publish(Finding(
             id="DAT-02", agent=self.name, area="data", title="Data quality",
-            statement=(f"Data quality score {overall}/100 after fixing {int(scorecard['issues_fixed'].sum()):,} issues: e.g. "
-                       f"{sales.get('issues', {}).get('duplicates', 0)} duplicate and "
-                       f"{sales.get('issues', {}).get('outliers', 0) + sales.get('issues', {}).get('non_positive_units', 0)} "
-                       f"invalid sales rows removed, and {survey.get('rows_in', 0) - survey.get('rows_out', 0)} low-quality "
-                       f"survey responses excluded."),
+            statement=(f"Data quality score {overall}/100 after fixing {int(scorecard['issues_fixed'].sum()):,} issues"
+                       + self._examples(report) + "."),
             metrics=dict(quality_score=overall, issues_fixed=int(scorecard["issues_fixed"].sum()),
                          survey_removed=int(survey.get("rows_in", 0) - survey.get("rows_out", 0))),
             evidence=["dq.scorecard"], impact=1, confidence=1.0, tags=["methodology"]))
         return f"Cleaned {len(clean)} datasets; overall quality score {overall}/100"
+
+    @staticmethod
+    def _examples(report: dict) -> str:
+        """': e.g. ...' naming the main fixes in the datasets this study has."""
+        parts = []
+        sales, survey, reviews = report.get("sales"), report.get("survey"), report.get("reviews")
+        if sales:
+            i = sales.get("issues", {})
+            parts.append(f"{i.get('duplicates', 0)} duplicate and {i.get('outliers', 0) + i.get('non_positive_units', 0)} "
+                         "invalid sales rows removed")
+        if reviews:
+            parts.append(f"{reviews['issues'].get('duplicates', 0)} duplicate reviews removed")
+        if survey:
+            parts.append(f"{survey.get('rows_in', 0) - survey.get('rows_out', 0)} low-quality survey responses excluded")
+        return (": e.g. " + ", ".join(parts[:-1]) + (" and " if len(parts) > 1 else "") + parts[-1]) if parts else ""
 
     # ------------------------------------------------------------------ tools
     @staticmethod

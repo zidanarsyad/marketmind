@@ -14,6 +14,7 @@ The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 -
 | **LLM** | Optional - free Gemini / Groq / OpenRouter / local Ollama, or Claude. Fully functional offline. |
 | **Quality gate** | Critic agent verifies numeric grounding, coverage, citations and evidence; failed reports go back for revision |
 | **Human in the loop** | Approval gates on the research plan and the recommendations (terminal: `run.py --approve`, or the dashboard); without a reviewer they approve automatically and the report says so |
+| **Real-data ready** | `scripts/import_tokopedia.py` turns the Tokopedia 2025 review dataset into MarketMind's formats; `run.py --data-dir` studies it, running the modules the data supports and disclosing the source and its caveats |
 | **Adaptive and bounded** | The Research Director sends analysts back for questions the report leaves open; every agent is retried once and has a time limit; each run has an LLM budget |
 | **Effectiveness** | 24 / 25 planted ground-truth insights recovered on the reference data; 23.6 / 25 on average over five more data seeds (see [Evaluation](#evaluation)) |
 
@@ -57,7 +58,7 @@ Optional: copy `.env.example` to `.env` and add **one free API key** to switch o
 | [Developer guide](docs/DEVELOPER_GUIDE.md) | Core APIs, adding agents, tools, charts, datasets and LLM providers, testing and debugging |
 | [Diagram gallery](docs/diagrams/gallery.html) | All 14 diagrams on one page, with SVG and PNG export |
 
-The design proposal is a separate Claude Doc. Three scripts support the documents:
+The design proposal is a separate Claude Doc. Four scripts support the documents and the real-data work:
 
 ```bash
 python scripts/export_sqlite.py
@@ -71,7 +72,11 @@ python scripts/build_diagram_gallery.py
 python scripts/validate_on_real_data.py
 ```
 
-The first loads the clean datasets and the latest run into `outputs/marketmind.db`, following `docs/schemas/database.sql`. The second rebuilds the diagram gallery from the Mermaid blocks in the docs. The third scores the sentiment models on real Indonesian reviews downloaded into `data/external/` (see section 4.6 of the evaluation report).
+```bash
+python scripts/import_tokopedia.py path/to/archive.zip
+```
+
+The first loads the clean datasets and the latest run into `outputs/marketmind.db`, following `docs/schemas/database.sql`. The second rebuilds the diagram gallery from the Mermaid blocks in the docs. The third scores the sentiment models on real Indonesian reviews downloaded into `data/external/` (see section 4.6 of the evaluation report). The fourth imports the Tokopedia 2025 dataset (downloaded from Kaggle) as a real-data folder, which `python run.py --data-dir data/real/tokopedia-2025` then studies ([docs/DATA_SOURCES.md](docs/DATA_SOURCES.md), section 8).
 
 ---
 
@@ -208,7 +213,7 @@ marketmind/
   system.py    MarketResearchSystem entry point
 app/dashboard.py     Streamlit dashboard
 scripts/             generate_data.py, evaluate_agents.py, export_sqlite.py, build_diagram_gallery.py, validate_on_real_data.py,
-                     multi_seed.py, ablations.py, llm_runs.py (evaluation studies)
+                     multi_seed.py, ablations.py, llm_runs.py (evaluation studies), import_tokopedia.py (real data)
 docs/                guides, architecture, agent specs, evaluation; schemas/ (JSON Schema + SQL); diagrams/
 data/raw/            datasets            data/ground_truth*  hidden labels for evaluation
 outputs/runs/        one folder per run  outputs/models/     cached deep-learning model
@@ -219,7 +224,7 @@ tests/               unit, end-to-end, QA-loop (fake LLM) and schema-contract te
 
 ## Limitations
 
-- The data is simulated; the methods are general, but real data needs mapping to the schemas.
+- The bundled data is simulated. Real review data can be imported (Tokopedia 2025), but no open source offers a sales panel or survey, so a real-data study runs the consumer module only.
 - Forecasts assume current list prices and last year's promotional calendar; shocks such as the counterfeit crisis are not predictable.
 - Concept revenue uses an explicit 5% conversion assumption; aspect detection is lexicon-based.
 - Only the market-size table spans 2019-2026; panel shares are shares of the six tracked brands.

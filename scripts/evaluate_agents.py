@@ -28,6 +28,9 @@ def main() -> int:
     run_id = sys.argv[1] if len(sys.argv) > 1 else runs[0]["run_id"]
     run = load_run(run_id)
     result = evaluate(run)
+    if not result.get("available", True):
+        print(f"Run {run_id}: {result['note']}")
+        return 0
     (run.path / "evaluation.json").write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Run {run_id}: {result['passed']}/{result['total']} ground-truth checks passed ({result['score']:.0%})\n")
     for c in result["checks"]:

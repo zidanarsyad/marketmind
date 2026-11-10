@@ -243,7 +243,7 @@ The other seven agents (Data Collection, Data Quality, Market & Trend Analyst, C
 
 ## 4. Workflow (dependency graph)
 
-The Director builds this graph from the plan's active modules, once a reviewer (or the automatic default) has approved the plan. Data tasks are **critical** (a failure skips dependents); analysis tasks are **non-critical** (a failure leaves Strategy to work with the findings that exist). Every task is retried once after a failure and has a time limit (900 s by default), enforced at its next tool or LLM call.
+The Director builds this graph from the plan's active modules, once a reviewer (or the automatic default) has approved the plan. A module runs only if its data exists: each analysis agent declares the datasets it requires, and on a real-data folder that holds only reviews and a product catalogue the graph has a single analysis task, `consumer`. Data tasks are **critical** (a failure skips dependents); analysis tasks are **non-critical** (a failure leaves Strategy to work with the findings that exist). Every task is retried once after a failure and has a time limit (900 s by default), enforced at its next tool or LLM call.
 
 ```mermaid
 flowchart LR
@@ -390,7 +390,8 @@ Level-1 data-flow diagram: processes (circles), data stores (cylinders), externa
 flowchart LR
     BRIEF["Business brief"] --> P1(("1.0 Plan"))
     P1 --> D2[("D2 Blackboard")]
-    CSV[("D1 data/raw")] --> P2(("2.0 Collect"))
+    CSV[("D1 data folder: raw/ + manifest.json<br/>simulated or imported real data")] --> P2(("2.0 Collect"))
+    REAL["Real marketplace data<br/>(e.g. Tokopedia 2025)"] -. "adapter: scripts/import_tokopedia.py" .-> CSV
     WBAPI["World Bank API"] --> P2
     P2 --> D2
     D2 --> P3(("3.0 Clean and validate"))
@@ -510,6 +511,7 @@ flowchart TB
 - **Human oversight:** two approval gates (`core/approval.py`): the plan, before any analysis, and the recommendations, before the summary and report. Reviewers answer at the terminal (`run.py --approve`) or in the dashboard; every decision is traced and stored in `run_meta.json`.
 - **Caching:** the sentiment models are cached under a hash of their training data, in one folder per training mode (`--sentiment-data`); World Bank responses are cached in `data/external`; LLM responses are cached in `outputs/cache/llm`.
 - **Configuration:** `.env` (LLM provider and keys, news keys, rate limit), `marketmind/config.py` (paths, dataset registry, default brief).
+- **Data folders:** the agents read one data folder per run: the bundled simulated data, a seed's data (`scripts/multi_seed.py`) or imported real data (`run.py --data-dir`, `MARKETMIND_DATA_DIR`). A folder's `manifest.json` says whether the data is real, where it comes from and under which licence; adapters in `marketmind/adapters/` write such folders from third-party sources without downloading anything. Reports disclose the source and its caveats, the evaluation scores a run only against its own folder's ground truth, and real-data folders are git-ignored.
 - **Security:** API keys travel only in request headers, never in prompts, traces, run files or reports. The dashboard listens only on this machine (`address = "localhost"` in `.streamlit/config.toml`); `--server.address 0.0.0.0` shares it on a network.
 - **Engineering:** git history, dependency ranges plus an exact lock file (`requirements-lock.txt`), ruff linting, and a GitHub Actions workflow that runs the linter and the whole test suite on every push.
 - **Performance:** with the models cached, a run took 114 s on 10 November 2026 (48 to 134 s across runs on the same 8-thread laptop CPU, see [EVALUATION.md §10](EVALUATION.md#10-efficiency)); a first run adds about 95 s of model training. The approval gates add whatever time the reviewer takes.

@@ -14,7 +14,7 @@ python -m ruff check .
 python -m pytest -q
 ```
 
-The repository includes the generated datasets, so `scripts/generate_data.py` is only needed after changing the generator. The full test suite takes several minutes (8 to 17 on the development laptop), because three tests run the whole pipeline (see section 9). GitHub Actions (`.github/workflows/tests.yml`) runs `ruff check` and the full suite on every push and pull request. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
+The repository includes the generated datasets, so `scripts/generate_data.py` is only needed after changing the generator. The full test suite takes several minutes (8 to 19 on the development laptop, the upper end with coverage), because it runs six full studies: the shared run and five end-to-end tests (see section 9). GitHub Actions (`.github/workflows/tests.yml`) runs `ruff check` and the full suite on every push and pull request. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
 
 **Dependencies.** `requirements.txt` holds compatible ranges, each capped below the next major version. `requirements-lock.txt` pins every package, including transitive ones, to the versions the suite last passed with. When you upgrade a library, run the tests, then regenerate the lock from the working environment.
 
@@ -39,16 +39,18 @@ marketmind/
     orchestrator.py          Task and Workflow (topological layers, thread pool)
     store.py                 save_run, RunData, list_runs, load_run
   agents/                    one module per agent, plus common.py (formatting and statistics helpers)
+  adapters/                  tokopedia.py: real marketplace data into MarketMind's contracts (see section 7)
   ml/                        text, sentiment (PyTorch), real_reviews (real training corpus), topics, segmentation,
                              forecasting, pricing, calendar_id
   reporting/
     charts.py                Plotly chart functions, TableSource and the CHARTS registry
     html_report.py           self-contained HTML report
 scripts/                     generate_data.py, evaluate_agents.py, export_sqlite.py, build_diagram_gallery.py,
-                             validate_on_real_data.py, multi_seed.py, ablations.py, llm_runs.py
+                             validate_on_real_data.py, multi_seed.py, ablations.py, llm_runs.py, import_tokopedia.py
 tests/                       conftest.py (shared offline run), test_system.py, test_schemas.py
 docs/                        design documents, schemas/ (JSON Schemas and SQL), diagrams/ (gallery)
 data/raw/                    the seven research datasets      data/ground_truth*   hidden answers
+data/real/<source>/          imported real data: raw/ + manifest.json   (git-ignored; licences forbid sharing)
 outputs/                     runs/, models/, cache/llm/, marketmind.db   (git-ignored)
 ```
 
@@ -192,6 +194,13 @@ Chart functions in `reporting/charts.py` take DataFrames and a theme mode and re
 
 If you replace the bundled data with real data, keep the column names and the category, channel and region labels, or update the code that relies on them: the enums in the schemas, `calendar_id.py` for the Ramadan dates, and the aspect lexicon in `ml/text.py`.
 
+**Real-data folders and adapters.** Rather than overwrite `data/raw`, write real data to its own folder: `<folder>/raw/` with any of the seven files in their row contracts, and `<folder>/manifest.json`. `config.data_manifest()` reads the manifest; without one, the data counts as simulated. The manifest needs `kind: "real"`, `source` and `licence`, and may add `datasets` (per dataset: `source`, how fields were `derived`, which are `unknown`), `caveats` (sentences the report repeats under its limitations), `stats` and `brands`. `marketmind/adapters/tokopedia.py` is the worked example: it reads the source without downloading anything, maps it to the contracts, marks unknown fields as null instead of guessing, and writes the manifest. `scripts/import_tokopedia.py` wraps it and checks every row against the contracts. Studies then run with `python run.py --data-dir <folder>` (or `MARKETMIND_DATA_DIR`), and the agents need no changes:
+
+- each analysis agent declares `requires`, the datasets it cannot work without (`("sales",)` for the forecaster);
+- the Director's `_scan_catalog` reads brands and the period from the sales panel, or the reviews or catalogue without one, and `_drop_unavailable` leaves out the modules whose data is missing, recording why in `plan["unavailable"]`; if none of the modules the brief asks for can run, it runs those the data supports;
+- agents read the folder from `config.DATA_RAW` at run time, so tests can point them elsewhere with `monkeypatch.setattr(config, "DATA_RAW", path)`;
+- the run records `options["data_dir"]`, and `evaluation.evaluate` scores a run against that folder's ground truth, or reports that it has none.
+
 ## 8. Adding an LLM provider
 
 An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/llm.py`: `base_url`, `key_env`, a default `model`, a `fallback` model (or `None`), `prefer` (substrings used to pick a replacement when the default model is retired) and `min_interval` (seconds between calls). Then add it to `AUTO_ORDER` if it should be picked automatically, and add its key to `.env.example`. Other APIs need their own `_call_<provider>` method. Follow `_call_anthropic`: lazy import, mapping every error to `last_error` and returning `None`, and recording token usage in `self.stats`. The Anthropic path uses the official SDK with `claude-opus-5-5`, `output_config={"effort": "medium"}` and the server-side fallback beta.
@@ -208,11 +217,12 @@ An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/ll
 | `tests/test_failure_paths.py` (6 tests) | Graceful degradation: client names matched ignoring case and accents; an unknown client stopping the run at planning; a missing dataset skipped with a warning; a World Bank outage falling back to the cache, then to nothing; garbled LLM output leaving the rule-based plan in place; and an end-to-end run where an analyst and the Critic crash, which must still save a schema-valid run marked `unverified` with a "NOT VERIFIED" report | about 1 minute |
 | `tests/test_agent_logic.py` (14 tests) | Each agent's core method on small synthetic inputs with a known answer: the Critic's number parsing, grounding at written precision (percentages, rupiah units, years, LLM blocks, code spans) and citation checks; the workflow's skip rules; Van Westendorp crossings against hand-solved values, the middle of a tied stretch of curves, the bootstrap of the recommended price and the count of answers that place the optimal price point; elasticity estimates recovering known slopes; the constant-elasticity price scenarios; the complaint-spike detector finding exactly the planted episode; the threat index; label canonicalisation; and the Strategy agent's priority rule | seconds, plus the shared run |
 | `tests/test_dashboard.py` (2 tests) | Streamlit's test runner renders the real dashboard for the shared run: all 12 tabs, no exception and no tab-level error; and a rejected run shows who stopped it and why | about 45 s, plus the shared run |
+| `tests/test_real_data.py` (3 tests) | The Tokopedia importer on a small archive in the dataset's exact layout (beauty filter, categories from names, brands and their spellings, prices, SPF, pack size, unknown fields left null, one row per dated review, the seller's region, contract checks, manifest, brand map); the Director planning around missing data (modules left out with reasons, the most-reviewed brand as default client, falling back to what the data supports, nothing to study); and an end-to-end study on a real-data folder with only reviews and a catalogue (consumer module only, report discloses gaps and source, no ground-truth score) | about 1 minute |
 | `tests/test_agentic.py` (13 tests) | Retries (a flaky agent recovers; a broken one fails after two attempts), the time limit (stops at the next tool call, not retried), the LLM budget, the console reviewer, decision tracing and a crashing reviewer, the dashboard broker across threads, the plan gate (modules left out, questions renumbered) and the recommendation gate (drop, renumber, reuse an unchanged decision, reject), the Director's mapping of open questions to agents, open-question answers, the Critic's half credit; and two end-to-end studies: the market analyst fails until the Director sends it back while a reviewer drops a recommendation, and a rejected plan stops the study before any analysis | about 2 minutes |
 | `tests/test_llm_client.py` (12 tests) | The LLM client against a fake OpenAI-style API, with no network or key: the request sent, response parsing, token counts, caching (and that the key never reaches the cache), the retry after a rate limit, dropping JSON mode when a provider rejects it, per-provider model settings winning over the global ones, a busy (503) or hung (timeout) model handing the call to the fallback, a retired model replaced for good, an unrelated bad request that mentions the model leaving it in place, rediscovery preferring `latest` aliases over previews, soft failure on HTTP errors, and offline mode without a key | under a second |
 | `tests/test_evaluation_and_chat.py` (2 tests) | The ground-truth evaluation on the shared run, which must recover every planted insight (a regression guard for the whole system). The one exception is the concept price, a documented noise-driven miss on the bundled data ([EVALUATION.md §4.5](EVALUATION.md#45-concept-pricing)); when it misses, SEG-04 must say the pick is not settled and name a runner-up inside the true band; and the Analyst Chat's offline retrieval: a pain-point question answered from weaknesses or threats with citations, a pricing question from pricing evidence, nonsense answered with "no evidence" | seconds, plus the shared run |
 
-Tests that run the pipeline or the dashboard are marked `slow`: `tests/conftest.py` marks every test that uses `offline_run`, and the two other end-to-end tests carry `@pytest.mark.slow`. `python -m pytest -q -m "not slow"` runs everything else in about half a minute, which is the loop to use while coding.
+Tests that run the pipeline or the dashboard are marked `slow`: `tests/conftest.py` marks every test that uses `offline_run`, and the five other end-to-end tests (the revision loop, the crashing analyst and Critic, the two agentic studies and the real-data study) carry `@pytest.mark.slow`. `python -m pytest -q -m "not slow"` runs everything else in about half a minute, which is the loop to use while coding.
 
 `tests/conftest.py` provides the session fixture `offline_run`: one complete offline study, saved to a temporary folder (never to `outputs/runs`) and shared by every test that needs a run. Use it in new tests rather than starting another pipeline run:
 

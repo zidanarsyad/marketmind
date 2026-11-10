@@ -24,7 +24,8 @@ import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 import streamlit.components.v1 as components  # noqa: E402
 
-from marketmind.config import DATA_RAW, DATASETS, DEFAULT_BRIEF, DEFAULT_CLIENT, MODELS_DIR  # noqa: E402
+from marketmind.config import (DATA_RAW, DATASETS, DEFAULT_BRIEF, DEFAULT_CLIENT, DEFAULT_REAL_BRIEF,  # noqa: E402
+                               MODELS_DIR, data_manifest)
 from marketmind.core.approval import ApprovalBroker, Decision  # noqa: E402
 from marketmind.core.llm import LLMClient  # noqa: E402
 from marketmind.core.store import list_runs, load_run  # noqa: E402
@@ -64,8 +65,12 @@ def get_llm() -> LLMClient:
 
 @st.cache_data(show_spinner=False)
 def brands_in_data() -> list[str]:
-    f = DATA_RAW / DATASETS["sales"]["file"]
-    return sorted(pd.read_csv(f, usecols=["brand"])["brand"].unique()) if f.exists() else [DEFAULT_CLIENT]
+    """Brands in the data folder, most records first: from the sales panel, or the reviews or catalogue without one."""
+    for key in ("sales", "reviews", "catalog"):
+        f = DATA_RAW / DATASETS[key]["file"]
+        if f.exists():
+            return list(pd.read_csv(f, usecols=["brand"])["brand"].value_counts().index)
+    return [DEFAULT_CLIENT]
 
 
 @st.cache_resource(show_spinner=False)
@@ -267,7 +272,11 @@ llm = get_llm()
 with st.sidebar:
     st.title("🧭 MarketMind")
     st.caption("Multi-agent market research system · Indonesian local skincare")
-    data_ok = all((DATA_RAW / v["file"]).exists() for k, v in DATASETS.items() if k != "social_labels")
+    # anything to study: the simulated data, or a real-data folder with reviews or a catalogue
+    data_ok = any((DATA_RAW / DATASETS[k]["file"]).exists() for k in ("sales", "reviews", "catalog"))
+    real_data = data_manifest(DATA_RAW)["kind"] == "real"
+    if real_data:
+        st.caption(f"Data: real, from {data_manifest(DATA_RAW)['source']}")
     if not data_ok:
         st.warning("Datasets not found.")
         if st.button("Generate datasets", type="primary", width="stretch"):
@@ -277,9 +286,10 @@ with st.sidebar:
             st.rerun()
     runs = list_runs()
     with st.expander("▶️  New research run", expanded=not runs):
-        brief = st.text_area("Research brief", DEFAULT_BRIEF, height=190)
+        brief = st.text_area("Research brief", DEFAULT_REAL_BRIEF if real_data else DEFAULT_BRIEF, height=190)
         brands = brands_in_data()
-        client = st.selectbox("Client brand", brands, index=brands.index(DEFAULT_CLIENT) if DEFAULT_CLIENT in brands else 0)
+        client = st.selectbox("Client brand", brands, index=brands.index(DEFAULT_CLIENT) if DEFAULT_CLIENT in brands else 0,
+                              help="Brands in the data, most records first.")
         use_llm = st.toggle("Use LLM reasoning", value=llm.available, disabled=not llm.available,
                             help="Add a free API key to .env (see README) to enable LLM planning and narrative.")
         from marketmind.ml import real_reviews
@@ -519,6 +529,8 @@ with tabs[4], guard("Consumers"):
                 st.markdown(f"> {r.text}  \n> — *{r.brand} · {r.aspect} · {r.type}*")
 
     st.subheader("Try the deep-learning model")
+    if card and card.get("real_text_note"):
+        st.caption(card["real_text_note"])
     suite = get_suite(card.get("data_hash", ""), (card.get("training_data") or {}).get("model_dir", "")) if card else None
     if suite is None:
         st.info("The trained model is not on disk for this run (retrain by starting a new run).")
@@ -674,9 +686,16 @@ with tabs[9], guard("Ask the analyst"):
 
 # ---------------------------------------------------------------------------- evaluation
 with tabs[10], guard("Evaluation"):
-    st.caption("The data is simulated, so the true market facts are known. This checks how many of them the agents recovered.")
+    from marketmind.evaluation import has_ground_truth
     ev_path = run.path / "evaluation.json"
-    if st.button("Evaluate this run against the ground truth", type="primary") or ev_path.exists():
+    if not has_ground_truth(run):
+        st.info("This run studied real data, which has no planted answers to score against. Judge its findings by the "
+                "evidence each one cites (Data and Strategy tabs) and by the QA certificate in the report.")
+    else:
+        st.caption("The data is simulated, so the true market facts are known. This checks how many of them the agents "
+                   "recovered.")
+    if has_ground_truth(run) and (st.button("Evaluate this run against the ground truth", type="primary")
+                                  or ev_path.exists()):
         if not ev_path.exists():
             from marketmind.evaluation import evaluate
             ev_path.write_text(json.dumps(evaluate(run), indent=2, ensure_ascii=False), encoding="utf-8")
@@ -695,7 +714,7 @@ with tabs[11], guard("Data"):
     st.markdown("**Data quality scorecard**")
     st.dataframe(run.table("dq.scorecard"), width="stretch", hide_index=True)
     name = st.selectbox("Preview a dataset", [k for k in DATASETS])
-    f = DATA_RAW / DATASETS[name]["file"]
+    f = Path(meta.get("options", {}).get("data_dir") or DATA_RAW.parent) / "raw" / DATASETS[name]["file"]
     if f.exists():
         df = pd.read_csv(f, nrows=2000)
         st.caption(f"{DATASETS[name]['description']} · source: {DATASETS[name]['source']} · showing first {len(df):,} rows")

@@ -60,7 +60,9 @@ class MarketResearchSystem:
         if results.get("qa") and results["qa"].status == "completed":
             results = director.quality_loop(results, self.max_revisions)
         critical = [k for k in ("collect", "quality", "strategy", "report") if results.get(k) and results[k].status != "completed"]
-        return self._finish(t0, results, "failed" if critical else "completed")
+        # a report the Critic never checked is not "completed": it is released, but marked unverified
+        status = "failed" if critical else "completed" if self.blackboard.has("qa.result") else "unverified"
+        return self._finish(t0, results, status)
 
     def _finish(self, t0: float, results: dict[str, AgentResult], status: str) -> RunResult:
         self.status = status
@@ -88,7 +90,18 @@ class MarketResearchSystem:
         return RunResult(self.run_id, self.run_dir, status, seconds, qa, results)
 
     def _append_qa_certificate(self, qa: dict) -> None:
-        if not qa or not self.blackboard.has("report.markdown"):
+        if not self.blackboard.has("report.markdown"):
+            return
+        if not qa:  # the Critic did not finish: say so in the report rather than staying silent
+            from .reporting.html_report import qa_not_verified_html
+            note = ("\n\n## QA Certificate\n\nVerdict: **NOT VERIFIED** - the Critic agent did not complete, so the numbers, "
+                    "citations and coverage of this report were not checked. The run trace records the error.")
+            self.blackboard.put("report.markdown", self.blackboard.get("report.markdown") + note, "System", "Report + QA notice")
+            html = self.blackboard.get("report.html")
+            if html:
+                html = html.replace("<!--QA-CERTIFICATE-->", qa_not_verified_html()).replace(
+                    "<!--QA-BADGE-->", '<span class="badge fail">QA not run - unverified</span>')
+                self.blackboard.put("report.html", html, "System")
             return
         checks = qa.get("checks", {})
         rows = "\n".join(f"| {k} | {v.get('score', 0) * 100:.0f}% |" for k, v in checks.items())

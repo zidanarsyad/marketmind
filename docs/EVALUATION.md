@@ -43,6 +43,7 @@ This report measures how well MarketMind does its job. The question is not only 
 | End to end | A complete offline study | `test_full_pipeline_offline` | Status completed, QA passed with a score of at least 85, key findings present, at least 3 recommendations, files saved |
 | Agent cooperation | The Critic, the Director and the Report Writer reflection loop, with a scripted LLM that invents a number | `test_critic_catches_invented_numbers_and_revision_fixes_them` | First QA pass fails; the revised report passes without the invented number; a revision message was sent |
 | Contracts | Every artefact, row and SQL table against the published schemas | `tests/test_schemas.py`, 5 tests | No schema errors; no foreign-key violations; brand shares sum to 1 |
+| Failure paths | Unknown client, missing dataset, World Bank outage, garbled LLM output, and an analyst and the Critic crashing in one run | `tests/test_failure_paths.py`, 6 tests | Clear errors or warnings; the study completes around failed agents and is marked `unverified` when the Critic did not run |
 | Acceptance | Whether the system finds the planted truth | `marketmind/evaluation.py`, 25 checks | Each check's rule in section 3 |
 
 ## 3. Insight recall: 25 / 25

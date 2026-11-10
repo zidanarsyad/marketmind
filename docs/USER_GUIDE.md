@@ -35,7 +35,9 @@ pip install -r requirements.txt
 python scripts/generate_data.py
 ```
 
-`generate_data.py` writes the seven research datasets to `data/raw/`, and the hidden answers used for scoring to `data/ground_truth.json` and `data/ground_truth/`. It is seeded, so it produces the same data every time. If PyTorch fails to install, install the CPU build from <https://pytorch.org> first and then run `pip install -r requirements.txt` again.
+`generate_data.py` writes the seven research datasets to `data/raw/`, and the hidden answers used for scoring to `data/ground_truth.json` and `data/ground_truth/`. It is seeded, so it produces the same data every time; the repository already includes its output, so this step is only needed if you delete or change the data. If PyTorch fails to install, install the CPU build from <https://pytorch.org> first and then run `pip install -r requirements.txt` again.
+
+`requirements.txt` allows compatible version ranges. To reproduce the exact versions under which the test suite last passed, install `requirements-lock.txt` instead.
 
 ## 3. Running a study
 
@@ -51,14 +53,14 @@ This runs the default brief for Kirana Beauty. It prints the agents' trace live,
 |---|---|
 | `--brief "..."` | Use your own brief |
 | `--brief-file brief.txt` | Read the brief from a text file |
-| `--client "GlowNesia"` | Set the client brand. It must match one of the brands in the sales panel exactly: Kirana Beauty, Lumière Lab, DewiSkin, GlowNesia, Aurelia Derma or Purabotanica. |
+| `--client "GlowNesia"` | Set the client brand: Kirana Beauty, Lumière Lab, DewiSkin, GlowNesia, Aurelia Derma or Purabotanica. Case, accents and extra spaces don't matter (`"lumiere lab"` works). An unknown name stops the run at planning, with the list of valid brands. |
 | `--no-llm` | Run fully offline, even if an API key is configured |
 | `--retrain` | Retrain the sentiment models instead of reusing the cached ones |
 | `--sentiment-data study+real` | Train the sentiment models on the study's reviews plus about 72,000 real Shopee/Tokopedia beauty reviews; `real` uses the real reviews only, and `study` (the default) the study's reviews only. Download the real reviews first ([DATA_SOURCES.md](DATA_SOURCES.md)); each new mix trains once, for a few minutes, and is then cached. |
 | `--sequential` | Run the analysis agents one at a time (slower; useful for debugging) |
 | `--quiet` | Do not stream the trace |
 
-The exit code is 0 when the run completes and 1 when it fails, so you can schedule `run.py` from a script.
+The exit code is 0 when the run completes with its report checked by the Critic. It is 1 when the run fails, or ends `unverified` because the Critic itself did not finish. So you can schedule `run.py` from a script and alert on a non-zero exit.
 
 ### From the dashboard
 
@@ -118,7 +120,7 @@ Example briefs:
 - **Citations.** Text such as `[CMP-02]` refers to a finding. Every finding has an ID, a statement with its numbers, the evidence it came from, an impact score (1-5) and a confidence score (0-1). The Strategy tab and `findings.json` list them all. [AGENTS.md §5](AGENTS.md#5-finding-registry) explains what each ID means.
 - **Recommendations** are ranked by priority = impact x confidence x effort factor. They are grouped as Quick wins (0-3 months), Core moves (0-6 or 0-12 months) and Strategic bets.
 - **Analyst commentary** blocks and an LLM-written executive summary appear only when an LLM is switched on. They are checked like the rest of the report.
-- **The QA certificate** at the end gives the Critic's verdict, its score out of 100, how many numbers in the prose were traced to evidence, and any open issues. A report passes with a score of at least 85 and no critical issue. "NOT PASSED" means the report was released after two revisions with issues still open; read them before you use the report.
+- **The QA certificate** at the end gives the Critic's verdict, its score out of 100, how many numbers in the prose were traced to evidence, and any open issues. A report passes with a score of at least 85 and no critical issue. "NOT PASSED" means the report was released after two revisions with issues still open; read them before you use the report. "NOT VERIFIED" means the Critic itself did not finish, so nothing in the report was checked.
 - **Risks and Limitations** lists the caveats the Data Quality agent recorded, for example that the data is simulated and that shares are shares of the tracked panel.
 
 ## 7. Asking the analyst
@@ -199,9 +201,10 @@ Old runs are never deleted automatically. Delete a run's folder under `outputs/r
 | LLM shows "offline (deterministic reasoning)" | There is no key in `.env`, or the key is wrong. Fix `.env`, restart, and use **Test LLM connection**. The text after "offline" gives the reason. |
 | "rate limited, retrying ..." in the trace | The free tier's per-minute limit was reached. MarketMind waits and retries; set `LLM_MIN_INTERVAL` (for example `4`) to space out calls. |
 | "World Bank API unreachable" warning | You are offline. MarketMind uses the cached data, or continues without macro indicators; the rest of the study is unaffected. |
-| Several agents fail with a `KeyError` naming the client, and the run ends as failed | The client name does not match a brand in the data (the name is not checked when the plan is made). Use the exact spelling, for example `--client "Lumière Lab"`. |
+| The run stops at planning with "Unknown client" | The name matches no brand in the sales data, even ignoring case and accents. Use one of the brands the message lists. |
+| The run ends `unverified` and the report says "NOT VERIFIED" | The Critic agent crashed, so the report's numbers, citations and coverage were not checked. The Agents tab and `trace.jsonl` show the error; fix it and run the study again before relying on the report. |
 | An analysis agent shows "failed" but the study completes | That is graceful degradation: the other agents carry on. The Agents tab shows the error and its traceback in the trace. |
 | QA certificate says NOT PASSED | Read the open issues in the certificate; each names the failing check. LLM text that fails a check is replaced during the revisions, so issues that remain usually come from the deterministic report: a missing section, a research question no finding answers (often because an analysis agent failed), or fewer than three recommendations. |
 | Port 8501 is already in use | `streamlit run app/dashboard.py --server.port 8502` |
-| Others on your network can open the dashboard | Streamlit listens on all network interfaces by default. Add `address = "localhost"` under `[server]` in `.streamlit/config.toml`. |
+| Colleagues on your network cannot open the dashboard | By design: `.streamlit/config.toml` limits it to this machine. To share it, run `streamlit run app/dashboard.py --server.address 0.0.0.0`. |
 | `python -m pytest` takes a minute or two | The end-to-end tests run the whole pipeline. That is expected. |

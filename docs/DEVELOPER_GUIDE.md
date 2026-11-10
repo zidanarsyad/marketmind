@@ -9,12 +9,16 @@ This guide is for people who change MarketMind: adding agents, tools, findings, 
 ```bash
 python -m venv .venv
 .venv\Scripts\Activate.ps1          # Windows PowerShell; on macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-python scripts/generate_data.py
+pip install -r requirements.txt     # or requirements-lock.txt for the exact tested versions
+python -m ruff check .
 python -m pytest -q
 ```
 
-The full test suite takes about two minutes, because the end-to-end tests run the whole pipeline (see section 9). Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
+The repository includes the generated datasets, so `scripts/generate_data.py` is only needed after changing the generator. The full test suite takes several minutes (8 on the development laptop), because three tests run the whole pipeline (see section 9). GitHub Actions (`.github/workflows/tests.yml`) runs `ruff check` and the full suite on every push and pull request. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
+
+**Dependencies.** `requirements.txt` holds compatible ranges, each capped below the next major version. `requirements-lock.txt` pins every package, including transitive ones, to the versions the suite last passed with. When you upgrade a library, run the tests, then regenerate the lock from the working environment.
+
+**Version control.** Commit code, docs and `data/raw`. `outputs/`, `data/external/` (downloaded corpora with their own licences) and `.env` (API keys) are git-ignored and must stay that way. Use `python run.py --no-llm` for fast, deterministic runs while developing, and `--sequential` when you want trace events in a strict order.
 
 ## 2. Repository layout
 
@@ -192,6 +196,7 @@ An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/ll
 | `test_critic_catches_invented_numbers_and_revision_fixes_them` | The reflection loop. A `FakeLLM` writes "Rp 999 trillion"; the Critic must fail it, the Director must send it back, and the revised report must pass without it. | about 1 minute |
 | `tests/test_schemas.py` (5 tests) | The contracts in [SCHEMAS.md](SCHEMAS.md) | shared run |
 | `tests/test_real_reviews.py` (5 tests) | The `--sentiment-data` option: emoji conversion, the three training modes on a small stand-in corpus, an unchanged cache key in the default mode, rejection of unknown modes, test metrics per source | seconds |
+| `tests/test_failure_paths.py` (6 tests) | Graceful degradation: client names matched ignoring case and accents; an unknown client stopping the run at planning; a missing dataset skipped with a warning; a World Bank outage falling back to the cache, then to nothing; garbled LLM output leaving the rule-based plan in place; and an end-to-end run where an analyst and the Critic crash, which must still save a schema-valid run marked `unverified` with a "NOT VERIFIED" report | about 1 minute |
 
 `tests/conftest.py` provides the session fixture `offline_run`: one complete offline study, saved to a temporary folder (never to `outputs/runs`) and shared by every test that needs a run. Use it in new tests rather than starting another pipeline run:
 
@@ -206,7 +211,7 @@ To test LLM behaviour without a network, subclass `LLMClient` as `FakeLLM` does 
 Useful commands:
 
 ```bash
-python -m pytest -q                                  # everything (about 2 minutes)
+python -m pytest -q                                  # everything (several minutes)
 python -m pytest -q -k "not pipeline and not critic and not schemas"   # unit tests only, seconds
 python -m pytest -q tests/test_schemas.py            # contracts
 python scripts/evaluate_agents.py                    # ground-truth score of the latest run

@@ -322,7 +322,9 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> Planning
     Planning --> Executing: plan on blackboard
-    Planning --> Failed: planning error
+    Planning --> Failed: planning error, e.g. unknown client
+    Executing --> Unverified: report written, Critic crashed
+    Unverified --> Saved: report marked NOT VERIFIED
     Executing --> QAReview: report written
     Executing --> Failed: collect, quality, strategy or report failed
     QAReview --> Released: score >= 85 and no critical issue
@@ -458,5 +460,6 @@ flowchart TB
 - **Error handling:** `BaseAgent.run()` catches exceptions, traces the traceback and returns a `failed` result; the workflow skips only critical dependents; the dashboard guards each view.
 - **Caching:** the sentiment models are cached under a hash of their training data, in one folder per training mode (`--sentiment-data`); World Bank responses are cached in `data/external`; LLM responses are cached in `outputs/cache/llm`.
 - **Configuration:** `.env` (LLM provider and keys, news keys, rate limit), `marketmind/config.py` (paths, dataset registry, default brief).
-- **Security:** API keys travel only in request headers, never in prompts, traces, run files or reports. Streamlit listens on all network interfaces by default; set `address = "localhost"` under `[server]` in `.streamlit/config.toml` to keep the dashboard private to one machine.
+- **Security:** API keys travel only in request headers, never in prompts, traces, run files or reports. The dashboard listens only on this machine (`address = "localhost"` in `.streamlit/config.toml`); `--server.address 0.0.0.0` shares it on a network.
+- **Engineering:** git history, dependency ranges plus an exact lock file (`requirements-lock.txt`), ruff linting, and a GitHub Actions workflow that runs the linter and the whole test suite on every push.
 - **Performance:** about 2 minutes for a first run (model training) and about 50 seconds once the models are cached (48 s for the reference run, on an 8-thread laptop CPU).

@@ -183,7 +183,7 @@ GROUP BY s.month, s.brand;
 CREATE TABLE IF NOT EXISTS run (
     run_id        TEXT PRIMARY KEY,                         -- 'YYYYMMDD-HHMMSS'
     started       TEXT,
-    status        TEXT NOT NULL CHECK (status IN ('completed', 'failed')),
+    status        TEXT NOT NULL CHECK (status IN ('completed', 'unverified', 'failed')),
     seconds       REAL,
     brief         TEXT,
     client        TEXT REFERENCES dim_brand (brand),

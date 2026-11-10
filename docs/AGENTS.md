@@ -73,7 +73,7 @@ Turns the free-text brief into a validated research plan, dispatches the special
 | Tool | What it does |
 |---|---|
 | `scan_data_catalog` | Lists the brands, categories, channels and months in the sales panel, and checks which datasets exist. |
-| `parse_brief` | Rule-based parser. Finds the client (a brand named in the brief, else `--client`, else the default), the horizon (3-12 months), the modules (keyword match per area) and a concept name, and writes one templated question per active area plus a strategy question. |
+| `parse_brief` | Rule-based parser. Finds the client (`--client` if given, else a brand named in the brief, else the default), the horizon (3-12 months), the modules (keyword match per area) and a concept name, and writes one templated question per active area plus a strategy question. A `--client` name is matched ignoring case, accents and spaces; a name that matches no brand stops the run here, with the list of valid brands. |
 | `refine_plan_with_llm` | Lets the LLM sharpen the objectives and questions (optional; validated as above). |
 
 Planning rules: if no area keyword matches, all six areas are switched on. Pricing implies segmentation (the Van Westendorp study lives in the survey agent). Competition or consumer questions imply market context. The forecast task runs when either `forecast` or `pricing` is active.
@@ -296,7 +296,7 @@ The Critic checks the work of the generators. It is fully deterministic, so the 
 | Actuators | Tools below; writes `qa.result` and `qa.history`; sends issues to the Report Writer when the report fails |
 | Findings | None |
 | LLM use | None, by design |
-| On failure | The QA gate is skipped and the report is saved without a QA certificate. The run status is still `completed` (the system treats only `collect`, `quality`, `strategy` and `report` as essential), but the run's metadata shows no QA score, so it is visible as unverified. |
+| On failure | The QA gate is skipped, but the run is not passed off as checked. Its status becomes `unverified`, the report ends with a "NOT VERIFIED" notice instead of a certificate, the dashboard shows a warning, and `run.py` exits with code 1. |
 
 | Tool | What it does |
 |---|---|

@@ -45,10 +45,12 @@ def main() -> int:
     res = system.run()
     bb = system.blackboard
     print("\n" + "=" * 78)
-    print(f"Status: {res.status} in {res.seconds}s | QA score: {res.qa.get('score')} "
-          f"({'passed' if res.qa.get('passed') else 'not passed'}) | findings: {len(bb.findings())}")
-    for name, r in res.results.items():
-        print(f"  {r.agent:<34} {r.status:<10} {r.seconds:>6.1f}s  {r.summary or r.error or ''}"[:150])
+    qa = (f"QA score: {res.qa.get('score')} ({'passed' if res.qa.get('passed') else 'not passed'})" if res.qa
+          else "QA: not run, report unverified")
+    print(f"Status: {res.status} in {res.seconds}s | {qa} | findings: {len(bb.findings())}")
+    for r in res.results.values():
+        line = f"  {r.agent:<34} {r.status:<10} {r.seconds:>6.1f}s  {r.summary or r.error or ''}"
+        print(line if r.error else line[:150])  # errors are printed in full
     recs = bb.get("strategy.recommendations") or []
     if recs:
         print("\nTop recommendations:")

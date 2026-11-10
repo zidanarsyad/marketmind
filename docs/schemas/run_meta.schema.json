@@ -8,7 +8,8 @@
   "additionalProperties": false,
   "properties": {
     "run_id": {"type": "string", "pattern": "^[0-9]{8}-[0-9]{6}$"},
-    "status": {"type": "string", "enum": ["completed", "failed"]},
+    "status": {"type": "string", "enum": ["completed", "unverified", "failed"],
+               "description": "unverified = the report was released but the Critic agent did not complete, so it was not checked."},
     "started": {"type": "string"},
     "seconds": {"type": "number", "minimum": 0},
     "brief": {"type": "string"},

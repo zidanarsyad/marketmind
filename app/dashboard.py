@@ -27,7 +27,7 @@ import streamlit.components.v1 as components  # noqa: E402
 from marketmind.config import DATA_RAW, DATASETS, DEFAULT_BRIEF, DEFAULT_CLIENT, MODELS_DIR  # noqa: E402
 from marketmind.core.llm import LLMClient  # noqa: E402
 from marketmind.core.store import list_runs, load_run  # noqa: E402
-from marketmind.reporting.charts import CHARTS, TableSource, tk  # noqa: E402
+from marketmind.reporting.charts import CHARTS, TableSource  # noqa: E402
 
 st.set_page_config(page_title="MarketMind - Agentic Market Research", page_icon="🧭", layout="wide")
 st.markdown("""<style>
@@ -133,8 +133,8 @@ def guard(section: str):
 
 
 def kpi_tiles(items: list[tuple[str, str, str]]) -> None:
-    tiles = "".join(f'<div class="mm-kpi"><div class="l">{html.escape(l)}</div><div class="v">{html.escape(v)}</div>'
-                    f'<div class="n">{html.escape(n)}</div></div>' for l, v, n in items)
+    tiles = "".join(f'<div class="mm-kpi"><div class="l">{html.escape(label)}</div><div class="v">{html.escape(v)}</div>'
+                    f'<div class="n">{html.escape(n)}</div></div>' for label, v, n in items)
     st.markdown(f'<div class="mm-kpis">{tiles}</div>', unsafe_allow_html=True)
 
 
@@ -268,9 +268,13 @@ qa = meta.get("qa", {})
 # ============================================================================ header
 st.title(f"{client} · Market Research")
 chips = [f"Run {run.run_id}", f"{meta.get('seconds')}s", meta.get("llm", {}).get("description", ""),
-         f"QA {qa.get('score')}/100 {'passed' if qa.get('passed') else 'not passed'}",
+         f"QA {qa.get('score')}/100 {'passed' if qa.get('passed') else 'not passed'}" if qa.get("score") is not None
+         else "QA not run - unverified",
          f"{len(run.findings)} findings", f"{len(run.json('strategy.recommendations', []) or [])} recommendations"]
 st.markdown("".join(f'<span class="mm-chip">{html.escape(str(c))}</span>' for c in chips if c), unsafe_allow_html=True)
+if meta.get("status") == "unverified":
+    st.warning("The Critic agent did not complete in this run, so the report's numbers, citations and coverage were "
+               "not checked. The Agents tab shows the error.")
 
 tabs = st.tabs(["Overview", "Agents", "Market", "Competition", "Consumers (DL)", "Segments", "Forecast & pricing",
                 "Strategy", "Report", "Ask the analyst", "Evaluation", "Data"])
@@ -319,7 +323,7 @@ with tabs[1], guard("Agents"):
     if wf.get("tasks"):
         fill = {"completed": "#d9f2d9", "failed": "#f8d7d7", "skipped": "#eeeeee"}
         lines = ['digraph G { rankdir=LR; bgcolor="transparent"; node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=11];',
-                 f'director [label="Research Director\\n(plan + supervise)", fillcolor="#dbe8fb"];']
+                 'director [label="Research Director\\n(plan + supervise)", fillcolor="#dbe8fb"];']
         for tid, name in wf["tasks"].items():
             res = agents.get(tid, {})
             label = name.replace(" Agent", "\\nAgent").replace("(QA)", "\\n(QA)")
@@ -481,7 +485,7 @@ with tabs[5], guard("Segments"):
     if prof is not None:
         roles = concept_df.set_index("segment")["role"].to_dict() if concept_df is not None and "role" in concept_df else {}
         cols = st.columns(len(prof))
-        for col, p in zip(cols, prof.itertuples()):
+        for col, p in zip(cols, prof.itertuples(), strict=True):
             with col.container(border=True):
                 tag = {"primary": "🎯 primary target", "secondary": "secondary target"}.get(roles.get(p.segment), "")
                 st.markdown(f"**{p.name}**  \n{p.share:.0%} of consumers {('· ' + tag) if tag else ''}")

@@ -78,8 +78,14 @@ class ResearchDirectorAgent(BaseAgent):
         text = _fold(brief)
         brands = catalog["brands"]
         mentioned = [b for b in brands if _fold(b) in text or _fold(b.split()[0]) in text]
-        client = self.options.get("client") or (mentioned[0] if mentioned else
-                                                 (DEFAULT_CLIENT if DEFAULT_CLIENT in brands else brands[0]))
+        requested = (self.options.get("client") or "").strip()
+        if requested:  # case, accents and stray spaces are ignored ("lumiere lab" -> "Lumière Lab")
+            matches = [b for b in brands if _fold(b) == _fold(requested)]
+            if not matches:
+                raise ValueError(f"Unknown client {requested!r}; the sales data covers: {', '.join(brands)}")
+            client = matches[0]
+        else:
+            client = mentioned[0] if mentioned else (DEFAULT_CLIENT if DEFAULT_CLIENT in brands else brands[0])
         m = re.search(r"(\d+)\s*(?:-\s*)?(?:month|bulan)", text)
         horizon = int(m.group(1)) if m else 12
         horizon = min(max(horizon, 3), 12)
@@ -99,10 +105,10 @@ class ResearchDirectorAgent(BaseAgent):
             brief=brief, client=client, competitors=[b for b in brands if b != client],
             categories=catalog["categories"], channels=catalog["channels"], horizon_months=horizon,
             data_window=[catalog["first_month"], catalog["last_month"]], modules=modules, concept=concept,
-            objectives=[f"Size the market and identify where growth is coming from",
+            objectives=["Size the market and identify where growth is coming from",
                         f"Benchmark {client} against {len(brands) - 1} local competitors",
-                        f"Surface consumer pain points and unmet needs",
-                        f"Define target segments, price and demand outlook",
+                        "Surface consumer pain points and unmet needs",
+                        "Define target segments, price and demand outlook",
                         f"Recommend a prioritised 12-month growth plan for {client}"],
             questions=questions, planner="rule-based", created=time.strftime("%Y-%m-%d %H:%M:%S"),
         )

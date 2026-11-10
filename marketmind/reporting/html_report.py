@@ -146,6 +146,11 @@ def render_html(sections: list[dict], bb, title: str, run_id: str) -> str:
                            n_findings=len(bb.findings()), n_recs=len(bb.get("strategy.recommendations") or []))
 
 
+def qa_not_verified_html() -> str:
+    return ('<div class="qa"><p><b>Verdict: NOT VERIFIED</b> - the Critic agent did not complete, so the numbers, '
+            'citations and coverage of this report were not checked. The run trace records the error.</p></div>')
+
+
 def qa_certificate_html(qa: dict) -> str:
     checks = qa.get("checks", {})
     rows = "".join(f"<tr><td>{html_lib.escape(k)}</td><td>{v.get('score', 0) * 100:.0f}%</td></tr>" for k, v in checks.items())

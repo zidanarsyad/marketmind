@@ -1,5 +1,7 @@
 # MarketMind - a multi-agent market research system
 
+[![tests](https://github.com/zidanarsyad/marketmind/actions/workflows/tests.yml/badge.svg)](https://github.com/zidanarsyad/marketmind/actions/workflows/tests.yml)
+
 MarketMind runs a complete market research study end to end: a **Research Director** agent turns a business brief into a research plan, specialist agents collect and clean data, analyse the market, competitors and consumers (with **deep learning** and **machine learning**), forecast demand, build a strategy, write the report, and a **Critic** agent fact-checks every number before the report is released. Everything is visible in an interactive **Streamlit dashboard**.
 
 The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 - Oct 2026). The client is *Kirana Beauty*, a fictional local brand competing with five other fictional brands. All datasets are simulated but realistic (Indonesian marketplace reviews with slang and emojis, Ramadan seasonality, TikTok Shop's rise, survey data-quality problems), and macro data comes live from the **World Bank API**.
@@ -18,11 +20,11 @@ The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 -
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/zidanarsyad/marketmind.git
 ```
 
 ```bash
-python scripts/generate_data.py
+pip install -r requirements.txt
 ```
 
 ```bash
@@ -33,9 +35,9 @@ python run.py
 streamlit run app/dashboard.py
 ```
 
-`run.py` prints the live agent trace and saves everything to `outputs/runs/<run_id>/` (report.html, report.md, findings, tables, trace). The first run trains the deep-learning model (~2 minutes on a laptop CPU); later runs reuse it (~50 seconds). In the dashboard you can also launch new studies with your own brief and watch the agents work live.
+The simulated datasets are in the repository (`python scripts/generate_data.py` regenerates them identically). `run.py` prints the live agent trace and saves everything to `outputs/runs/<run_id>/` (report.html, report.md, findings, tables, trace). The first run trains the deep-learning model (~2 minutes on a laptop CPU); later runs reuse it (~50 seconds). In the dashboard you can also launch new studies with your own brief and watch the agents work live. For the exact package versions the tests last passed with, install `requirements-lock.txt` instead.
 
-Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Run the tests with `python -m pytest -q`; they include an end-to-end run, the Critic's revision loop and contract tests against the published schemas.
+Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`. The tests include end-to-end runs, the Critic's revision loop, contract tests against the published schemas and failure-path tests. GitHub Actions runs both on every push.
 
 ---
 

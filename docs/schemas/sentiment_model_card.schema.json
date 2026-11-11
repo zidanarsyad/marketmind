@@ -100,7 +100,7 @@
         "study_reviews": {"type": "integer", "minimum": 0},
         "real_reviews": {"type": "integer", "minimum": 0},
         "real_source": {"type": ["string", "null"]},
-        "model_dir": {"type": "string", "description": "Cache folder relative to the project root."},
+        "model_dir": {"type": "string", "description": "Cache folder, relative to the project root when it lies inside it, else absolute (MARKETMIND_OUTPUTS may point elsewhere)."},
         "overlap_removed": {"type": "integer", "minimum": 0, "description": "Real reviews dropped because they duplicate one of the study's reviews (study+real mode)."}
       }
     },

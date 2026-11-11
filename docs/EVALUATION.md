@@ -44,7 +44,7 @@ One run on one dataset is a single sample, so the report also measures how the r
 8. **Real LLMs.** `scripts/llm_runs.py` runs the full study with each free LLM provider and records what the Critic catches before the report is released (section 9).
 9. **Efficiency.** Time per agent and per run, taken from the trace (section 10).
 
-**Test plan.** Every level below runs automatically with `python -m pytest -q`: 85 tests that cover 95% of the lines in `marketmind/` (and 86% of the web API in `api/`). The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
+**Test plan.** Every level below runs automatically with `python -m pytest -q`: 86 tests that cover 95% of the lines in `marketmind/` (and 86% of the web API in `api/`). The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
 
 | Level | What is tested | How | Pass criterion |
 |---|---|---|---|

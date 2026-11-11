@@ -48,6 +48,16 @@ def test_study_mode_keeps_the_existing_cache_key():
     assert real_reviews.model_dir("study").name == "sentiment"
 
 
+def test_the_model_card_finds_its_cache_inside_and_outside_the_project():
+    """MARKETMIND_OUTPUTS may point outside the project; the Consumer Insight agent used to crash on that."""
+    from marketmind.config import ROOT, project_path
+    inside, outside = ROOT / "outputs" / "models" / "sentiment", ROOT.parent / "marketmind-runs" / "models" / "sentiment"
+    assert project_path(inside) == "outputs/models/sentiment"           # portable in the saved run
+    assert project_path(outside) == outside.resolve().as_posix()        # outside the project: absolute
+    for folder in (inside, outside):                                     # how the dashboard and the web API load it
+        assert (ROOT / project_path(folder)).resolve() == folder.resolve()
+
+
 def test_missing_corpus_and_unknown_modes(tmp_path, monkeypatch):
     monkeypatch.setattr(real_reviews, "REAL_REVIEWS_DIR", tmp_path)
     assert not real_reviews.available()

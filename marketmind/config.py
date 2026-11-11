@@ -80,3 +80,13 @@ def env(name: str, default: str | None = None) -> str | None:
 def ensure_dirs() -> None:
     for d in (RUNS_DIR, MODELS_DIR, CACHE_DIR, DATA_EXTERNAL):
         d.mkdir(parents=True, exist_ok=True)
+
+
+def project_path(path: Path) -> str:
+    """A folder as saved runs record it: relative to the project root when it lies inside, else absolute.
+
+    MARKETMIND_OUTPUTS may point outside the project. Readers rebuild the folder as ROOT / value, which also
+    works for an absolute value.
+    """
+    path = Path(path).resolve()
+    return (path.relative_to(ROOT) if path.is_relative_to(ROOT) else path).as_posix()

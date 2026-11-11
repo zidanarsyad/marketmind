@@ -17,7 +17,7 @@ import pandas as pd
 from scipy.stats import poisson
 from sklearn.metrics import accuracy_score, f1_score
 
-from ..config import ROOT
+from ..config import project_path
 from ..core.agent import BaseAgent
 from ..core.findings import Finding
 from ..ml import real_reviews
@@ -93,7 +93,7 @@ class ConsumerInsightAgent(BaseAgent):
             mode=mode, study_reviews=int((sources == "study").sum()), real_reviews=int((sources == "real").sum()),
             overlap_removed=mix.get("overlap_removed", 0),
             real_source=None if mode == "study" else real_reviews.SOURCE,
-            model_dir=real_reviews.model_dir(mode).relative_to(ROOT).as_posix())
+            model_dir=project_path(real_reviews.model_dir(mode)))
         if mode == "study" and (self.bb.get("data.provenance") or {}).get("kind") != "real":
             self.suite.card["real_text_note"] = (
                 "These models learned from simulated reviews only; on real marketplace reviews they reach a macro-F1 of "

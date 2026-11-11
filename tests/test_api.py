@@ -281,8 +281,9 @@ def test_evaluation_chat_and_sentiment_tester(run_client):
     assert c.get(f"/api/runs/{rid}/evaluation").json()["result"] == scored["result"]
 
     answer = c.post(f"/api/runs/{rid}/chat", json={"question": "What is our biggest problem?", "history": []}).json()
-    assert answer["mode"] == "retrieval (offline)" and answer["sources"]
+    assert answer["mode"] == "agentic RAG (offline)" and answer["sources"] and answer["verified"] is True
     assert f"[{answer['sources'][0]['id']}]" in answer["answer"]
+    assert [s["step"] for s in answer["trace"]][:3] == ["plan", "retrieve", "grade"]
     assert c.post(f"/api/runs/{rid}/chat", json={"question": ""}).status_code == 422
 
     if c.get(f"/api/runs/{rid}/sentiment").json()["available"]:

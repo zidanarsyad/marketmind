@@ -32,7 +32,7 @@ def test_analyst_chat_answers_from_the_run_and_cites_its_sources(offline_run):
     _, _, run = offline_run
     chat = AnalystChatAgent(run, llm=LLMClient(provider="none"))
     problem = chat.answer("What is our biggest problem?")
-    assert problem["mode"] == "retrieval (offline)" and problem["sources"]
+    assert problem["mode"] == "agentic RAG (offline)" and problem["sources"]
     top = problem["sources"][0]
     assert top["swot"] in ("W", "T") or "pain point" in top["tags"]
     assert f"[{top['id']}]" in problem["answer"]

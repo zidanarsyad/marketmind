@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// Ask the analyst: questions about this run, answered only from its findings, recommendations and SWOT.
+// Ask the analyst: the agentic-RAG Analyst Chat. It plans the question, searches the run's findings, recommendations
+// and report, the method notes and the customer reviews, grades what it finds, rewrites the query when too little
+// fits, and checks every citation and number in its answer; each answer keeps the trace of those steps.
 // A question is sent once, when you ask it. The conversation is kept in this browser, so reloading the page shows it
 // again without asking the LLM again (in the Streamlit dashboard a reload repeated the last question).
 import Button from 'primevue/button'
@@ -48,7 +50,11 @@ async function ask(question: string) {
     const sources = out.sources.length
       ? `Sources: ${out.sources.map((s) => `${s.id} (${s.kind})`).join(', ')} · ${out.mode}`
       : ''
-    const next: ChatMessage[] = [...before, { role: 'user', content: q }, { role: 'assistant', content: out.answer, sources }]
+    const next: ChatMessage[] = [
+      ...before,
+      { role: 'user', content: q },
+      { role: 'assistant', content: out.answer, sources, trace: out.trace ?? [] },
+    ]
     saveChat(runId, next) // kept with its run, even if you have moved on to another run meanwhile
     if (runId === props.runId) history.value = next
   } catch (e) {
@@ -71,6 +77,8 @@ function reset() {
   history.value = []
   error.value = ''
 }
+
+const stepName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 </script>
 
 <template>
@@ -78,7 +86,11 @@ function reset() {
     <header class="chat-head">
       <div>
         <h2>Ask the analyst</h2>
-        <p class="caption">Answers come only from this run's findings, recommendations and SWOT, via {{ llm }}.</p>
+        <p class="caption">
+          Agentic RAG: the agent plans the question, searches this run's findings, recommendations and report, the
+          method notes and the customer reviews, grades what it finds, rewrites the query when too little fits, and
+          checks every citation and number in its answer. Via {{ llm }}.
+        </p>
       </div>
       <Button v-if="history.length" label="Clear" icon="pi pi-trash" size="small" severity="secondary" text @click="reset" />
     </header>
@@ -97,6 +109,15 @@ function reset() {
           <div v-if="m.role === 'assistant'" class="md" v-html="renderMarkdown(m.content)" />
           <p v-else>{{ m.content }}</p>
           <p v-if="m.sources" class="caption">{{ m.sources }}</p>
+          <details v-if="m.trace?.length" class="trace">
+            <summary>How the agent answered ({{ m.trace.length }} steps)</summary>
+            <ol>
+              <li v-for="(s, j) in m.trace" :key="j">
+                <strong>{{ stepName(s.step) }}</strong>: {{ s.detail }}
+                <span v-if="s.step === 'grade' && s.relevant?.length" class="kept"> - kept {{ s.relevant.join(', ') }}</span>
+              </li>
+            </ol>
+          </details>
         </div>
       </li>
       <li v-if="busy" class="msg assistant">
@@ -247,5 +268,21 @@ function reset() {
 }
 .err {
   color: var(--mm-bad);
+}
+.trace {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--mm-muted);
+}
+.trace summary {
+  cursor: pointer;
+}
+.trace ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.trace li {
+  margin: 3px 0;
+  overflow-wrap: anywhere;
 }
 </style>

@@ -42,6 +42,25 @@ def _canonical_labels(series: pd.Series) -> dict[str, str]:
     return mapping
 
 
+def clean_tables(raw: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """The agent's cleaning steps applied to raw tables outside a run, giving the data the study analysed.
+
+    The ReAct Data Agent re-loads a saved run's datasets this way, so its totals match the study's.
+    """
+    agent = DataQualityAgent.__new__(DataQualityAgent)    # the cleaning steps use no run state
+    steps = {"sales": agent._clean_sales, "reviews": agent._clean_reviews, "survey": agent._clean_survey,
+             "social": agent._clean_social}
+    clean = {}
+    for key, df in raw.items():
+        if key in steps:
+            clean[key] = steps[key](df)[0]
+        elif key in ("catalog", "market_size"):
+            clean[key] = agent._clean_reference(df, key)[0]
+        else:
+            clean[key] = df.drop_duplicates().reset_index(drop=True)
+    return clean
+
+
 class DataQualityAgent(BaseAgent):
     name = "Data Quality Agent"
     role = "Data steward. Profiles, validates and cleans every dataset and documents each fix."

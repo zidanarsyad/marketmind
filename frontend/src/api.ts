@@ -4,6 +4,7 @@ import type {
   AppConfig,
   ChatAnswer,
   ChatMessage,
+  DataAnswer,
   DatasetPreview,
   Decision,
   EvaluationState,
@@ -87,6 +88,7 @@ export const api = {
       question,
       history: history.map(({ role, content }) => ({ role, content })),
     }),
+  askData: (id: string, question: string) => post<DataAnswer>(`/api/runs/${enc(id)}/ask-data`, { question }),
   sentimentStatus: (id: string) =>
     get<{ available: boolean; has_model_card: boolean; real_text_note: string | null }>(`/api/runs/${enc(id)}/sentiment`),
   sentiment: (id: string, text: string) => post<SentimentResult>(`/api/runs/${enc(id)}/sentiment`, { text }),

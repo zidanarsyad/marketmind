@@ -14,7 +14,7 @@ The [design proposal](https://claude.ai/artifact/QY1WcVtyNZYJ5pHcy2nUEB), a Clau
 | [SECURITY.md](SECURITY.md) | See what keeps the results trustworthy and the system safe: grounding, the QA gate, approval gates, the audit trail, credential redaction, local-only servers and the access token, input checks, privacy, dependency audits, and the limits that remain | Reviewers, lecturers, developers |
 | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Extend MarketMind: core APIs, adding agents, tools, charts, datasets and LLM providers, testing, debugging | Developers |
 | [schemas/](schemas/) | The machine-readable contracts: 15 JSON Schemas and `database.sql` | Tools and tests |
-| [diagrams/gallery.html](diagrams/gallery.html) | All 14 diagrams on one page, with SVG and PNG export (open it in a browser) | Everyone |
+| [diagrams/gallery.html](diagrams/gallery.html) | All 16 diagrams on one page, with SVG and PNG export (open it in a browser) | Everyone |
 
 ## Diagrams
 
@@ -23,6 +23,7 @@ The [design proposal](https://claude.ai/artifact/QY1WcVtyNZYJ5pHcy2nUEB), a Clau
 | Agent pipeline overview | flowchart | [README](../README.md#architecture) |
 | System context | flowchart | [ARCHITECTURE §1](ARCHITECTURE.md#1-system-context) |
 | Components (layered view) | flowchart | [ARCHITECTURE §2](ARCHITECTURE.md#2-components-layered-view) |
+| The agentic-RAG chat loop; the ReAct data agent loop | flowcharts | [ARCHITECTURE §2](ARCHITECTURE.md#the-on-demand-agents-agentic-rag-and-react) |
 | Core classes | class diagram | [ARCHITECTURE §3](ARCHITECTURE.md#3-core-classes) |
 | Workflow (dependency graph) | flowchart | [ARCHITECTURE §4](ARCHITECTURE.md#4-workflow-dependency-graph) |
 | A run, step by step | sequence diagram | [ARCHITECTURE §5](ARCHITECTURE.md#5-a-run-step-by-step) |

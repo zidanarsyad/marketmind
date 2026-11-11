@@ -3,6 +3,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Select from 'primevue/select'
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errorText } from '@/api'
+import DataAgent from '@/components/DataAgent.vue'
 import DataGrid from '@/components/DataGrid.vue'
 import { toGrid } from '@/lib/tables'
 import { useAppStore } from '@/stores/app'
@@ -48,10 +49,14 @@ const catalogGrid = computed(() => toGrid(catalog.value))
 const scoreGrid = computed(() => toGrid(scorecard.value))
 const newsGrid = computed(() => toGrid(news.value))
 const previewGrid = computed(() => toGrid(preview.value))
+const agentLlm = computed(() =>
+  app.config?.llm.available ? app.config.llm.description : 'its rule-based policy (offline)',
+)
 </script>
 
 <template>
   <div class="stack">
+    <DataAgent :run-id="id" :llm="agentLlm" />
     <section v-if="catalog" class="card">
       <h3>Data catalogue</h3>
       <DataGrid :columns="catalogGrid.columns" :rows="catalogGrid.rows" scroll-height="none" />

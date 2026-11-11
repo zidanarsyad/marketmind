@@ -1,6 +1,6 @@
 # MarketMind agent specifications
 
-This document specifies each of the eleven pipeline agents and the on-demand Analyst Chat agent. For each one it gives the agent type and PEAS profile, the tools it may call, what it reads from and writes to the blackboard, the findings it publishes, how it uses the LLM, and what happens when it fails. It describes the code in `marketmind/agents/`. Related documents: [ARCHITECTURE.md](ARCHITECTURE.md) explains how the agents fit together, and [SCHEMAS.md](SCHEMAS.md) gives the exact shape of every artefact named here.
+This document specifies each of the eleven pipeline agents and the two on-demand agents: the agentic-RAG Analyst Chat and the ReAct Data Agent. For each one it gives the agent type and PEAS profile, the tools it may call, what it reads from and writes to the blackboard, the findings it publishes, how it uses the LLM, and what happens when it fails. It describes the code in `marketmind/agents/`. Related documents: [ARCHITECTURE.md](ARCHITECTURE.md) explains how the agents fit together, and [SCHEMAS.md](SCHEMAS.md) gives the exact shape of every artefact named here.
 
 ---
 
@@ -19,7 +19,8 @@ This document specifies each of the eleven pipeline agents and the on-demand Ana
 | 9 | Strategy (`StrategyAgent`) | `strategist.py` | Utility-based | no | `strategy` | yes | optional executive summary |
 | 10 | Report Writer (`ReportWriterAgent`) | `reporter.py` | Goal-based (communicative) | no | `report` | yes | optional section commentary |
 | 11 | Critic (QA) (`QualityAssuranceAgent`) | `critic.py` | Utility-based evaluator | no | `qa` | see section 3.11 | none, by design |
-| - | Analyst Chat (`AnalystChatAgent`) | `analyst_chat.py` | Reactive, retrieval-based | no | on demand, after a run | - | optional answer writing |
+| - | Analyst Chat (`AnalystChatAgent`) | `analyst_chat.py` | Agentic RAG (plans, routes, grades, rewrites, verifies) | no | on demand, after a run | - | optional planning, grading, rewriting and answer writing |
+| - | ReAct Data Agent (`ReActDataAgent`) | `data_agent.py`, `data_tools.py` | ReAct: a reason-act loop over read-only tools | no | on demand, after a run | - | optional: chooses each step (offline, a rule-based policy) |
 
 "Critical" is the `Task.critical` flag. When a critical task fails, every task that depends on it is skipped and the run ends with status `failed`. When a non-critical analysis task fails, only its own findings are missing; Strategy and the Report Writer still run with the evidence that exists.
 
@@ -321,21 +322,58 @@ Three rules handle the human, adaptive and real-data steps. A question answered 
 
 ---
 
-## 4. Analyst Chat Agent (on demand)
+## 4. On-demand agents
 
-Answers follow-up questions about a finished run, in the dashboard's "Ask the analyst" tab, using retrieval-augmented generation over that run's evidence.
+Two agents answer questions after a study, each with its own agent design. Neither changes the run: they read it, and they check their answers before they show them. Both work offline, with rules in place of the LLM's decisions, and both check numbers with the same function as the Critic (`core/grounding.py`).
+
+### 4.1 Analyst Chat Agent (agentic RAG)
+
+Answers follow-up questions about a finished run ("Ask the analyst" in the dashboard and the web app) with agentic retrieval-augmented generation. Classic RAG retrieves once and answers; this agent decides where to look, judges what it found, searches again when that was not enough, and verifies its answer.
 
 | Field | Specification |
 |---|---|
-| Type | Reactive, retrieval-based |
-| Performance measure | The answer is relevant and every claim is cited |
-| Environment | One saved run (findings and recommendations) and the user's questions |
-| Sensors | `RunData.findings`, `strategy.recommendations`, the question and the last 6 turns of the conversation |
-| Actuators | Writes an answer and its sources (shown in the dashboard) |
-| LLM use | Optional. Writes a 2-5 sentence answer using only the retrieved evidence, with citations. Offline, it quotes the top three pieces of evidence. |
-| On failure | If retrieval finds nothing relevant, it says so and suggests topics it can answer. |
+| Type | Agentic RAG: a goal-based agent whose actions are retrieval steps |
+| Performance measure | The answer is relevant, every claim is cited, every citation names a retrieved passage, and every number appears in the evidence |
+| Environment | One saved run, the documentation of the agents' methods, the study's customer reviews, and the user's questions with the conversation |
+| Sensors | The question and the last 6 turns; five knowledge sources: findings, recommendations, report sections (`REP-<section>.<k>`), method notes from AGENTS.md and EVALUATION.md (`DOC-<section>`, `EVL-<section>`), and the study's customer reviews (`REV-<review id>`, cleaned and masked for personal details) |
+| Actuators | The answer, its sources, and the trace of its steps (plan, retrieve, grade, rewrite, verify, answer) |
+| LLM use | Optional, in four steps: the plan (a stand-alone question, sub-questions and sources, as JSON), grading (which passages help), rewriting a weak query, and writing the answer. Offline, rules take the first three steps and the answer quotes the passages. |
+| On failure | Nothing relevant: it says so. An answer that fails verification is rewritten once, with the reasons; if it fails again, the agent shows the passages instead. An LLM step that fails falls back to its rule. |
 
-Retrieval score for each evidence item = TF-IDF cosine similarity (1-2 grams, sublinear term frequency) + 0.35 for each question intent the item matches (for example "problem" favours weaknesses and pain points, "price" favours the pricing area) + a small priority bonus when an intent matched. It returns the top 5 items scoring above 0.05.
+| Step | What it does |
+|---|---|
+| Plan | Makes the question stand alone: a follow-up opener ("and why?", "what about ...") or a short question with a pronoun is joined to the previous question. Splits a compound question into up to three sub-questions, and routes them: findings and recommendations always; the report for limitations, methodology, approvals or data quality; the method notes for "how did you compute ..." and accuracy questions; the reviews for what customers say. It also reads filters for the reviews: the brand named ("our" means the client), a product category, praise (4-5 stars) or complaints (1-2 stars), a year. |
+| Retrieve | Per source, TF-IDF cosine similarity (1-2 grams). Findings and recommendations keep the intent boosts of the classic retrieval: +0.35 for each question intent an item matches (for example "problem" favours weaknesses and pain points, "price" the pricing area), plus a small priority bonus. Reviews are matched on normalised Indonesian text and filtered as planned. |
+| Grade | Keeps the passages that help: offline, those above a score threshold per source (and, for reviews, containing a query term); with an LLM, the ones it judges relevant. Enough means two relevant passages, one of them from a source the question was routed to: a question about what customers say is not answered by findings alone. |
+| Rewrite | When grading kept too little, at most twice: adds synonyms ("problem": weakness, pain point, complaint), the Indonesian terms of an aspect named in English ("texture": tekstur, lengket, ringan, meresap ...) and the client's name for "our"; or an LLM rewrite. |
+| Answer and verify | Writes from the kept passages (at most 10, routed sources first), citing each, then checks the draft: a citation of a passage it did not retrieve, no citation at all, or a number that is not in the evidence fails it. |
+
+### 4.2 ReAct Data Agent
+
+Answers questions from the study's datasets ("Ask the data", at the top of the Data tab in the dashboard and the web app), for questions the findings do not answer. It works in a reason-act (ReAct) loop: a thought, one tool call, the observation, and again, until it can answer.
+
+| Field | Specification |
+|---|---|
+| Type | ReAct: a tool-using agent whose next step is chosen by the LLM, or offline by a rule-based policy |
+| Performance measure | The answer is correct, every number in it comes from an observation, every citation names one, in few steps |
+| Environment | The datasets of the run's data folder, cleaned with the Data Quality agent's own steps (so totals match the study's), with personal details masked in review and post text |
+| Sensors | The question (and up to 4 turns of conversation); the observations of its own tool calls |
+| Actuators | Eight read-only tools (below); the final answer, citing observations such as [O2]; the record of every step |
+| LLM use | Optional. The model gets the tools, the tables' columns, values and units, and the rules, and replies with JSON: a thought and an action with arguments, or a thought and the answer. At most 6 steps. Offline, the rule-based policy plans the calls. |
+| On failure | A wrong tool, argument, column or value comes back as an error observation the agent can correct; a repeated call is refused; an answer that fails verification goes back with the reasons (twice at most); without a verified answer, it shows the last observation instead. If the LLM gives no usable steps, the rule-based policy answers, and says so. |
+
+| Tool | What it does |
+|---|---|
+| `list_tables` | Every table with its rows, date range, measures, dimensions and text columns |
+| `describe` | A column's values with counts, or its statistics; without a column, the table's columns |
+| `aggregate` | A sum, mean, median, minimum, maximum, count or distinct count, optionally grouped by up to two columns, filtered, limited to a period and sorted |
+| `share` | Each group's share of the total, in percent |
+| `compare` | The measure in two periods and the change in percent, overall or per group |
+| `trend` | The measure per month, quarter or year, with the first, last, highest and lowest period |
+| `search_text` | How many reviews (or social posts) mention every word of a query, the mean rating of those reviews, and examples; English aspect words also match their Indonesian terms |
+| `calculate` | Arithmetic on numbers taken from observations; parsed, never executed as code |
+
+The rule-based policy reads the question with patterns: the table (reviews, social posts, the survey, the catalogue, the market-size table, or the sales panel by default), the measure and its aggregate (revenue by default; "average", "how many", "median"), the grouping ("by channel", "which brand"), the filters (the brands, channels, categories, regions and platforms the question names; "our" means the client), the periods (one year, two years, or the last 12 months against the 12 before), and the operation (a ranking, shares, a comparison of periods, a trend, a text search, or one figure). It makes one tool call and writes the answer from the observation. A question it cannot map gets `list_tables` and an honest reply. With an LLM the agent can chain several calls, for example comparing two channels and then calculating the gap.
 
 ## 5. Finding registry
 

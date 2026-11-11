@@ -10,35 +10,16 @@ from __future__ import annotations
 import re
 
 from ..core.agent import OPEN_QUESTION, BaseAgent
+from ..core.grounding import NUM  # noqa: F401  (kept importable from here)
+from ..core.grounding import evidence_numbers, grounded
+from ..core.grounding import expand as _expand  # noqa: F401  (kept importable from here)
+from ..core.grounding import numbers_in as _numbers
 
 CITE = re.compile(r"\[([A-Z]{2,4}-\d{2})\]")
 CODE_SPAN = re.compile(r"`[^`\n]*`")   # identifiers (model names, IDs, files), not claims: not checked
-NUM = re.compile(r"(?<![\w.])[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
 LLM_BLOCK = re.compile(r"<!-- llm:(?P<key>[\w-]+) -->(?P<body>.*?)<!-- /llm -->", re.S)
 REQUIRED = ["Executive Summary", "Research Objectives", "Methodology", "SWOT", "Recommendations", "Risks and Limitations"]
 WEIGHTS = dict(structure=15, coverage=20, grounding=35, citations=10, recommendations=15, disclosure=5)
-
-
-def _numbers(text: str) -> list[tuple[float, int, str]]:
-    out = []
-    for m in NUM.finditer(text):
-        raw = m.group(0)
-        decimals = len(raw.split(".")[1]) if "." in raw else 0
-        try:
-            out.append((float(raw.replace(",", "")), decimals, raw))
-        except ValueError:
-            continue
-    return out
-
-
-def _expand(v: float) -> set[float]:
-    vals = {v, abs(v)}
-    if abs(v) <= 3:
-        vals |= {v * 100, abs(v * 100)}
-    for div in (1e3, 1e6, 1e9, 1e12):
-        if abs(v) >= div:
-            vals.add(v / div)
-    return vals
 
 
 class QualityAssuranceAgent(BaseAgent):
@@ -80,50 +61,18 @@ class QualityAssuranceAgent(BaseAgent):
 
     # ------------------------------------------------------------------ evidence
     def _allowed_numbers(self) -> list[float]:
-        vals: set[float] = set()
-
-        def absorb(obj):
-            if isinstance(obj, bool) or obj is None:
-                return
-            if isinstance(obj, (int, float)):
-                vals.update(_expand(float(obj)))
-            elif isinstance(obj, str):
-                for v, _, _ in _numbers(obj):
-                    vals.update(_expand(v))
-            elif isinstance(obj, dict):
-                for v in obj.values():
-                    absorb(v)
-            elif isinstance(obj, (list, tuple)):
-                for v in obj:
-                    absorb(v)
-
+        evidence = []
         for f in self.bb.findings():
-            absorb(f.statement)
-            absorb(f.metrics)
+            evidence += [f.statement, f.metrics]
         for key in ("strategy.recommendations", "strategy.kpis", "strategy.exec_summary", "plan", "strategy.swot",
                     "consumer.model_card", "segmentation.model_card", "forecast.model_card"):
-            absorb(self.bb.get(key))
+            evidence.append(self.bb.get(key))
         opps = self.bb.get("strategy.opportunities")
         if opps is not None and len(opps):
-            absorb(opps.to_dict(orient="records"))
-        return sorted(vals)
+            evidence.append(opps.to_dict(orient="records"))
+        return evidence_numbers(*evidence)   # core/grounding.py, shared with the on-demand agents
 
     def _grounding(self, md: str, allowed: list[float]) -> dict:
-        import bisect
-
-        def grounded(x: float, decimals: int) -> bool:
-            if decimals == 0 and (0 <= abs(x) <= 12 or 1990 <= x <= 2035):
-                return True
-            tol = 0.5 * 10 ** (-decimals) + 1e-9
-            for target in (x, abs(x)):
-                i = bisect.bisect_left(allowed, target - tol)
-                if i < len(allowed) and allowed[i] <= target + tol:
-                    return True
-                j = bisect.bisect_left(allowed, target * 0.995)
-                if j < len(allowed) and allowed[j] <= target * 1.005:
-                    return True
-            return False
-
         issues, checked, ok = [], 0, 0
         llm_spans = [(m.start(), m.end(), m.group("key"), m.group("body")) for m in LLM_BLOCK.finditer(md)]
         blocks = [(key, body) for _, _, key, body in llm_spans]
@@ -137,7 +86,7 @@ class QualityAssuranceAgent(BaseAgent):
             bad = []
             for x, dec, raw in _numbers(text):
                 checked += 1
-                if grounded(x, dec):
+                if grounded(x, dec, allowed):
                     ok += 1
                 else:
                     pos = text.find(raw)

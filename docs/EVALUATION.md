@@ -2,7 +2,7 @@
 
 This report measures how well MarketMind does its job. The question is not only "does it run?" but "does the team of agents find what is really in the market, with models that are honestly validated, a report whose every number is grounded, and in reasonable time?" The bundled data is simulated with **planted ground truth**: every market effect the generator builds in is recorded in `data/ground_truth.json` and `data/ground_truth/*.csv`. The whole multi-agent system can therefore be scored objectively, which is rarely possible with real market data.
 
-One run on one dataset is a single sample, so the report also measures how the results hold up across five more data seeds (section 7), what each design choice contributes (section 8), and what happens when real LLMs write part of the report (section 9).
+One run on one dataset is a single sample, so the report also measures how the results hold up across five more data seeds (section 7), what each design choice contributes (section 8), what happens when real LLMs write part of the report (section 9), and how well the two on-demand agents, the ReAct Data Agent and the agentic-RAG chat, answer questions (section 10).
 
 ---
 
@@ -25,6 +25,7 @@ One run on one dataset is a single sample, so the report also measures how the r
 | Governance | Critic QA score / numbers grounded | **100 / 100**, with 438 of 438 numbers in the prose traced to evidence |
 | Real LLMs | Studies run with Gemini, Groq and OpenRouter | **All three passed the Critic on the first try**: 209 numbers written by the LLMs, all grounded; no revisions; the same 24 / 25 checks as offline (section 9) |
 | Efficiency | Wall-clock time, models cached / first run | **114 s** with cached models (114-134 s across today's runs on one laptop); about 3.5 minutes on a first run |
+| On-demand agents | ReAct Data Agent: correct and verified answers to 12 data questions; agentic-RAG chat: right evidence in the first five sources for 12 questions | **ReAct 12 / 12** offline and with Groq, every answer verified; **agentic RAG 12 / 12** offline and **11 / 12** with Groq, against **10 / 12** for the classic single-shot retrieval (section 10) |
 
 ## 2. Method
 
@@ -42,9 +43,10 @@ One run on one dataset is a single sample, so the report also measures how the r
 6. **Robustness.** `scripts/multi_seed.py` regenerates the market with five other random seeds (the same planted effects, different noise) and runs and scores the whole study on each (section 7).
 7. **Ablations.** `scripts/ablations.py` switches off one design choice at a time on the reference data (section 8).
 8. **Real LLMs.** `scripts/llm_runs.py` runs the full study with each free LLM provider and records what the Critic catches before the report is released (section 9).
-9. **Efficiency.** Time per agent and per run, taken from the trace (section 10).
+9. **On-demand agents.** `scripts/benchmark_assistants.py` asks the ReAct Data Agent and the agentic-RAG chat 12 questions each, with known answers, offline and with an LLM (section 10).
+10. **Efficiency.** Time per agent and per run, taken from the trace (section 11).
 
-**Test plan.** Every level below runs automatically with `python -m pytest -q`: 104 tests that cover 94% of the lines in `marketmind/` (and 90% of the web API in `api/`). The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
+**Test plan.** Every level below runs automatically with `python -m pytest -q`: 115 tests that cover 92% of the lines in `marketmind/` (and 90% of the web API in `api/`). The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
 
 | Level | What is tested | How | Pass criterion |
 |---|---|---|---|
@@ -58,6 +60,7 @@ One run on one dataset is a single sample, so the report also measures how the r
 | Contracts | Every artefact, row and SQL table against the published schemas | `tests/test_schemas.py`, 5 tests | No schema errors; no foreign-key violations; brand shares sum to 1 |
 | Failure paths | Unknown client, missing dataset, World Bank outage, garbled LLM output, and an analyst and the Critic crashing in one run | `tests/test_failure_paths.py`, 6 tests | Clear errors or warnings; the study completes around failed agents and is marked `unverified` when the Critic did not run |
 | Agentic behaviour | Retries and time limits, the LLM budget, the two human approval gates (terminal, dashboard and programmatic reviewers), the Director's follow-ups, open questions; end to end, a market analyst that fails twice and a reviewer who drops a recommendation, and a rejected plan | `tests/test_agentic.py`, 13 tests; `tests/test_dashboard.py` (rejected run) | A flaky agent recovers on retry; a slow one stops at its limit; the Director re-dispatches the failed analyst and the final report has its section and passes QA; the dropped recommendation is gone; a rejected study writes no report; a gate nobody answers, or a failing review screen, stops the study instead of approving it |
+| On-demand agents | The ReAct Data Agent's tools and loop, and the agentic-RAG chat's planning, routing, grading, rewriting and verification, on a small run with known answers; a scripted model for the loops' recovery paths | `tests/test_assistants.py`, 11 tests | Exact answers from the tools; drafts with invented numbers or citations sent back and, if they persist, replaced by the evidence; wrong tool calls corrected, repeated calls refused |
 | Trust and security | Credential redaction, the access token for shared servers, masking of personal details ([SECURITY.md](SECURITY.md)) | `tests/test_security.py`, 17 tests; `tests/test_dashboard.py` (access token) | A key in the environment appears in no trace event, LLM error or saved file; without the token a shared server shows nothing; e-mail addresses, phone numbers and @handles are masked while prices and dates are not |
 | Real-data readiness | The Tokopedia importer on an archive in the dataset's layout; planning around missing data; a study on a folder with only reviews and a catalogue, marked as real data | `tests/test_real_data.py`, 3 tests | Every imported row meets the row contracts and unknown fields stay null; only the modules the data supports run, with the others named in the report; QA passes; the evaluation reports that real data has no ground truth |
 | Acceptance | Whether the system finds the planted truth | `marketmind/evaluation.py`, 25 checks | Each check's rule in section 3 |
@@ -302,7 +305,33 @@ Switching the Critic off offline would measure nothing, because offline every nu
 
 Free model line-ups change often: the OpenRouter models first configured for this run had been withdrawn from the free tier, and one more was rate-limited when tested. `.env.example` and [USER_GUIDE.md §8](USER_GUIDE.md#8-switching-on-an-llm-optional) explain how to choose models and fallbacks. The results are in [docs/results/llm_runs.json](results/llm_runs.json).
 
-## 10. Efficiency
+## 10. On-demand agents: ReAct and agentic RAG
+
+`scripts/benchmark_assistants.py` asks each on-demand agent 12 questions, offline and with Groq (`qwen/qwen3.8-27b`). The runs were on 11 November 2026, with the chat questions asked about the reference run (`20261110-222212`).
+
+**ReAct Data Agent.** The questions ask for rankings, a change between two years, shares, a count of reviews that mention a topic, and a market total on the bundled datasets. The right answer to each is computed in the script directly with pandas. An answer counts as correct when it names the right brand, channel, category or region, and states the right number at the precision it is written at.
+
+| Mode | Correct | Verified | Tool calls per question | Drafts sent back | Time per question |
+|---|---|---|---|---|---|
+| Offline (rule-based policy) | 12 / 12 | 12 / 12 | 1 | 0 | 0.15 s |
+| Groq qwen3.8-27b | 12 / 12 | 12 / 12 | 1 | 2 | 38 s (median 39 s) |
+
+Two drafts from the model wrote a number no observation contained; both went back with the reasons and were corrected on the next step, which is the verification working as designed. The model's 38 s per question is mostly waiting: the free tier limits tokens per minute, and the client waits out each rate-limit reply (about 25 s), while a call itself takes about 2 s. Correct is not the same as flawless. One model answer gave Shopee's market-wide revenue as Shopee's revenue "for Kirana Beauty": the number was right and grounded, but its scope was not. Verification checks numbers and citations, so it cannot catch a wrong label on a right number. Another answered "highest average rating" from the catalogue's product ratings rather than the review ratings, and said so; both readings name the same brand.
+
+**Analyst Chat.** Each question has the evidence that answers it: finding IDs, the report's limitations section, a method note, or customer reviews. A question counts as a hit when that evidence is among the first five sources. "Classic" is the single-shot retrieval the chat used before this version: findings and recommendations only, ranked by TF-IDF with intent boosts.
+
+| Mode | Classic retrieval | Agentic RAG | Answers verified | Queries rewritten | Time per question |
+|---|---|---|---|---|---|
+| Offline (rules) | 10 / 12 | 12 / 12 | 12 / 12 | 2 questions | 0.18 s |
+| Groq qwen3.8-27b | 10 / 12 | 11 / 12 | 12 / 12 | 4 questions (8 rewrites) | 26 s |
+
+The two questions classic retrieval cannot answer are the ones whose evidence is not a finding: "How did you estimate price elasticity?" (a method note) and "What are the limitations of this study?" (a report section). Routing sends them to the method notes and the report. The model's one miss is "How price-sensitive are our customers?": it routed the question to the customer reviews, which then filled the first places, and the elasticity finding (FCT-04) came sixth. With the model, the plan routes more widely (to the report for half the questions) and grades more strictly, so it rewrote queries more often than the rules did.
+
+**What this shows.** Both agents gave grounded answers to every question, offline and with a model, and agentic retrieval answers questions that a findings-only search cannot. The offline scores are optimistic: the rules were written alongside these question shapes, and 12 questions per agent is a small sample. The model-driven runs are the general case, and they show the limit of automatic checking: numbers and citations are verified, wording is not.
+
+The results are in [docs/results/assistants.json](results/assistants.json).
+
+## 11. Efficiency
 
 | Stage | Agents | Time (reference run) |
 |---|---|---|
@@ -315,7 +344,7 @@ Free model line-ups change often: the OpenRouter models first configured for thi
 
 Times vary between runs on a laptop. The same code took 114 to 134 s in today's runs, and the previous version of this report measured 48 s. Timed alone, the steps added in this version cost about 3 s: the price bootstrap takes 2.1 s, and the new elasticity model 1.7 s instead of 0.9 s. Most of the variation comes from the three heavy analysis agents (deep learning, clustering and gradient boosting) competing for the same 8 CPU threads, and from the machine's state. A first run adds model training, about 15 s for the linear model and 80 s for the BiGRU. With an LLM switched on, each run adds nine calls, which took 74 to 252 s on the free tiers (section 9). Responses are cached across runs.
 
-## 11. Reproducing these results
+## 12. Reproducing these results
 
 ```bash
 python scripts/generate_data.py                 # seeded: identical data every time
@@ -325,12 +354,13 @@ python -m pytest -q                             # unit, end-to-end, QA-loop and 
 python scripts/multi_seed.py                    # section 7: five more data seeds, 5-10 minutes each
 python scripts/ablations.py                     # section 8
 python scripts/llm_runs.py                      # section 9; needs at least one LLM key in .env
+python scripts/benchmark_assistants.py --llm    # section 10; without --llm, offline only
 python scripts/validate_on_real_data.py         # section 4.6; needs the two real datasets in data/external/
 ```
 
-The three study scripts write `summary.json` files under `outputs/seeds`, `outputs/ablations` and `outputs/llm_runs`; copies of the results reported here are in [docs/results/](results/). Small differences between runs can come from multi-threaded floating-point work in PyTorch and scikit-learn, and LLM runs differ from one call to the next.
+The four study scripts write `summary.json` files under `outputs/seeds`, `outputs/ablations`, `outputs/llm_runs` and `outputs/assistants`; copies of the results reported here are in [docs/results/](results/). Small differences between runs can come from multi-threaded floating-point work in PyTorch and scikit-learn, and LLM runs differ from one call to the next.
 
-## 12. Threats to validity
+## 13. Threats to validity
 
 - **The data was simulated by the same team that built the agents.** The checks prove that the system recovers effects of the kind that were planted. They do not prove it would find real-world effects of other kinds. The generator was written to be realistic (noise, defects, overlapping segments, slang) and was recalibrated against real benchmarks, and the checks read machine-readable metrics, but a pilot on real data is the decisive test. The first real-data check (section 4.6) confirms the risk for text: models trained on simulated reviews do not transfer to real reviews. Adding real reviews to the training data (`--sentiment-data study+real`) fixes this without losing accuracy on the study's reviews.
 - **The thresholds were set by the designers** (for example a macro-F1 of at least 0.75, an ARI of at least 0.80). They are conventional, but they are choices. Some checks sit close to a decision boundary in the planted data (the concept price, section 4.5; the fastest-growing category and the declining topics, section 7), so a single run cannot settle them.
@@ -338,9 +368,10 @@ The three study scripts write `summary.json` files under `outputs/seeds`, `outpu
 - **The labels are proxies.** Star ratings are a noisy stand-in for the sentiment of the text, and the aspect lexicon covers only 9 aspects.
 - **The QA gate checks where numbers come from, not whether the tools computed them right.** A dashboard dry run found that a brief asking for a 6-month forecast reported growth of -43%, because six forecast months were compared with twelve actual months. Every number was grounded in tool output, so QA scored the report 100. The comparison now uses the same months a year earlier, and a test pins it for 3, 6 and 12 months; the ground-truth checks use the default 12 months, so they could not have caught it.
 - **LLM quality is measured by the Critic, not by people.** Section 9 counts grounding failures and revisions; the usefulness and clarity of the LLM's narrative have not been rated by human readers. Free LLM tiers change their models and limits often, so those runs are snapshots.
+- **The on-demand agents were benchmarked on questions written by their designers.** Section 10 uses 12 questions per agent, of the shapes the offline rules were built for; the offline scores are therefore upper bounds, and the checks verify numbers and citations but not wording (one model answer put a right number under a wrong scope).
 - **Known weaknesses:** two brands' elasticity intervals miss the truth because of bias (section 4.4); shocks such as the packaging crisis cannot be forecast (section 4.3); the concept price sits near a charm-price boundary, where four misassigned respondents decide it (section 4.5); and the concept revenue relies on an explicit 5% conversion assumption.
 
-## 13. Recommended next evaluations
+## 14. Recommended next evaluations
 
 1. More seeds (20 or more) to pin down the failure rate of the borderline checks.
 2. Fault injection: make each analysis agent fail in turn, and confirm that the study recovers through the Director's follow-up or completes with honest gaps (covered for the market analyst in `tests/test_agentic.py`, and for an analyst plus the Critic in `tests/test_failure_paths.py`).
@@ -348,3 +379,4 @@ The three study scripts write `summary.json` files under `outputs/seeds`, `outpu
 4. Re-run the real-text validation (section 4.6) on the recalibrated data.
 5. Make the price research robust to misassigned respondents (section 4.5), for example by running it on each segment's core members (those much closer to their own cluster centre than to the next) or by reporting how far the OPP moves when the most extreme 1% of answers are dropped, and test the change across seeds.
 6. A real-data pilot through the documented schemas, judged on whether the findings match what the client's team already knows. The pipeline is ready (`scripts/import_tokopedia.py`, `run.py --data-dir`, [DATA_SOURCES.md §8](DATA_SOURCES.md#8-studying-real-data)); it needs the Tokopedia 2025 file, which a Kaggle account can download.
+7. A larger question set for the on-demand agents (section 10), written by people who did not build them, with the answers rated for scope and wording as well as numbers.

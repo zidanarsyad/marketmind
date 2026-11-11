@@ -211,18 +211,54 @@ export interface ChatSource {
   area: string
   source: string
   score: number
+  collection?: string
+}
+
+/** One step of the agentic-RAG Analyst Chat: plan, retrieve, grade, rewrite, verify or answer. */
+export interface RagStep {
+  step: string
+  detail: string
+  query?: string
+  relevant?: string[]
+  sub_questions?: string[]
+  sources?: string[]
 }
 
 export interface ChatAnswer {
   answer: string
   sources: ChatSource[]
   mode: string
+  verified?: boolean
+  trace?: RagStep[]
 }
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   sources?: string
+  trace?: RagStep[]
+}
+
+/** One step of the ReAct Data Agent: a thought with a tool call and its observation, a rejected draft, or the answer. */
+export interface ReActStep {
+  n: number
+  kind: 'action' | 'check' | 'answer' | 'note'
+  thought?: string
+  action?: string
+  args?: Record<string, unknown>
+  observation?: string
+  answer?: string
+  id?: string | null
+  error?: boolean
+}
+
+export interface DataAnswer {
+  answer: string
+  mode: string
+  verified: boolean
+  seconds: number
+  observations: number
+  steps: ReActStep[]
 }
 
 export interface SentimentResult {

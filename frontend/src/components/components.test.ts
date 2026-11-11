@@ -1,20 +1,23 @@
-// Component tests: the KPI tiles, the approval form and Ask the analyst, mounted in jsdom.
+// Component tests: the KPI tiles, the approval form, Ask the analyst (agentic RAG) and Ask the data (the ReAct agent),
+// mounted in jsdom.
 import { flushPromises, mount } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { SUGGESTIONS } from '@/lib/chat'
+import { DATA_SUGGESTIONS, SUGGESTIONS } from '@/lib/chat'
 import { overviewTiles } from '@/lib/kpis'
 import type { Pending } from '@/types'
 import AnalystChat from './AnalystChat.vue'
 import ApprovalForm from './ApprovalForm.vue'
+import DataAgent from './DataAgent.vue'
 import KpiTiles from './KpiTiles.vue'
 
 vi.mock('@/api', () => ({
-  api: { chat: vi.fn() },
+  api: { chat: vi.fn(), askData: vi.fn() },
   errorText: (e: unknown) => String(e),
 }))
 const { api } = await import('@/api')
 const chat = api.chat as unknown as ReturnType<typeof vi.fn>
+const askData = api.askData as unknown as ReturnType<typeof vi.fn>
 
 const global = { plugins: [[PrimeVue, { unstyled: true }]] as [typeof PrimeVue, object][] }
 
@@ -89,7 +92,7 @@ describe('AnalystChat', () => {
     chat.mockResolvedValue({
       answer: 'Packaging complaints spiked `[CON-03]`',
       sources: [{ id: 'CON-03', kind: 'finding', title: 'Complaint spike', area: 'consumer', source: 'x', score: 1 }],
-      mode: 'retrieval (offline)',
+      mode: 'agentic RAG (offline)',
     })
     const w = mount(AnalystChat, { props: { runId: 'run-1', llm: 'offline' }, global })
     const suggestion = w.findAll('button.suggestion').find((b) => b.text() === SUGGESTIONS[0])!
@@ -98,7 +101,7 @@ describe('AnalystChat', () => {
     expect(chat).toHaveBeenCalledTimes(1)
     expect(chat).toHaveBeenCalledWith('run-1', SUGGESTIONS[0], [])
     expect(w.findAll('.msg')).toHaveLength(2)
-    expect(w.text()).toContain('Sources: CON-03 (finding) · retrieval (offline)')
+    expect(w.text()).toContain('Sources: CON-03 (finding) · agentic RAG (offline)')
     expect(JSON.parse(localStorage.getItem('mm-chat-run-1') as string)).toHaveLength(2)
   })
 
@@ -117,7 +120,7 @@ describe('AnalystChat', () => {
   })
 
   it('renders answers as markdown with raw HTML escaped', async () => {
-    chat.mockResolvedValue({ answer: '**Bold** <img src=x onerror=alert(1)>', sources: [], mode: 'retrieval (offline)' })
+    chat.mockResolvedValue({ answer: '**Bold** <img src=x onerror=alert(1)>', sources: [], mode: 'agentic RAG (offline)' })
     const w = mount(AnalystChat, { props: { runId: 'run-2', llm: 'offline' }, global })
     await w.find('textarea').setValue('Anything?')
     await w.find('form.composer').trigger('submit')
@@ -125,5 +128,83 @@ describe('AnalystChat', () => {
     const answer = w.find('.msg.assistant .md')
     expect(answer.find('strong').text()).toBe('Bold')
     expect(answer.find('img').exists()).toBe(false)
+  })
+
+  it("keeps the trace of the agent's steps under the answer, also after a reload", async () => {
+    chat.mockResolvedValue({
+      answer: 'Packaging complaints spiked `[CON-03]`',
+      sources: [{ id: 'CON-03', kind: 'finding', title: 'Complaint spike', area: 'consumer', source: 'x', score: 1 }],
+      mode: 'agentic RAG (offline)',
+      verified: true,
+      trace: [
+        { step: 'plan', detail: '1 sub-question(s); sources findings, recommendations, reviews' },
+        { step: 'grade', detail: '1 of 4 passages relevant (graded by score thresholds)', relevant: ['CON-03'] },
+      ],
+    })
+    const w = mount(AnalystChat, { props: { runId: 'run-3', llm: 'offline' }, global })
+    await w.find('textarea').setValue('What is wrong?')
+    await w.find('form.composer').trigger('submit')
+    await flushPromises()
+    expect(w.find('details.trace summary').text()).toBe('How the agent answered (2 steps)')
+    expect(w.find('details.trace').text()).toContain('Grade: 1 of 4 passages relevant')
+    expect(w.find('details.trace').text()).toContain('kept CON-03')
+    const again = mount(AnalystChat, { props: { runId: 'run-3', llm: 'offline' }, global })
+    await flushPromises()
+    expect(again.find('details.trace summary').text()).toBe('How the agent answered (2 steps)')
+  })
+})
+
+describe('DataAgent', () => {
+  beforeEach(() => askData.mockReset())
+
+  it('asks a suggested question once and shows the answer with its reasoning steps', async () => {
+    askData.mockResolvedValue({
+      answer: 'Shopee has the highest revenue in 2025: Rp 2.13 trillion [O1].',
+      mode: 'ReAct with rule-based policy (offline)',
+      verified: true,
+      seconds: 0.2,
+      observations: 1,
+      steps: [
+        {
+          n: 1,
+          kind: 'action',
+          thought: 'I aggregate revenue by channel for 2025.',
+          action: 'aggregate',
+          args: { table: 'sales', by: 'channel' },
+          observation: 'sales: sum(revenue_idr) by channel',
+          id: 'O1',
+          error: false,
+        },
+        { n: 2, kind: 'answer', thought: 'O1 answers the question.', answer: 'Shopee ...' },
+      ],
+    })
+    const w = mount(DataAgent, { props: { runId: 'run-1', llm: 'offline' }, global })
+    const suggestion = w.findAll('button.suggestion').find((b) => b.text() === DATA_SUGGESTIONS[0])!
+    await suggestion.trigger('click')
+    await flushPromises()
+    expect(askData).toHaveBeenCalledTimes(1)
+    expect(askData).toHaveBeenCalledWith('run-1', DATA_SUGGESTIONS[0])
+    expect(w.find('.result .md').text()).toContain('Shopee has the highest revenue in 2025')
+    expect(w.text()).toContain('ReAct with rule-based policy (offline) · verified · 0.2s')
+    expect(w.find('details.steps summary').text()).toBe('Reasoning steps (1 tool call)')
+    expect(w.find('.action code').text()).toBe('aggregate({"table":"sales","by":"channel"})')
+    expect(w.find('pre.obs').text()).toContain('sum(revenue_idr)')
+  })
+
+  it('shows the server error instead of an answer', async () => {
+    // A plain function, not the vi.fn spy: Vitest reports a rejection that passes through a reset spy as an error of
+    // the test even after the component has caught it.
+    const real = api.askData
+    api.askData = () => Promise.reject(new Error('The run is gone'))
+    try {
+      const w = mount(DataAgent, { props: { runId: 'run-1', llm: 'offline' }, global })
+      await w.find('input').setValue('Which brand sells most?')
+      await w.find('form.composer').trigger('submit')
+      await flushPromises()
+      expect(w.find('.err').text()).toContain('The run is gone')
+      expect(w.find('.result').exists()).toBe(false)
+    } finally {
+      api.askData = real
+    }
   })
 })

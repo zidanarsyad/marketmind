@@ -41,12 +41,14 @@ marketmind/
     blackboard.py            Blackboard (artefacts with provenance, findings, messages)
     events.py                Tracer and Event (the trace)
     findings.py              Finding and AREAS
+    grounding.py             numbers_in, evidence_numbers, ungrounded: the number check of the Critic and the chat agents
     llm.py                   LLMClient: providers, cache, throttling, model discovery, parse_json
     orchestrator.py          Task and Workflow (topological layers, thread pool)
     privacy.py               mask_personal: e-mail addresses, phone numbers and @handles in review text
     redact.py                scrub: credential values out of the trace, saved files, errors and API responses
     store.py                 save_run, RunData, list_runs, load_run
-  agents/                    one module per agent, plus common.py (formatting and statistics helpers)
+  agents/                    one module per agent, plus common.py (formatting and statistics helpers);
+                             analyst_chat.py (agentic RAG), data_agent.py (ReAct) and data_tools.py (its tools)
   adapters/                  tokopedia.py: real marketplace data into MarketMind's contracts (see section 7)
   ml/                        text, sentiment (PyTorch), real_reviews (real training corpus), topics, segmentation,
                              forecasting, pricing, calendar_id
@@ -163,7 +165,7 @@ With the bundled data it publishes: *"Promotions lift Kirana Beauty's units most
 | Drive a recommendation | Add a play to `StrategyAgent._playbook` with `add(..., evidence=["PRM-01", ...])`. The play fires only when its evidence exists. |
 | Count as grounded numbers | Nothing: the Critic reads every finding's statement and metrics. If the report prints numbers from a new artefact, add that key to `_allowed_numbers` in `critic.py`. |
 | Show in the dashboard | Add a chart (section 6) and render it in a tab of `app/dashboard.py`. |
-| Be answerable in chat | Nothing: the Analyst Chat retrieves every finding. Add an intent pattern to `INTENTS` in `analyst_chat.py` if its questions use new words. |
+| Be answerable in chat | Nothing: the Analyst Chat retrieves every finding. Add an intent pattern to `INTENTS` in `analyst_chat.py` if its questions use new words, and a route to `ROUTES` if they need a source other than the findings. |
 
 **5. Test it** (section 9), and add a row for it to the roster and finding registry in [AGENTS.md](AGENTS.md).
 
@@ -230,8 +232,9 @@ An OpenAI-compatible provider needs only one entry in `OPENAI_STYLE` in `core/ll
 | `tests/test_llm_client.py` (12 tests) | The LLM client against a fake OpenAI-style API, with no network or key: the request sent, response parsing, token counts, caching (and that the key never reaches the cache), the retry after a rate limit, dropping JSON mode when a provider rejects it, per-provider model settings winning over the global ones, a busy (503) or hung (timeout) model handing the call to the fallback, a retired model replaced for good, an unrelated bad request that mentions the model leaving it in place, rediscovery preferring `latest` aliases over previews, soft failure on HTTP errors, and offline mode without a key | under a second |
 | `tests/test_api.py` (11 tests) | The web API with FastAPI's `TestClient`, offline: the local-only guards (other hosts, non-JSON and cross-origin posts refused), API keys scrubbed from responses, 404s and path traversal, serving a built front end with client-side routes, request validation; the approval gates driven by a stub study (wrong gate, unknown items, nothing left, a double submit, the decisions handed over, the SSE stream and its resumption from `Last-Event-ID`); every read endpoint and all 32 charts in both themes on the shared run, the evaluation, the analyst chat and the sentiment tester; and one more study through both gates over HTTP (segmentation and a recommendation left out) | seconds; about 1 minute for the study, plus the shared run |
 | `tests/test_security.py` (17 tests) | Credentials: a fake key put in the environment never reaches a trace event, an LLM error, or any file a saved run writes (report, tables, JSON, findings, run_meta, trace). The access token: host names and constant-time comparison; shared on a network, the API answers 401 without the token, accepts a bearer header, and the `?token=` link sets an HttpOnly, SameSite=Strict cookie and redirects without the token; without a token the API on this computer stays open; `python -m api --host 0.0.0.0` makes up a token and prints the link. Personal details: e-mail addresses, Indonesian phone numbers and @handles masked, while prices, dates, times, sizes and long numbers are left alone; the report's review quotes and the Tokopedia importer's review text masked | seconds |
-| `frontend/src/**/*.test.ts` (Vitest, 13 tests) | The overview tiles (skipped modules leave no tile, the forecast label follows the horizon), the price simulator, the model-card scores, number formatting; the KPI tiles, the approval form (left-out items, nothing left, reject) and Ask the analyst (one request per question, the conversation restored after a reload without asking again, raw HTML escaped) mounted in jsdom | a few seconds |
-| `tests/test_evaluation_and_chat.py` (2 tests) | The ground-truth evaluation on the shared run, which must recover every planted insight (a regression guard for the whole system). The one exception is the concept price, a documented noise-driven miss on the bundled data ([EVALUATION.md §4.5](EVALUATION.md#45-concept-pricing)); when it misses, SEG-04 must say the pick is not settled and name a runner-up inside the true band; and the Analyst Chat's offline retrieval: a pain-point question answered from weaknesses or threats with citations, a pricing question from pricing evidence, nonsense answered with "no evidence" | seconds, plus the shared run |
+| `tests/test_assistants.py` (11 tests) | The two on-demand agents on a small run built in the test, whose answers are known exactly. The data tools: totals, rankings, shares, period comparisons and trends; English aspect words finding Indonesian review text, which is masked; arithmetic only in `calculate`; wrong tables, columns, values, tools and arguments explained, not raised. The ReAct loop: the offline policy's answers and citations ("our" as the client, a review search, a question it cannot map), and, with a scripted model, a draft with an invented number sent back until it is grounded, a bad tool call corrected, a repeated call refused, and no usable steps falling back to the rules. Agentic RAG: routing, grading and citing offline (findings, the report's limitations, the method notes, honest "no evidence"), a weak review search rewritten with Indonesian terms and narrowed to the brand named, a follow-up joined to the previous question, and, with a scripted model, an answer that fails verification twice replaced by the evidence while a grounded one is released. The API endpoints for both | about 1 minute |
+| `frontend/src/**/*.test.ts` (Vitest, 16 tests) | The overview tiles (skipped modules leave no tile, the forecast label follows the horizon), the price simulator, the model-card scores, number formatting; the KPI tiles, the approval form (left-out items, nothing left, reject), Ask the analyst (one request per question, the conversation and each answer's step trace restored after a reload without asking again, raw HTML escaped) and Ask the data (one request per suggestion, the answer with its reasoning steps, a server error shown) mounted in jsdom | a few seconds |
+| `tests/test_evaluation_and_chat.py` (2 tests) | The ground-truth evaluation on the shared run, which must recover every planted insight (a regression guard for the whole system). The one exception is the concept price, a documented noise-driven miss on the bundled data ([EVALUATION.md §4.5](EVALUATION.md#45-concept-pricing)); when it misses, SEG-04 must say the pick is not settled and name a runner-up inside the true band; and the Analyst Chat (agentic RAG, offline) on the full run: a pain-point question answered from weaknesses or threats with citations, a pricing question from pricing evidence, nonsense answered with "no evidence" | seconds, plus the shared run |
 
 Tests that run the pipeline or the dashboard are marked `slow`: `tests/conftest.py` marks every test that uses `offline_run`, and the six other end-to-end tests (the revision loop, the crashing analyst and Critic, the two agentic studies, the real-data study and the study run over the web API) and the dashboard's access-token test carry `@pytest.mark.slow`. `python -m pytest -q -m "not slow"` runs everything else in about half a minute, which is the loop to use while coding.
 
@@ -261,13 +264,16 @@ python scripts/evaluate_agents.py                    # ground-truth score of the
 
 **Continuous integration.** `.github/workflows/tests.yml` runs ruff, the fast tests and then the full suite with coverage, and type-checks, tests and builds the web app, on every push to `main` and every pull request. It installs the newest versions `requirements.txt` allows, not the lock file, so a new library release can break it without any change here (numpy 2.5 once did). `.github/workflows/audit.yml` checks the dependencies for known vulnerabilities with `pip-audit` and `npm audit`, on every push and every Monday ([SECURITY.md](SECURITY.md#dependencies)). Check both after pushing.
 
-**Evaluation studies.** Three scripts measure more than one run can ([EVALUATION.md](EVALUATION.md) reports their results):
+**Evaluation studies.** Four scripts measure more than one run can ([EVALUATION.md](EVALUATION.md) reports their results):
 
 ```bash
 python scripts/multi_seed.py                         # regenerate the data with seeds 1-5 and re-run the study on each
 python scripts/ablations.py                          # switch off one design choice at a time
 python scripts/llm_runs.py --providers gemini groq   # full studies with real LLMs; what the Critic catches
+python scripts/benchmark_assistants.py --llm         # the ReAct Data Agent and the agentic-RAG chat, offline and with the LLM
 ```
+
+**Adding a tool to the ReAct Data Agent.** Write it as a method of `DataToolkit` in `agents/data_tools.py` that returns an `Observation` (the text the agent reads, plus `data`, the numbers behind it, which ground the answer), raise `ToolError` for a wrong argument so the agent can correct it, register it in `self.tools` and describe its signature in `DESCRIPTIONS`, which the system prompt lists. Keep tools read-only and deterministic: the agent's answer may only contain numbers that a tool returned.
 
 `multi_seed.py` keeps every seed apart through two environment variables that `marketmind/config.py` reads: `MARKETMIND_DATA_DIR` (the folder holding `raw/` and the ground truth) and `MARKETMIND_OUTPUTS` (runs, model cache, LLM cache). Use them for any experiment that must not touch the bundled data or its runs; `scripts/generate_data.py --seed N --out <folder>/raw` writes a fresh dataset with the same planted effects. Each script writes a `summary.json` under `outputs/seeds`, `outputs/ablations` or `outputs/llm_runs`.
 
@@ -326,7 +332,8 @@ Open <http://localhost:5173>. Set `MARKETMIND_API` to point the dev server at an
 | `GET /api/runs/{id}/charts/{name}?theme=light` (or `dark`) | `CHARTS[name](TableSource.from_run(run), theme).to_json()`, or `null` when the run has no data for it; cached per run |
 | `GET /api/runs/{id}/report.html`, `/report.md` (`?download=true`) | The report; the HTML is sent with a `sandbox` Content-Security-Policy |
 | `GET`/`POST /api/runs/{id}/evaluation` | The saved ground-truth evaluation; `POST` runs `evaluate(run)` and saves `evaluation.json` |
-| `POST /api/runs/{id}/chat` | `AnalystChatAgent.answer(question, history)`: one question per call |
+| `POST /api/runs/{id}/chat` | `AnalystChatAgent.answer(question, history)`, the agentic-RAG chat: one question per call; the reply carries the answer, its sources, `verified` and the `trace` of steps |
+| `POST /api/runs/{id}/ask-data` | `ReActDataAgent.answer(question)`: the answer, `verified`, the time taken and every step (thought, tool call, observation) |
 | `GET`/`POST /api/runs/{id}/sentiment` | Whether the run's sentiment models are on disk; score a text (label, probabilities, attention, aspects) |
 | `GET /api/runs/{id}/datasets/{name}` | The first rows of a raw dataset the run studied |
 | `GET /api/studies`, `POST /api/studies`, `GET /api/studies/{id}` | Studies started by this server; start one (409 while another runs) |

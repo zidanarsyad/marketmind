@@ -31,7 +31,8 @@ flowchart TB
     subgraph UI["Interfaces"]
         DASH["Streamlit dashboard<br/>app/dashboard.py"]
         CLI["Command line<br/>run.py"]
-        CHAT["Analyst Chat agent<br/>agents/analyst_chat.py"]
+        CHAT["Analyst Chat agent (agentic RAG)<br/>agents/analyst_chat.py"]
+        REACT["ReAct Data Agent<br/>agents/data_agent.py"]
     end
     subgraph ORCH["Orchestration"]
         SYS["MarketResearchSystem<br/>system.py"]
@@ -68,6 +69,9 @@ flowchart TB
     DASH --> SYS
     CLI --> SYS
     CHAT --> ST
+    CHAT --> LLMC
+    REACT --> RAW
+    REACT --> LLMC
     SYS --> DIR --> WF --> AG
     AG <--> BB
     AG --> TR
@@ -90,13 +94,50 @@ flowchart TB
 | `marketmind/core/llm.py` | Provider-agnostic LLM client: caching, throttling, model rediscovery, JSON parsing, graceful failure |
 | `marketmind/core/orchestrator.py` | `Workflow` / `Task`: topological layers, parallel execution, critical vs non-critical tasks |
 | `marketmind/core/store.py` | Run persistence (`save_run`, `RunData`, `list_runs`, `load_run`) |
-| `marketmind/agents/` | The eleven pipeline agents and the Analyst Chat agent |
+| `marketmind/core/grounding.py` | Number grounding shared by the Critic and the two on-demand agents: is every written number in the evidence? |
+| `marketmind/agents/` | The eleven pipeline agents, the agentic-RAG Analyst Chat, and the ReAct Data Agent with its read-only data tools (`data_tools.py`) |
 | `marketmind/ml/` | Text normalisation, sentiment models, topics, segmentation, forecasting, pricing, Indonesian calendar |
 | `marketmind/reporting/` | Shared Plotly chart library (`CHARTS` registry) and the self-contained HTML report |
 | `marketmind/system.py` | `MarketResearchSystem`: wires context, runs Director + workflow + QA loop, saves the run |
 | `marketmind/evaluation.py` | Scores a run against the planted ground truth |
 | `marketmind/sql_export.py` | Loads clean datasets and runs into the SQL model (`docs/schemas/database.sql`) |
 | `app/dashboard.py` | Streamlit dashboard (12 views, live runs, chat, evaluation) |
+
+### The on-demand agents: agentic RAG and ReAct
+
+The pipeline agents follow one fixed plan per study. The two on-demand agents answer questions afterwards and decide their own next step, in two different agent designs.
+
+**Analyst Chat (agentic RAG).** Instead of retrieving once and answering, it plans, routes, judges its retrieval and checks its answer:
+
+```mermaid
+flowchart LR
+    Q([Question + conversation]) --> P[Plan: stand-alone question,<br/>sub-questions, sources]
+    P --> R[Retrieve from the routed sources:<br/>findings, recommendations, report,<br/>method notes, customer reviews]
+    R --> G{Grade: enough<br/>relevant passages?}
+    G -- "no (at most twice)" --> W[Rewrite the query:<br/>synonyms, Indonesian review terms,<br/>the client's name]
+    W --> R
+    G -- yes --> A[Write the answer<br/>from the kept passages, citing them]
+    A --> V{Verify: citations retrieved,<br/>numbers in the evidence?}
+    V -- "fails once" --> A
+    V -- passes --> OUT([Answer + sources + trace])
+    V -- "fails twice" --> E([The passages themselves])
+```
+
+**ReAct Data Agent.** It answers from the datasets in a reason-act loop. Each step is a thought and one call to a read-only tool; the observation goes back into the next step:
+
+```mermaid
+flowchart LR
+    Q([Question]) --> T[Thought: what is known,<br/>what is needed next]
+    T --> ACT[Action: one tool call<br/>aggregate, share, compare, trend,<br/>search_text, calculate, describe]
+    ACT --> O[Observation O1, O2 ...<br/>an error comes back as text]
+    O --> T
+    T -- "can answer" --> D[Draft answer citing observations]
+    D --> V{Every number in an observation,<br/>every citation real?}
+    V -- "no: back with the reasons (twice at most)" --> T
+    V -- yes --> OUT([Answer + all steps])
+```
+
+Both work offline. Rules then plan, grade and rewrite for the chat, and a rule-based policy maps the question to the data agent's tools; with an LLM, the model takes those decisions. Either way, the answer is checked by the same deterministic number-grounding function the Critic uses (`core/grounding.py`), so an LLM cannot release a number no tool produced. [AGENTS.md §4](AGENTS.md#4-on-demand-agents) specifies both agents.
 
 ## 3. Core classes
 
@@ -493,6 +534,7 @@ flowchart TB
 | Custom lightweight agent framework | LangGraph, CrewAI, AutoGen | Works fully offline, no LLM required for control flow, every step is inspectable for teaching and audit |
 | Blackboard communication | Direct agent calls, message bus | Decouples agents, gives one place for provenance, makes parallel execution and persistence simple |
 | Deterministic tools produce all numbers; LLM writes language only | LLM-driven analysis (ReAct over pandas) | Prevents hallucinated figures; the Critic can verify every number |
+| ReAct and agentic RAG only on demand, over read-only tools and retrieved evidence, with verified answers | ReAct inside the pipeline; single-shot retrieval for the chat | The study stays reproducible and checkable, while follow-up questions get agents that choose their own steps. The ReAct agent runs no code (eight fixed tools, arguments checked, errors returned as observations), and both agents release an answer only when its numbers and citations match their evidence |
 | Critic + bounded revision loop | Single-pass generation | Reflection catches ungrounded LLM text without unbounded loops (max 2 revisions) |
 | Director sends analysts back for open questions | Only rewrite the report text | Text revisions cannot create missing evidence; a targeted request (or a re-run after a failure) can. Once per agent keeps it bounded, and an unanswerable question is reported as open, not hidden |
 | Human approval gates on the plan and the recommendations | Fully autonomous runs | A person decides what is studied and what is recommended; without a reviewer the gates approve automatically and the report says so. Once a person is asked, silence never counts as a yes: a gate nobody answers within the time limit, or a failing review screen, stops the study |
@@ -508,10 +550,10 @@ flowchart TB
 - **Concurrency:** the blackboard and tracer use locks; analysis agents share a three-worker pool; PyTorch uses up to four threads.
 - **Error handling:** `BaseAgent.run()` catches exceptions, traces the traceback and returns a `failed` result; the workflow retries a failed task once (not after a timeout or a rejection) and skips only critical dependents; the Director re-dispatches an analyst whose gap the Critic flags; the dashboard guards each view.
 - **Bounded resources:** a time limit per agent (`--agent-timeout`, 900 s by default) checked at every tool and LLM call, and a per-run LLM budget (`--max-llm-calls` 40 and `--max-llm-tokens` 300,000 by default); past the budget, agents fall back to deterministic reasoning.
-- **Human oversight:** two approval gates (`core/approval.py`): the plan, before any analysis, and the recommendations, before the summary and report. Reviewers answer at the terminal (`run.py --approve`) or in the dashboard; every decision is traced and stored in `run_meta.json`.
+- **Human oversight:** two approval gates (`core/approval.py`): the plan, before any analysis, and the recommendations, before the summary and report. Reviewers answer at the terminal (`run.py --approve`), in the dashboard or in the web app; every decision is traced and stored in `run_meta.json`, and a gate nobody answers within the time limit stops the study instead of approving it.
 - **Caching:** the sentiment models are cached under a hash of their training data, in one folder per training mode (`--sentiment-data`); World Bank responses are cached in `data/external`; LLM responses are cached in `outputs/cache/llm`.
 - **Configuration:** `.env` (LLM provider and keys, news keys, rate limit), `marketmind/config.py` (paths, dataset registry, default brief).
 - **Data folders:** the agents read one data folder per run: the bundled simulated data, a seed's data (`scripts/multi_seed.py`) or imported real data (`run.py --data-dir`, `MARKETMIND_DATA_DIR`). A folder's `manifest.json` says whether the data is real, where it comes from and under which licence; adapters in `marketmind/adapters/` write such folders from third-party sources without downloading anything. Reports disclose the source and its caveats, the evaluation scores a run only against its own folder's ground truth, and real-data folders are git-ignored.
-- **Security:** API keys travel only in request headers, never in prompts, traces, run files or reports. The dashboard listens only on this machine (`address = "localhost"` in `.streamlit/config.toml`); `--server.address 0.0.0.0` shares it on a network.
-- **Engineering:** git history, dependency ranges plus an exact lock file (`requirements-lock.txt`), ruff linting, and a GitHub Actions workflow that runs the linter and the whole test suite on every push.
-- **Performance:** with the models cached, a run took 114 s on 10 November 2026 (48 to 134 s across runs on the same 8-thread laptop CPU, see [EVALUATION.md §10](EVALUATION.md#10-efficiency)); a first run adds about 95 s of model training. The approval gates add whatever time the reviewer takes.
+- **Security:** API keys travel only in request headers, never in prompts; any credential value is redacted from traces, run files, errors and API responses (`core/redact.py`). The dashboard and the web app listen only on this machine (`address = "localhost"` in `.streamlit/config.toml`, 127.0.0.1 for `python -m api`); shared on a network, both require an access token (`core/access.py`). Personal details in review text are masked (`core/privacy.py`). [SECURITY.md](SECURITY.md) lists every measure and its limits.
+- **Engineering:** git history, dependency ranges plus an exact lock file (`requirements-lock.txt`), ruff linting, a GitHub Actions workflow that runs the linter and the whole test suite on every push, and a second one that audits the dependencies for known vulnerabilities every push and every week.
+- **Performance:** with the models cached, a run took 114 s on 10 November 2026 (48 to 134 s across runs on the same 8-thread laptop CPU, see [EVALUATION.md §11](EVALUATION.md#11-efficiency)); a first run adds about 95 s of model training. The approval gates add whatever time the reviewer takes.

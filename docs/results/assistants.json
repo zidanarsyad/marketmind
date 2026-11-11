@@ -1,0 +1,930 @@
+{
+  "run": "20261110-222212",
+  "client": "Kirana Beauty",
+  "modes": {
+    "offline": {
+      "react": {
+        "summary": {
+          "questions": 12,
+          "correct": 12,
+          "verified": 12,
+          "mean_seconds": 0.15
+        },
+        "rows": [
+          {
+            "question": "Which channel had the highest revenue in 2025?",
+            "expected": [
+              "Shopee"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.05,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "Shopee has the highest revenue in 2025: Rp 2.13 trillion, ahead of Offline Retail (Rp 1.50 trillion), TikTok Shop (Rp 1.47 trillion) [O1]."
+          },
+          {
+            "question": "Which brand had the highest revenue in 2025?",
+            "expected": [
+              "Lumière Lab"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.05,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "Lumière Lab has the highest revenue in 2025: Rp 1.58 trillion, ahead of GlowNesia (Rp 1.31 trillion), DewiSkin (Rp 1.14 trillion) [O1]."
+          },
+          {
+            "question": "How did Kirana Beauty's revenue change from 2024 to 2025?",
+            "expected": [
+              23.1892
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.17,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "Revenue for Kirana Beauty went from Rp 669.89 billion in 2024 to Rp 825.23 billion in 2025, a change of +23.2% [O1]."
+          },
+          {
+            "question": "What is each brand's share of revenue in 2025?",
+            "expected": [
+              "Lumière Lab",
+              27.0517
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.04,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "Lumière Lab has the largest share of revenue in 2025, 27.1%, followed by GlowNesia 22.5%, DewiSkin 19.6% [O1]."
+          },
+          {
+            "question": "Which category grew fastest from 2024 to 2025?",
+            "expected": [
+              "Sunscreen"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.05,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "Comparing 2025 with 2024, revenue grew fastest for Sunscreen (+34.1%, from Rp 1.12 trillion to Rp 1.50 trillion) and slowest for Toner (+5.1%) [O1]."
+          },
+          {
+            "question": "Which region sold the most units in 2025?",
+            "expected": [
+              "DKI Jakarta & Banten"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.04,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "DKI Jakarta & Banten has the highest units sold in 2025: 23,386,100, ahead of Jawa Barat (18,249,945), Jawa Timur (16,464,900) [O1]."
+          },
+          {
+            "question": "Which brand has the highest average rating?",
+            "expected": [
+              "Aurelia Derma"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.07,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "Aurelia Derma has the highest average rating: 4.41, ahead of Lumière Lab (4.36), Kirana Beauty (4.21) [O1]."
+          },
+          {
+            "question": "How many reviews mention packaging?",
+            "expected": [
+              3513.0
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 1.29,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "3,513 of 19,526 reviews with text (18.0%) mention 'packaging', with a mean rating of 4.00 stars [O1]. For example: \"Wanginya terlalu kuat, namun teksturnya ringan, terus segelnya rapi. 😭😞😭\" (Lumière Lab, 2023-04-08)."
+          },
+          {
+            "question": "What share of social posts does each platform have?",
+            "expected": [
+              "TikTok",
+              46.5634
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.02,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "TikTok has the largest share of number of posts, 46.6%, followed by Instagram 28.1%, X 14.4% [O1]."
+          },
+          {
+            "question": "Which main brand has the highest average NPS in the survey?",
+            "expected": [
+              "Aurelia Derma"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.02,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "Aurelia Derma has the highest NPS score (0-10): 8.43, ahead of Lumière Lab (8.21), Purabotanica (7.99) [O1]."
+          },
+          {
+            "question": "Which channel has the highest average discount?",
+            "expected": [
+              "TikTok Shop"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.04,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "TikTok Shop has the highest average discount: 14.6%, ahead of Lazada (10.8%), Shopee (10.4%) [O1]."
+          },
+          {
+            "question": "How big was the market in 2025?",
+            "expected": [
+              38300.0
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 0.0,
+            "mode": "ReAct with rule-based policy (offline)",
+            "answer": "The market value in 2025 is Rp 38,300 billion [O1]."
+          }
+        ]
+      },
+      "rag": {
+        "summary": {
+          "questions": 12,
+          "classic_hit": 10,
+          "agentic_hit": 12,
+          "verified": 12,
+          "mean_seconds": 0.18
+        },
+        "rows": [
+          {
+            "question": "What is our biggest problem right now?",
+            "expected": [
+              "CON-03",
+              "CMP-02",
+              "CON-06"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 0.01,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "CMP-02",
+              "CON-03",
+              "CMP-01",
+              "CON-06"
+            ]
+          },
+          {
+            "question": "Who is our biggest competitor?",
+            "expected": [
+              "CMP-05"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 0.01,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "CMP-05",
+              "CON-05",
+              "SEG-05"
+            ]
+          },
+          {
+            "question": "How price-sensitive are our customers?",
+            "expected": [
+              "FCT-04"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 0.0,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "FCT-04",
+              "CON-06",
+              "SEG-04",
+              "CMP-06"
+            ]
+          },
+          {
+            "question": "What price should we launch the new concept at?",
+            "expected": [
+              "SEG-04"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 0.01,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "SEG-04",
+              "FCT-04",
+              "CON-06",
+              "SEG-02",
+              "R5"
+            ]
+          },
+          {
+            "question": "Which consumer segment should we target first?",
+            "expected": [
+              "SEG-02"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 0.0,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "SEG-03",
+              "SEG-02",
+              "SEG-01",
+              "SEG-05",
+              "R5"
+            ]
+          },
+          {
+            "question": "Which sales channel is growing fastest?",
+            "expected": [
+              "MKT-03",
+              "CMP-02"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 0.0,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "MKT-03",
+              "CMP-02",
+              "CMP-03",
+              "CMP-07",
+              "R2"
+            ]
+          },
+          {
+            "question": "What is the demand outlook for the next year?",
+            "expected": [
+              "FCT-01",
+              "FCT-02"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 0.0,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "FCT-03",
+              "FCT-02",
+              "FCT-01",
+              "FCT-05"
+            ]
+          },
+          {
+            "question": "What do customers say about our packaging?",
+            "expected": [
+              "REV-",
+              "CON-03"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 1,
+            "sources_searched": [
+              "findings",
+              "recommendations",
+              "reviews"
+            ],
+            "seconds": 2.01,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "REV-R014945",
+              "REV-R012961",
+              "REV-R015003",
+              "SEG-05",
+              "SEG-02"
+            ]
+          },
+          {
+            "question": "How did you estimate price elasticity?",
+            "expected": [
+              "DOC-3.8",
+              "EVL-4.4"
+            ],
+            "classic_hit": false,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations",
+              "methods"
+            ],
+            "seconds": 0.08,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "EVL-4.4c",
+              "DOC-3.8",
+              "EVL-4.4b",
+              "EVL-4.4",
+              "FCT-04"
+            ]
+          },
+          {
+            "question": "What are the limitations of this study?",
+            "expected": [
+              "report:Risks and Limitations"
+            ],
+            "classic_hit": false,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations",
+              "report"
+            ],
+            "seconds": 0.01,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "REP-13.1"
+            ]
+          },
+          {
+            "question": "How accurate is the sentiment model?",
+            "expected": [
+              "CON-01",
+              "EVL-4.1",
+              "EVL-4.2"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 1,
+            "sources_searched": [
+              "findings",
+              "recommendations",
+              "methods"
+            ],
+            "seconds": 0.01,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "EVL-4.6e",
+              "EVL-2b",
+              "CON-01"
+            ]
+          },
+          {
+            "question": "What should we do first?",
+            "expected": [
+              "R1"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 0.0,
+            "mode": "agentic RAG (offline)",
+            "top_sources": [
+              "R1",
+              "R2",
+              "R3",
+              "R4"
+            ]
+          }
+        ]
+      }
+    },
+    "groq / qwen/qwen3.8-27b": {
+      "react": {
+        "summary": {
+          "questions": 12,
+          "correct": 12,
+          "verified": 12,
+          "mean_seconds": 38.09
+        },
+        "rows": [
+          {
+            "question": "Which channel had the highest revenue in 2025?",
+            "expected": [
+              "Shopee"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 3.53,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "In 2025, Shopee was the highest-revenue channel for Kirana Beauty, generating approximately IDR 2.13 trillion in revenue, ahead of Offline Retail (IDR 1.50 trillion) and TikTok Shop (IDR 1.47 trillion) [O1]."
+          },
+          {
+            "question": "Which brand had the highest revenue in 2025?",
+            "expected": [
+              "Lumière Lab"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 19.59,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "Lumière Lab had the highest revenue in 2025, generating approximately IDR 1.58 trillion, ahead of GlowNesia (IDR 1.31 trillion) and DewiSkin (IDR 1.14 trillion) [O1]."
+          },
+          {
+            "question": "How did Kirana Beauty's revenue change from 2024 to 2025?",
+            "expected": [
+              23.1892
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 38.18,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "Kirana Beauty's revenue grew from Rp669.9 billion in 2024 to Rp825.2 billion in 2025, an increase of Rp155.3 billion, or +23.19% year-over-year [O1]."
+          },
+          {
+            "question": "What is each brand's share of revenue in 2025?",
+            "expected": [
+              "Lumière Lab",
+              27.0517
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 40.65,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "In 2025, Lumière Lab led with 27.05% of revenue (Rp1.58 trillion), followed by GlowNesia at 22.50% (Rp1.31 trillion), DewiSkin at 19.56% (Rp1.14 trillion), Kirana Beauty at 14.13% (Rp825.2 billion), Aurelia Derma at 9.60% (Rp560.7 billion), and Purabotanica at 7.16% (Rp418.2 billion), out of a total market revenue of Rp5.84 trillion [O1]."
+          },
+          {
+            "question": "Which category grew fastest from 2024 to 2025?",
+            "expected": [
+              "Sunscreen"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 40.42,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "Sunscreen grew fastest from 2024 to 2025, with revenue increasing 34.06% (from Rp1.12 trillion to Rp1.50 trillion), well ahead of Serum (17.57%), Moisturizer (10.92%), Facial Wash (8.51%), and Toner (5.12%) [O1]."
+          },
+          {
+            "question": "Which region sold the most units in 2025?",
+            "expected": [
+              "DKI Jakarta & Banten"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 40.31,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "In 2025, DKI Jakarta & Banten sold the most units with 23,386,100 units, ahead of Jawa Barat (18,249,945) and Jawa Timur (16,464,900) [O1]."
+          },
+          {
+            "question": "Which brand has the highest average rating?",
+            "expected": [
+              "Aurelia Derma"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 1,
+            "seconds": 58.76,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "Aurelia Derma and Lumière Lab are tied for the highest average product rating at 4.94 stars each, based on the catalog's rating_avg [O1]. The next closest is Kirana Beauty at 4.89 stars."
+          },
+          {
+            "question": "How many reviews mention packaging?",
+            "expected": [
+              3513.0
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 41.22,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "3,513 reviews mention packaging, representing 17.99% of the 19,526 reviews that contain text [O1]."
+          },
+          {
+            "question": "What share of social posts does each platform have?",
+            "expected": [
+              "TikTok",
+              46.5634
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 38.23,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "Across all 10,912 social posts (2023-01 to 2026-10), TikTok holds the largest share at 46.56% (5,081 posts), followed by Instagram at 28.10% (3,066), X at 14.42% (1,573), and YouTube at 10.92% (1,192) [O1]."
+          },
+          {
+            "question": "Which main brand has the highest average NPS in the survey?",
+            "expected": [
+              "Aurelia Derma"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 1,
+            "seconds": 59.59,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "Aurelia Derma has the highest average NPS in the survey at 8.43, ahead of Lumière Lab (8.21) and Purabotanica (7.99), based on the August–September 2026 survey [O1]."
+          },
+          {
+            "question": "Which channel has the highest average discount?",
+            "expected": [
+              "TikTok Shop"
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 38.54,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "TikTok Shop has the highest average discount at 14.6% (0.1459), followed by Lazada at 10.8% and Shopee at 10.4%, based on all sales records from 2023-01 to 2026-10 [O1]."
+          },
+          {
+            "question": "How big was the market in 2025?",
+            "expected": [
+              38300.0
+            ],
+            "correct": true,
+            "verified": true,
+            "tool_calls": 1,
+            "rejected_drafts": 0,
+            "seconds": 38.0,
+            "mode": "ReAct with groq / qwen/qwen3.8-27b",
+            "answer": "The Indonesian skincare market was worth 38,300 billion IDR (approximately 38.3 trillion IDR) in 2025, covering all five tracked categories (Facial Wash, Toner, Serum, Moisturizer, and Sunscreen) [O1]."
+          }
+        ]
+      },
+      "rag": {
+        "summary": {
+          "questions": 12,
+          "classic_hit": 10,
+          "agentic_hit": 11,
+          "verified": 12,
+          "mean_seconds": 25.9
+        },
+        "rows": [
+          {
+            "question": "What is our biggest problem right now?",
+            "expected": [
+              "CON-03",
+              "CMP-02",
+              "CON-06"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 21.01,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "CMP-02",
+              "CON-03",
+              "CMP-01",
+              "CON-06",
+              "FCT-04"
+            ]
+          },
+          {
+            "question": "Who is our biggest competitor?",
+            "expected": [
+              "CMP-05"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 1,
+            "sources_searched": [
+              "findings",
+              "report",
+              "recommendations"
+            ],
+            "seconds": 25.06,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "REP-11.7",
+              "REP-5.2",
+              "CMP-05",
+              "R6"
+            ]
+          },
+          {
+            "question": "How price-sensitive are our customers?",
+            "expected": [
+              "FCT-04"
+            ],
+            "classic_hit": true,
+            "agentic_hit": false,
+            "verified": true,
+            "rewrites": 3,
+            "sources_searched": [
+              "findings",
+              "reviews",
+              "recommendations"
+            ],
+            "seconds": 43.25,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "REV-R012603",
+              "REV-R011545",
+              "REV-R011698",
+              "CON-06",
+              "SEG-04"
+            ]
+          },
+          {
+            "question": "What price should we launch the new concept at?",
+            "expected": [
+              "SEG-04"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 3,
+            "sources_searched": [
+              "findings",
+              "recommendations",
+              "reviews"
+            ],
+            "seconds": 54.2,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "REV-R012603",
+              "REV-R013476",
+              "REV-R011545",
+              "SEG-04",
+              "CON-06"
+            ]
+          },
+          {
+            "question": "Which consumer segment should we target first?",
+            "expected": [
+              "SEG-02"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 15.84,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "SEG-01",
+              "SEG-02",
+              "SEG-03",
+              "SEG-05"
+            ]
+          },
+          {
+            "question": "Which sales channel is growing fastest?",
+            "expected": [
+              "MKT-03",
+              "CMP-02"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 12.96,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "MKT-03",
+              "CMP-02"
+            ]
+          },
+          {
+            "question": "What is the demand outlook for the next year?",
+            "expected": [
+              "FCT-01",
+              "FCT-02"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "report",
+              "recommendations"
+            ],
+            "seconds": 28.78,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "REP-9.2",
+              "REP-4.2",
+              "REP-15.10",
+              "FCT-01",
+              "FCT-02"
+            ]
+          },
+          {
+            "question": "What do customers say about our packaging?",
+            "expected": [
+              "REV-",
+              "CON-03"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "reviews",
+              "recommendations"
+            ],
+            "seconds": 10.39,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "REV-R015015",
+              "REV-R015643",
+              "CON-03",
+              "R1"
+            ]
+          },
+          {
+            "question": "How did you estimate price elasticity?",
+            "expected": [
+              "DOC-3.8",
+              "EVL-4.4"
+            ],
+            "classic_hit": false,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "methods",
+              "report",
+              "recommendations"
+            ],
+            "seconds": 28.52,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "EVL-4.4c",
+              "EVL-4.4b",
+              "EVL-4.4",
+              "DOC-3.8"
+            ]
+          },
+          {
+            "question": "What are the limitations of this study?",
+            "expected": [
+              "report:Risks and Limitations"
+            ],
+            "classic_hit": false,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "report",
+              "methods",
+              "recommendations"
+            ],
+            "seconds": 17.68,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "REP-13.1",
+              "REP-3.4",
+              "REP-0.1",
+              "EVL-8c"
+            ]
+          },
+          {
+            "question": "How accurate is the sentiment model?",
+            "expected": [
+              "CON-01",
+              "EVL-4.1",
+              "EVL-4.2"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 0,
+            "sources_searched": [
+              "findings",
+              "methods",
+              "recommendations"
+            ],
+            "seconds": 27.01,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "EVL-4.6e",
+              "EVL-4.1b",
+              "EVL-4.1",
+              "EVL-8",
+              "CON-01"
+            ]
+          },
+          {
+            "question": "What should we do first?",
+            "expected": [
+              "R1"
+            ],
+            "classic_hit": true,
+            "agentic_hit": true,
+            "verified": true,
+            "rewrites": 1,
+            "sources_searched": [
+              "findings",
+              "recommendations"
+            ],
+            "seconds": 26.06,
+            "mode": "agentic RAG (groq / qwen/qwen3.8-27b)",
+            "top_sources": [
+              "R2",
+              "R3",
+              "R4",
+              "R1",
+              "R5"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

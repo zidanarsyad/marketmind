@@ -156,9 +156,9 @@ The web app has the same twelve views, as tabs under the run's title (on a phone
 | **Forecast & pricing** | Market and client forecasts with 80% intervals, backtest results, forecast drivers, elasticities and a price simulator. |
 | **Strategy** | SWOT, the recommendations (each with its evidence, KPI, owner, timeline and priority) and the sized opportunities with their assumptions. |
 | **Report** | The full HTML report, with download buttons for HTML and Markdown. |
-| **Ask the analyst** | A chat that answers questions about this study and cites its evidence (see section 7). |
+| **Ask the analyst** | An agentic-RAG chat that answers questions about this study from its findings, report, method notes and customer reviews, cites its evidence and shows how it searched (see section 7). |
 | **Evaluation** | Scores the run against the planted ground truth (see section 9). |
-| **Data** | The dataset catalogue, the data quality scorecard, a preview of each dataset and, if a news key is set, the latest headlines. |
+| **Data** | **Ask the data**, a ReAct agent that answers questions straight from the study's datasets (see section 7); then the dataset catalogue, the data quality scorecard, a preview of each dataset and, if a news key is set, the latest headlines. |
 
 ## 6. Reading the report
 
@@ -168,21 +168,40 @@ The web app has the same twelve views, as tabs under the run's title (on a phone
 - **The QA certificate** at the end gives the Critic's verdict, its score out of 100, how many numbers in the prose were traced to evidence, and any open issues. A report passes with a score of at least 85 and no critical issue. "NOT PASSED" means the report was released after two revisions with issues still open; read them before you use the report. "NOT VERIFIED" means the Critic itself did not finish, so nothing in the report was checked.
 - **Risks and Limitations** lists the caveats the Data Quality agent recorded, for example that the data is simulated and that shares are shares of the tracked panel.
 
-## 7. Asking the analyst
+## 7. Asking the analyst, and asking the data
 
-The **Ask the analyst** tab answers questions about the selected run, using only that run's findings and recommendations, and lists the sources it used. Example questions:
+Two agents answer questions after a study, each in its own way.
 
-- "What is our biggest problem?"
-- "Who is the main competitive threat and why?"
-- "What price should we launch the concept at?"
-- "Which channel should we invest in?"
-- "What does the forecast say for next year?"
+**Ask the analyst** (agentic RAG) answers from what the study concluded. It does more than look up the closest finding:
 
-Without an LLM it quotes the three most relevant pieces of evidence. With an LLM it writes a short answer from the same evidence and cites the IDs. If nothing relevant is found, it says so rather than guessing.
+1. It plans: a follow-up such as "and why?" is joined to your previous question, a question with two parts is split, and each part is routed to the sources that can answer it.
+2. It searches the run's findings and recommendations, the report's sections (methodology, limitations, approvals), the method notes (how each agent computes what it reports) and the customer reviews. Reviews are narrowed to what you name: "our" means the client brand, "complain" means low-star reviews, a category or a year narrows further.
+3. It grades what it found. When too little fits, it rewrites the search and tries again, for example adding the Indonesian words customers use ("lengket", "tekstur") to a question about texture.
+4. It answers only from the passages it kept and cites each one: `[CMP-02]` is a finding, `[R1]` a recommendation, `[REP-13.1]` a report section, `[DOC-3.8]` or `[EVL-4.4]` a method note, `[REV-R012345]` a customer review. Before showing the answer it checks that every citation names a passage it retrieved and every number appears in that evidence. A draft that fails is rewritten once; if it fails again, you see the passages themselves.
+
+Under each answer, **How the agent answered** lists these steps. Example questions:
+
+- "What is our biggest problem?" and then "and why?"
+- "Who is the main competitive threat, and what should we do about it?"
+- "What do customers say about the texture of our moisturizer?"
+- "How did you estimate price elasticity?"
+- "What are the limitations of this study?"
+
+Without an LLM, rules do the planning, grading and rewriting, and the answer quotes the evidence. With an LLM it writes the answer from the same evidence. If nothing relevant is found, it says so rather than guessing.
+
+**Ask the data** (the ReAct Data Agent, at the top of the Data tab) answers from the datasets themselves, for questions the findings do not cover. It works in a loop: it writes a thought, calls one read-only tool (a total or average, a ranking, shares, a comparison of two periods, a trend, a search of review text, or a calculation), reads the result, and repeats until it can answer. Every number in the answer must come from a tool result, and the answer cites the results it rests on, like `[O1]`. **Reasoning steps** shows each thought, tool call and result. Example questions:
+
+- "Which channel had the highest revenue in 2025?"
+- "How did our revenue change from 2024 to 2025?"
+- "Which category grew fastest from 2024 to 2025?"
+- "How many of our reviews mention packaging?"
+- "What is the average NPS by main brand?"
+
+Without an LLM, a rule-based policy reads the question (the measure, the grouping, the brands, channels or years it names) and makes the tool calls; it answers the common question shapes above, and says so when it cannot map a question. With an LLM, the model plans the steps itself and can combine several tools, for example comparing two channels and then calculating the gap.
 
 ## 8. Switching on an LLM (optional)
 
-MarketMind works completely without an LLM. With one, the Director refines the plan, the Strategy agent drafts a narrative executive summary, the Report Writer adds commentary, the Segmentation agent names the personas, and the analyst chat answers in natural language. Numbers still come only from the analysis tools, and the Critic checks every number the LLM writes.
+MarketMind works completely without an LLM. With one, the Director refines the plan, the Strategy agent drafts a narrative executive summary, the Report Writer adds commentary, the Segmentation agent names the personas, the analyst chat plans, grades and writes its answers, and the data agent plans its own tool calls. Numbers still come only from the analysis tools, and the Critic, or the agents' own checks, verify every number the LLM writes. On a free tier the data agent can take a minute when the provider's per-minute token limit makes it wait.
 
 Copy `.env.example` to `.env` and set **one** of these:
 

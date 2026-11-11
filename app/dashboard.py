@@ -720,19 +720,35 @@ with tabs[8], guard("Report"):
         st.info("No report in this run.")
 
 # ---------------------------------------------------------------------------- chat
+def render_rag_trace(trace: list[dict]) -> None:
+    """The agentic-RAG steps behind an answer: plan, retrieve, grade, rewrite, verify, answer."""
+    if not trace:
+        return
+    with st.expander(f"How the agent answered ({len(trace)} steps)"):
+        for i, s in enumerate(trace, 1):
+            extra = ""
+            if s["step"] == "grade" and s.get("relevant"):
+                extra = f" - kept {', '.join(s['relevant'])}"
+            st.markdown(f"{i}. **{s['step'].capitalize()}**: {html.escape(s['detail'])}{extra}")
+
+
 with tabs[9], guard("Ask the analyst"):
     from marketmind.agents.analyst_chat import AnalystChatAgent
-    st.caption(f"Answers come only from this run's findings, recommendations and SWOT - via {llm.describe()}.")
+    st.caption("Agentic RAG: the agent plans the question, searches this run's findings, recommendations and report, the "
+               "method notes and the customer reviews, grades what it finds, rewrites the query when too little fits, "
+               f"and checks every citation and number in its answer - via {llm.describe()}.")
     key = f"chat-{run.run_id}"
     history = st.session_state.setdefault(key, [])
     suggestions = ["What is our biggest problem right now?", "Why should we launch the new moisturizer?",
-                   "Who is our biggest competitor?", "How price-sensitive are our customers?"]
+                   "Who is our biggest competitor?", "How price-sensitive are our customers?",
+                   "What do customers say about our packaging?", "How did you estimate price elasticity?"]
     picked = st.pills("Try asking", suggestions, selection_mode="single", key=f"pills-{run.run_id}")
     for msg in history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg.get("sources"):
                 st.caption(msg["sources"])           # keep the citations visible after the page reruns
+            render_rag_trace(msg.get("trace") or [])
     # A suggestion stays selected after it is answered, and every click elsewhere reruns the page. Remember which pick
     # was asked, so it is asked once rather than again (with another LLM call) on every rerun; unselecting resets it.
     pick_key = f"pick-asked-{run.run_id}"
@@ -748,14 +764,16 @@ with tabs[9], guard("Ask the analyst"):
         with st.chat_message("user"):
             st.markdown(question)
         agent = AnalystChatAgent(run, llm)
-        out = agent.answer(question, history[:-1])
+        with st.spinner("The analyst is planning, searching and checking ..."):
+            out = agent.answer(question, history[:-1])
         with st.chat_message("assistant"):
             st.markdown(out["answer"])
             sources = ("Sources: " + ", ".join(f"{s['id']} ({s['kind']})" for s in out["sources"]) + f" · {out['mode']}"
                        if out["sources"] else "")
             if sources:
                 st.caption(sources)
-        history.append(dict(role="assistant", content=out["answer"], sources=sources))
+            render_rag_trace(out.get("trace") or [])
+        history.append(dict(role="assistant", content=out["answer"], sources=sources, trace=out.get("trace") or []))
 
 # ---------------------------------------------------------------------------- evaluation
 with tabs[10], guard("Evaluation"):
@@ -782,7 +800,51 @@ with tabs[10], guard("Evaluation"):
         st.dataframe(df, width="stretch", hide_index=True, height=min(900, 38 * len(df) + 40))
 
 # ---------------------------------------------------------------------------- data
+def render_react_steps(steps: list[dict]) -> None:
+    """The ReAct Data Agent's loop: each thought, the tool it called, and what the tool returned."""
+    calls = sum(1 for s in steps if s["kind"] == "action")
+    with st.expander(f"Reasoning steps ({calls} tool call{'' if calls == 1 else 's'})"):
+        for s in steps:
+            if s["kind"] == "action":
+                st.markdown(f"**Thought {s['n']}.** {html.escape(s['thought'])}")
+                st.markdown(f"Action: `{s['action']}({json.dumps(s['args'], ensure_ascii=False, default=str)})`"
+                            + (" - error, corrected in the next step" if s.get("error") else ""))
+                st.code(s["observation"], language=None)
+            elif s["kind"] == "check":
+                st.markdown(f"**Check {s['n']}.** {html.escape(s['observation'])}")
+            elif s["kind"] == "answer":
+                st.markdown(f"**Thought {s['n']}.** {html.escape(s['thought'])}")
+            else:
+                st.caption(s.get("observation", ""))
+
+
 with tabs[11], guard("Data"):
+    from marketmind.agents.data_agent import ReActDataAgent
+    st.markdown("**Ask the data** - a ReAct agent answers from this study's datasets: it thinks, calls one read-only "
+                "tool, reads the result, and repeats until it can answer; every number in the answer must come from a "
+                f"tool result. Via {llm.describe() if llm.available else 'its rule-based policy (offline)'}.")
+    data_examples = ["Which channel had the highest revenue in 2025?", "How did our revenue change from 2024 to 2025?",
+                     "What is each brand's share of revenue in 2025?", "How many of our reviews mention packaging?"]
+    with st.form(f"ask-data-{run.run_id}"):
+        dq = st.text_input("Your question about the data", placeholder=data_examples[0])
+        asked = st.form_submit_button("Ask the data agent", type="primary")
+    dpick = st.pills("Try asking", data_examples, selection_mode="single", key=f"dpills-{run.run_id}")
+    dkey, dpick_key = f"data-answers-{run.run_id}", f"dpick-asked-{run.run_id}"
+    if not dpick:
+        st.session_state.pop(dpick_key, None)
+    data_q = dq.strip() if asked and dq.strip() else (dpick if dpick and st.session_state.get(dpick_key) != dpick else "")
+    if dpick:
+        st.session_state[dpick_key] = dpick
+    if data_q:
+        with st.spinner("The data agent is reasoning and calling tools ..."):
+            st.session_state[dkey] = dict(question=data_q, **ReActDataAgent(run, llm).answer(data_q))
+    last = st.session_state.get(dkey)
+    if last:
+        st.markdown(f"**Q: {html.escape(last['question'])}**")
+        st.markdown(last["answer"])
+        st.caption(f"{last['mode']} · {'verified' if last['verified'] else 'not verified'} · {last['seconds']}s")
+        render_react_steps(last["steps"])
+    st.divider()
     st.dataframe(run.table("data.catalog"), width="stretch", hide_index=True)
     st.markdown("**Data quality scorecard**")
     st.dataframe(run.table("dq.scorecard"), width="stretch", hide_index=True)

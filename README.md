@@ -9,7 +9,7 @@ The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 -
 
 | | |
 |---|---|
-| **Agents** | 11 cooperating agents + an on-demand Analyst Chat agent |
+| **Agents** | 11 cooperating agents, plus two on-demand agents: an agentic-RAG Analyst Chat and a ReAct Data Agent |
 | **Deep learning** | PyTorch BiGRU-with-attention sentiment model (vs. TF-IDF baseline + ensemble), transferred to unlabeled social posts |
 | **Machine learning** | K-Means segmentation, gradient-boosting demand forecasting, NMF topic mining, Poisson anomaly detection, fixed-effects price elasticity |
 | **LLM** | Optional - free Gemini / Groq / OpenRouter / local Ollama, or Claude. Fully functional offline. |
@@ -75,7 +75,7 @@ Optional: copy `.env.example` to `.env` and add **one free API key** to switch o
 | [Evaluation report](docs/EVALUATION.md) | Ground-truth checks, model metrics, data quality, governance, timings, threats to validity |
 | [Trust and security](docs/SECURITY.md) | What keeps the results trustworthy and the system safe, where it lives in the code, and the limits that remain |
 | [Developer guide](docs/DEVELOPER_GUIDE.md) | Core APIs, adding agents, tools, charts, datasets and LLM providers, testing and debugging |
-| [Diagram gallery](docs/diagrams/gallery.html) | All 14 diagrams on one page, with SVG and PNG export |
+| [Diagram gallery](docs/diagrams/gallery.html) | All 16 diagrams on one page, with SVG and PNG export |
 
 The design proposal is a separate Claude Doc. Four scripts support the documents and the real-data work:
 
@@ -128,6 +128,7 @@ flowchart LR
 - **Reflection loop**: the Critic scores the report (structure, question coverage, numeric grounding, citations, evidence, disclosure). Below 85/100 or any critical issue, the Director sends block-level feedback to the Report Writer, which replaces the rejected blocks with grounded text - up to two revisions.
 - **Grounding by design**: numbers are produced only by deterministic tools; the LLM (when present) only writes language, and the Critic checks every number in LLM prose against the evidence.
 - **Persistence**: every run is saved (`core/store.py`) and can be reloaded, compared and evaluated later.
+- **Two more agent designs, on demand**: the **Analyst Chat** is agentic RAG (it plans the question, routes it to five knowledge sources, grades what it retrieves, rewrites the query when too little fits, and verifies its answer), and the **ReAct Data Agent** answers from the raw datasets in a reason-act loop over read-only tools. Both check every number and citation in their answers against their evidence (`core/grounding.py`, shared with the Critic) before showing them.
 
 ### The agents
 
@@ -144,7 +145,8 @@ flowchart LR
 | Strategy | Strategy consultant | finding ranking, SWOT, opportunity sizing, evidence-linked recommendation playbook | SWOT, 8 recommendations, KPIs |
 | Report Writer | Research writer | Markdown + self-contained interactive HTML (offline Plotly) | `report.md`, `report.html` |
 | Critic (QA) | Reviewer | numeric grounding, coverage, citation & evidence checks | QA verdict, revision issues |
-| Analyst Chat | Analyst on call | retrieval over findings with intent boosts (+ LLM when available) | grounded answers with citations |
+| Analyst Chat (agentic RAG) | Analyst on call | plans and routes the question, retrieves from findings, report, method notes and customer reviews, grades, rewrites the query, verifies citations and numbers (+ LLM when available) | grounded answers with citations and a step trace |
+| ReAct Data Agent | Data analyst on call | reason-act loop over 8 read-only data tools (aggregate, share, compare, trend, text search, calculate), answers verified against the observations (+ LLM when available) | answers from the raw datasets, with every step shown |
 
 ---
 
@@ -185,7 +187,7 @@ Realism built in: Ramadan/Eid and 11.11/12.12 seasonality, TikTok Shop's rise, a
 
 ## LLM setup
 
-The system is complete without an LLM. With one, the Director refines the plan, the Strategy agent and Report Writer add narrative, the Segmentation agent names personas, and the Analyst Chat answers in natural language. Copy `.env.example` to `.env` and set **one** of:
+The system is complete without an LLM. With one, the Director refines the plan, the Strategy agent and Report Writer add narrative, the Segmentation agent names personas, the Analyst Chat plans, grades and writes its answers, and the ReAct Data Agent plans its own tool calls. Copy `.env.example` to `.env` and set **one** of:
 
 | Provider | Free? | Variable | Get a key |
 |---|---|---|---|
@@ -203,7 +205,7 @@ The system is complete without an LLM. With one, the Director refines the plan, 
 
 **Web app.** `python -m api` serves a Vue 3 front end (`frontend/`, built with `npm --prefix frontend run build`) and the JSON API it uses (`api/`, FastAPI, documented at <http://localhost:8000/api/docs>). It has the dashboard's twelve views for every saved run, a runs list, a new-study form and a live view that streams the agents' trace and shows the approval forms. The charts are the same Plotly figures, drawn in the browser from the API's figure JSON. The sidebar becomes a drawer on a phone, wide tables and charts scroll inside their cards, and there are light and dark themes. Studies run on the server, so closing or reloading the page loses nothing. API keys stay in `.env` on the server and never reach the browser. See [USER_GUIDE.md](docs/USER_GUIDE.md#from-the-web-app) and [DEVELOPER_GUIDE.md §12](docs/DEVELOPER_GUIDE.md#12-the-web-api-and-the-vue-front-end).
 
-**Streamlit dashboard.** `streamlit run app/dashboard.py` - tabs: **Overview** (KPIs, key findings, priority actions) · **Agents** (workflow graph, roster, messages, approvals and follow-ups, full trace explorer) · **Market** · **Competition** · **Consumers (DL)** (model card, confusion matrix, aspect heatmap, complaint spikes, live model tester) · **Segments** (PCA small multiples, personas, concept test, Van Westendorp) · **Forecast & pricing** (forecasts with intervals, backtest, drivers, elasticities, price simulator) · **Strategy** (SWOT, recommendations, sized opportunities) · **Report** (embedded HTML + downloads) · **Ask the analyst** (chat) · **Evaluation** (ground-truth scorecard) · **Data**.
+**Streamlit dashboard.** `streamlit run app/dashboard.py` - tabs: **Overview** (KPIs, key findings, priority actions) · **Agents** (workflow graph, roster, messages, approvals and follow-ups, full trace explorer) · **Market** · **Competition** · **Consumers (DL)** (model card, confusion matrix, aspect heatmap, complaint spikes, live model tester) · **Segments** (PCA small multiples, personas, concept test, Van Westendorp) · **Forecast & pricing** (forecasts with intervals, backtest, drivers, elasticities, price simulator) · **Strategy** (SWOT, recommendations, sized opportunities) · **Report** (embedded HTML + downloads) · **Ask the analyst** (agentic-RAG chat, with the steps behind each answer) · **Evaluation** (ground-truth scorecard) · **Data** (Ask the data: the ReAct agent; datasets and quality scorecard).
 
 ---
 
@@ -227,7 +229,7 @@ Beyond one run: `scripts/multi_seed.py` regenerates the market with five more se
 marketmind/
   core/        agent base class, blackboard, tracer, LLM client, workflow engine, run store, approval gates,
                credential redaction, access token, privacy masking
-  agents/      the 11 pipeline agents + analyst chat
+  agents/      the 11 pipeline agents + the agentic-RAG analyst chat and the ReAct data agent (with its data tools)
   ml/          text normalisation, sentiment (PyTorch), topics, segmentation, forecasting, pricing, calendar
   reporting/   shared Plotly chart library + HTML report renderer
   evaluation.py  ground-truth scoring

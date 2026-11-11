@@ -1,5 +1,6 @@
 """Read endpoints over the run store (``outputs/runs/<run_id>/``), plus the tools that work on a saved run:
-the charts, the report, the ground-truth evaluation, Ask the analyst and the sentiment model tester.
+the charts, the report, the ground-truth evaluation, Ask the analyst (agentic RAG), Ask the data (the ReAct Data
+Agent) and the sentiment model tester.
 
 Runs are read through ``marketmind.core.store`` exactly as the Streamlit dashboard reads them; nothing here writes to
 a run except ``evaluation.json``, which the dashboard writes too.
@@ -252,9 +253,11 @@ class ChatQuestion(BaseModel):
 
 @router.post("/{run_id}/chat")
 def ask_the_analyst(run_id: str, body: ChatQuestion, request: Request) -> dict:
-    """Answer one question from the run's findings, recommendations and SWOT, citing them.
+    """Answer one question with the agentic-RAG Analyst Chat: plan, retrieve, grade, rewrite, answer, verify.
 
-    Asked once per call: the browser keeps the conversation, so reloading the page never asks again.
+    The sources are the run's findings, recommendations and report, the method notes and the customer reviews; the
+    reply carries the trace of the agent's steps. Asked once per call: the browser keeps the conversation, so
+    reloading the page never asks again.
     """
     from marketmind.agents.analyst_chat import AnalystChatAgent
     run = get_run(run_id)
@@ -262,8 +265,32 @@ def ask_the_analyst(run_id: str, body: ChatQuestion, request: Request) -> dict:
     if not question:
         raise HTTPException(422, "Ask a question.")
     out = AnalystChatAgent(run, request.app.state.llm).answer(question, [t.model_dump() for t in body.history])
-    sources = [{k: s.get(k) for k in ("id", "kind", "title", "area", "source", "score")} for s in out["sources"]]
-    return dict(answer=out["answer"], sources=clean(sources), mode=out["mode"])
+    sources = [{k: s.get(k) for k in ("id", "kind", "title", "area", "source", "score", "collection")}
+               for s in out["sources"]]
+    return clean(dict(answer=out["answer"], sources=sources, mode=out["mode"], verified=out.get("verified", True),
+                      trace=out.get("trace", [])))
+
+
+class DataQuestion(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
+
+
+@router.post("/{run_id}/ask-data")
+def ask_the_data(run_id: str, body: DataQuestion, request: Request) -> dict:
+    """Answer one question from the run's datasets with the ReAct Data Agent (reason, call a read-only tool, observe,
+    repeat). The reply carries every step: thought, tool call, observation, and the verified answer."""
+    from marketmind.agents.data_agent import ReActDataAgent
+    run = get_run(run_id)
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(422, "Ask a question.")
+    try:
+        agent = ReActDataAgent(run, request.app.state.llm)
+    except Exception as exc:
+        raise HTTPException(409, f"The run's datasets could not be loaded ({type(exc).__name__}).") from exc
+    out = agent.answer(question, [t.model_dump() for t in body.history])
+    return clean(out)
 
 
 # ------------------------------------------------------------------------------------------------ sentiment model tester

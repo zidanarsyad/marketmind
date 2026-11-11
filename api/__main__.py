@@ -3,15 +3,20 @@
     python -m api                     # http://localhost:8000, this computer only
     python -m api --port 8080
     python -m api --reload            # restart on code changes (development)
-    python -m api --host 0.0.0.0      # share on your network: anyone who can reach it can run studies
+    python -m api --host 0.0.0.0      # share on your network, behind an access token (the start-up message has it)
 """
 from __future__ import annotations
 
 import argparse
 import os
+import secrets
 import sys
 
+import marketmind.config  # noqa: F401  (loads .env, so MARKETMIND_HOST, _PORT and _ACCESS_TOKEN can be set there)
+from marketmind.core.access import TOKEN_ENV
+
 LOOPBACK = ("127.0.0.1", "localhost", "::1")
+ANY_INTERFACE = ("0.0.0.0", "::")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -22,14 +27,22 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--reload", action="store_true", help="restart when the Python code changes")
     args = parser.parse_args(argv)
 
+    token = os.getenv(TOKEN_ENV, "").strip()
     if args.host not in LOOPBACK:
-        print(f"Warning: serving on {args.host}. Anyone who can reach this address can read the runs and start "
-              "studies. API keys stay on the server.", file=sys.stderr)
         os.environ.setdefault("MARKETMIND_ALLOWED_HOSTS", "*")
+        if not token:   # shared on a network, never without a token: make one up for this session
+            token = secrets.token_urlsafe(18)
+            os.environ[TOKEN_ENV] = token     # create_app reads it, in the --reload worker process too
 
     import uvicorn
-    shown = "localhost" if args.host in LOOPBACK else args.host
+    shown = "localhost" if args.host in LOOPBACK + ANY_INTERFACE else args.host
     print(f"MarketMind web app: http://{shown}:{args.port}  (API docs: /api/docs)", flush=True)
+    if token:
+        elsewhere = ("; from another computer, use this computer's network address instead of localhost"
+                     if args.host in ANY_INTERFACE else "")
+        print(f"Access token required. Open http://{shown}:{args.port}/?token={token} once in each browser{elsewhere}.\n"
+              "Anyone with the token can read the runs and start studies; API keys stay on this computer.",
+              file=sys.stderr, flush=True)
     uvicorn.run("api.app:create_app", factory=True, host=args.host, port=args.port, reload=args.reload,
                 reload_dirs=["api", "marketmind"] if args.reload else None, log_level="info")
 

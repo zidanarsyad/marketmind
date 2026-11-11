@@ -20,6 +20,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from ..config import project_path
 from ..core.agent import BaseAgent
 from ..core.findings import Finding
+from ..core.privacy import mask_personal
 from ..ml import real_reviews
 from ..ml.sentiment import LABELS, SentimentSuite, aspect_mentions, rating_to_label
 from ..ml.text import ASPECT_LABELS
@@ -292,15 +293,16 @@ class ConsumerInsightAgent(BaseAgent):
                 "aspect_mentions_sample": asp.sample(min(len(asp), 3000), random_state=0)}
 
     def _examples(self, scored: pd.DataFrame, asp: pd.DataFrame, anomalies: pd.DataFrame) -> pd.DataFrame:
+        """Review quotes for the report and the dashboard, with personal details masked (core/privacy.py)."""
         rows = []
         if len(anomalies):
             for ep in anomalies.head(3).itertuples():
                 sub = asp[(asp["brand"] == ep.brand) & (asp["aspect"] == ep.aspect) & (asp["polarity"] == "negative")
                           & (asp["month"] >= ep.start) & (asp["month"] <= ep.end)]
                 for clause in sub["clause"].drop_duplicates().head(4):
-                    rows.append(dict(brand=ep.brand, aspect=ep.aspect_label, type="complaint spike", text=clause))
+                    rows.append(dict(brand=ep.brand, aspect=ep.aspect_label, type="complaint spike", text=mask_personal(clause)))
         best = scored[(scored["brand"] == self.client) & (scored["pred"] == "positive")].nlargest(4, "score")
-        rows += [dict(brand=self.client, aspect="overall", type="praise", text=t) for t in best["review_text"]]
+        rows += [dict(brand=self.client, aspect="overall", type="praise", text=mask_personal(t)) for t in best["review_text"]]
         return pd.DataFrame(rows)
 
     # ------------------------------------------------------------------ findings

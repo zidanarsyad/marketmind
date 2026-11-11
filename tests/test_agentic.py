@@ -13,7 +13,7 @@ import pytest
 
 from marketmind.config import DATA_RAW, DATASETS
 from marketmind.core.agent import OPEN_QUESTION, BaseAgent, RunContext
-from marketmind.core.approval import ApprovalBroker, ConsoleApprover, Decision, StudyRejected, request_approval
+from marketmind.core.approval import ApprovalBroker, ConsoleApprover, Decision, StudyRejected, _limit, request_approval
 from marketmind.core.blackboard import Blackboard
 from marketmind.core.events import Tracer
 from marketmind.core.findings import Finding
@@ -113,12 +113,12 @@ def test_console_reviewer_approves_trims_or_rejects():
     assert not d.approved and d.comment == "too risky"
 
 
-def test_decisions_are_traced_and_recorded_and_a_broken_reviewer_does_not_block(tmp_path):
+def test_decisions_are_traced_and_recorded_and_a_broken_review_screen_stops_the_study(tmp_path):
     ctx = context(tmp_path, approver=lambda gate, proposal: Decision(True, "tester", drop=["R2"]))
     assert request_approval(ctx, "recommendations", {}, "Strategy Agent").drop == ["R2"]
     ctx.approver = lambda gate, proposal: 1 / 0
-    d = request_approval(ctx, "plan", {}, "Research Director")
-    assert d.approved and d.reviewer == "auto (approver failed)" and "ZeroDivisionError" in d.comment
+    d = request_approval(ctx, "plan", {}, "Research Director")   # fails closed: no approval on the reviewer's behalf
+    assert not d.approved and d.reviewer == "review screen error" and "ZeroDivisionError" in d.comment
     assert [a["gate"] for a in ctx.blackboard.get("approvals")] == ["recommendations", "plan"]
     assert len(events(ctx, "approval")) == 2
 
@@ -135,7 +135,10 @@ def test_the_dashboard_broker_hands_a_gate_to_another_thread():
     broker.decide(Decision(False, "dashboard reviewer", "wrong client"))
     worker.join(2)
     assert not out["d"].approved and out["d"].comment == "wrong client" and broker.pending is None
-    assert ApprovalBroker(timeout=0.05)("plan", {}).reviewer.startswith("auto")  # unanswered: approves, says why
+    unanswered = ApprovalBroker(timeout=0.05)("plan", {})   # nobody answers: the study stops, and the record says why
+    assert not unanswered.approved and unanswered.reviewer == "the 0.05-second time limit"
+    assert unanswered.comment == "no reviewer answered, so the study stopped instead of going ahead unreviewed"
+    assert ApprovalBroker(timeout=1800).timeout == 1800 and _limit(1800) == "30-minute"
 
 
 def test_the_plan_gate_leaves_out_modules_and_renumbers_the_questions(tmp_path):

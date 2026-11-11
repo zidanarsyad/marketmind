@@ -25,8 +25,18 @@ from ..config import RUNS_DIR
 from .blackboard import Blackboard
 from .events import Tracer, load_trace
 from .findings import Finding
+from .redact import scrub
 
 SKIP_PREFIXES = ("datasets",)
+
+
+def _write(path: Path, text: str, newline: str | None = None) -> None:
+    """Every file a run saves goes through here, so no credential value reaches the disk (core/redact.py)."""
+    path.write_text(scrub(text), encoding="utf-8", newline=newline)
+
+
+def _write_csv(path: Path, df: pd.DataFrame) -> None:
+    _write(path, df.to_csv(index=False), newline="")   # to_csv already wrote the platform's line endings
 
 
 def _safe(name: str) -> str:
@@ -63,24 +73,23 @@ def save_run(run_dir: Path, bb: Blackboard, tracer: Tracer, meta: dict) -> None:
             continue
         value = bb.get(key)
         if isinstance(value, pd.DataFrame):
-            value.to_csv(run_dir / "tables" / f"{_safe(key)}.csv", index=False)
+            _write_csv(run_dir / "tables" / f"{_safe(key)}.csv", value)
         elif isinstance(value, dict) and value and all(isinstance(v, pd.DataFrame) for v in value.values()):
             for name, df in value.items():
-                df.to_csv(run_dir / "tables" / f"{_safe(key)}.{_safe(name)}.csv", index=False)
+                _write_csv(run_dir / "tables" / f"{_safe(key)}.{_safe(name)}.csv", df)
         elif isinstance(value, str) and key.startswith("report."):
             ext = {"report.markdown": "md", "report.html": "html"}.get(key)
             if ext:
-                (run_dir / f"report.{ext}").write_text(value, encoding="utf-8")
+                _write(run_dir / f"report.{ext}", value)
         else:
             try:
-                (run_dir / "json" / f"{_safe(key)}.json").write_text(
-                    json.dumps(_to_jsonable(value), indent=2, ensure_ascii=False), encoding="utf-8")
+                _write(run_dir / "json" / f"{_safe(key)}.json", json.dumps(_to_jsonable(value), indent=2, ensure_ascii=False))
             except (TypeError, ValueError):
                 pass
     findings = [f.to_dict() for f in bb.findings()]
-    (run_dir / "findings.json").write_text(json.dumps(_to_jsonable(findings), indent=2, ensure_ascii=False), encoding="utf-8")
-    (run_dir / "run_meta.json").write_text(json.dumps(_to_jsonable(meta), indent=2, ensure_ascii=False), encoding="utf-8")
-    tracer.save(run_dir / "trace.jsonl")
+    _write(run_dir / "findings.json", json.dumps(_to_jsonable(findings), indent=2, ensure_ascii=False))
+    _write(run_dir / "run_meta.json", json.dumps(_to_jsonable(meta), indent=2, ensure_ascii=False))
+    tracer.save(run_dir / "trace.jsonl")   # the tracer scrubs every event as it is recorded
 
 
 @dataclass

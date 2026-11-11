@@ -11,6 +11,7 @@ The [design proposal](https://claude.ai/artifact/QY1WcVtyNZYJ5pHcy2nUEB), a Clau
 | [DATA_DICTIONARY.md](DATA_DICTIONARY.md) | Look up every column of the seven research datasets | Analysts, data engineers |
 | [DATA_SOURCES.md](DATA_SOURCES.md) | Find real public datasets and statistics that can replace, validate or calibrate the simulated data, with licences and a simulated-versus-real comparison | Analysts, data engineers, reviewers |
 | [EVALUATION.md](EVALUATION.md) | See how well the system works: 25 ground-truth checks, model metrics, robustness across data seeds, ablations, real-LLM runs, data quality, governance, timings and threats to validity (raw results in `results/`) | Reviewers, lecturers |
+| [SECURITY.md](SECURITY.md) | See what keeps the results trustworthy and the system safe: grounding, the QA gate, approval gates, the audit trail, credential redaction, local-only servers and the access token, input checks, privacy, dependency audits, and the limits that remain | Reviewers, lecturers, developers |
 | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Extend MarketMind: core APIs, adding agents, tools, charts, datasets and LLM providers, testing, debugging | Developers |
 | [schemas/](schemas/) | The machine-readable contracts: 15 JSON Schemas and `database.sql` | Tools and tests |
 | [diagrams/gallery.html](diagrams/gallery.html) | All 14 diagrams on one page, with SVG and PNG export (open it in a browser) | Everyone |

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// A saved run: its header (client, chips, warnings) and the twelve views as tabs. A study a reviewer stopped shows
-// who stopped it and why, and no tabs: it released no report.
+// A saved run: its header (client, chips, warnings) and the twelve views as tabs. A study stopped at an approval gate
+// (by the reviewer, or by the time limit when nobody answered) shows who or what stopped it and why, and no tabs: it
+// released no report.
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import { computed, nextTick, ref, watch } from 'vue'
@@ -43,7 +44,7 @@ const chips = computed(() => {
       icon: 'pi pi-verified',
       cls: qa.value.passed ? 'good' : 'warn',
     })
-  else if (rejected.value) out.push({ text: 'stopped by the reviewer', icon: 'pi pi-ban', cls: 'bad' })
+  else if (rejected.value) out.push({ text: 'stopped at an approval gate', icon: 'pi pi-ban', cls: 'bad' })
   else out.push({ text: 'QA not run - unverified', icon: 'pi pi-exclamation-triangle', cls: 'warn' })
   out.push({ text: `${b.summary.counts.findings} findings`, icon: 'pi pi-lightbulb' })
   out.push({ text: `${b.summary.counts.recommendations} recommendations`, icon: 'pi pi-list-check' })

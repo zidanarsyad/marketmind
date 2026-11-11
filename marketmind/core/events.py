@@ -12,7 +12,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-KINDS = ("status", "thought", "action", "observation", "finding", "message", "llm", "warning", "error")
+from .redact import scrub, scrub_obj
+
+KINDS =("status", "thought", "action", "observation", "finding", "message", "llm", "warning", "error")
 
 
 @dataclass
@@ -41,11 +43,12 @@ class Tracer:
         self._listeners.append(fn)
 
     def emit(self, agent: str, kind: str, message: str, **data: Any) -> Event:
-        ev = Event(time.time(), agent, kind, message, _jsonable(data))
+        # scrubbed here, so no credential reaches the live console, trace.jsonl or a listener (core/redact.py)
+        ev = Event(time.time(), agent, kind, scrub(message), scrub_obj(_jsonable(data)))
         with self._lock:
             self.events.append(ev)
         if self.echo:
-            print(f"[{time.strftime('%H:%M:%S')}] {agent:<26} {kind:<11} {message}", flush=True)
+            print(f"[{time.strftime('%H:%M:%S')}] {agent:<26} {kind:<11} {ev.message}", flush=True)
         for fn in self._listeners:
             try:
                 fn(ev)

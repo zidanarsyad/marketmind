@@ -24,7 +24,7 @@ from .security import clean, scrub
 router = APIRouter(prefix="/api/studies", tags=["studies"])
 
 REVIEWER = "web reviewer"
-GATE_TIMEOUT = 1800       # a gate left unanswered for 30 minutes approves automatically, and the record says so
+GATE_TIMEOUT = 1800       # a gate left unanswered for 30 minutes stops the study (never approves), and says so
 
 
 @dataclass

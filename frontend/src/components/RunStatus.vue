@@ -6,7 +6,7 @@ const props = defineProps<{ status: string | null; qa: number | null; compact?: 
 
 const view = computed(() => {
   const s = props.status ?? 'unknown'
-  if (s === 'rejected') return { cls: 'bad', icon: 'pi pi-ban', text: props.compact ? 'Stopped' : 'Stopped by the reviewer' }
+  if (s === 'rejected') return { cls: 'bad', icon: 'pi pi-ban', text: props.compact ? 'Stopped' : 'Stopped at a gate' }
   if (s === 'failed') return { cls: 'bad', icon: 'pi pi-times-circle', text: 'Failed' }
   if (s === 'unverified') return { cls: 'warn', icon: 'pi pi-exclamation-triangle', text: props.compact ? 'Unverified' : 'QA not run' }
   if (props.qa !== null && props.qa !== undefined) {

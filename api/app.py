@@ -10,9 +10,10 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from marketmind.config import ROOT
+from marketmind.core.access import access_token
 
 from . import runs, studies, system_info
-from .security import LOCAL_HOSTS, LocalOnlyMiddleware, SafeJSONResponse
+from .security import LOCAL_HOSTS, AccessTokenMiddleware, LocalOnlyMiddleware, SafeJSONResponse
 
 FRONTEND_DIST = ROOT / "frontend" / "dist"
 
@@ -47,8 +48,12 @@ def allowed_hosts_from_env() -> tuple[str, ...] | None:
     return LOCAL_HOSTS + tuple(extra)
 
 
-def create_app(llm=None, frontend_dist: Path | None = None, allowed_hosts: tuple[str, ...] | None | str = "env") -> FastAPI:
-    """Build the app. ``llm`` defaults to an LLMClient configured from .env (offline when no key is set)."""
+def create_app(llm=None, frontend_dist: Path | None = None, allowed_hosts: tuple[str, ...] | None | str = "env",
+               token: str | None = "env") -> FastAPI:
+    """Build the app. ``llm`` defaults to an LLMClient configured from .env (offline when no key is set).
+
+    ``allowed_hosts`` and ``token`` default to the environment (MARKETMIND_ALLOWED_HOSTS, MARKETMIND_ACCESS_TOKEN).
+    """
     if llm is None:
         from marketmind.core.llm import LLMClient
         llm = LLMClient()
@@ -59,6 +64,8 @@ def create_app(llm=None, frontend_dist: Path | None = None, allowed_hosts: tuple
     app.state.llm = llm
     app.state.studies = studies.StudyRegistry()
     threading.Thread(target=warm_up, daemon=True, name="warm-up").start()
+    # the middleware added last runs first: the host check, then the access token
+    app.add_middleware(AccessTokenMiddleware, token=access_token() if token == "env" else token)
     app.add_middleware(LocalOnlyMiddleware,
                        allowed_hosts=allowed_hosts_from_env() if allowed_hosts == "env" else allowed_hosts)
     app.include_router(system_info.router)

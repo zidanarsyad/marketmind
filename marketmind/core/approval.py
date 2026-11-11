@@ -4,9 +4,11 @@ There are two gates. The research plan is reviewed after the Research Director h
 agent runs; the recommendations are reviewed after the Strategy agent has drafted them and before it writes the
 executive summary, so nothing the reviewer drops can reach the report.
 
-Whoever answers a gate returns a Decision: a person at the terminal (`run.py --approve`), the dashboard, a test, or
-nobody, in which case the gate approves automatically and says so. Every decision is traced as an `approval` event
-and kept on the blackboard (`approvals`), so the report and run_meta.json show who approved what.
+Whoever answers a gate returns a Decision: a person at the terminal (`run.py --approve`), the dashboard, the web app,
+a test, or nobody, in which case the gate approves automatically and says so. Once a person has been asked, a gate
+never approves on their behalf: no answer within the time limit, or a review screen that fails, stops the study.
+Every decision is traced as an `approval` event and kept on the blackboard (`approvals`), so the report and
+run_meta.json show who approved what.
 """
 from __future__ import annotations
 
@@ -48,8 +50,10 @@ def request_approval(ctx: Any, gate: str, proposal: dict, actor: str) -> Decisio
     approver = getattr(ctx, "approver", None) or auto_approve
     try:
         decision = approver(gate, proposal)
-    except Exception as exc:  # a broken reviewer UI must not hang or kill the study: approve, and say why
-        decision = Decision(True, reviewer="auto (approver failed)", comment=f"{type(exc).__name__}: {exc}")
+    except Exception as exc:  # a broken review screen must not hang the study, nor let it go ahead unreviewed
+        decision = Decision(False, reviewer="review screen error",
+                            comment=f"the review screen failed ({type(exc).__name__}: {exc}), so the study stopped "
+                                    "instead of going ahead unreviewed")
     if not isinstance(decision, Decision):
         decision = Decision(bool(decision), reviewer="unknown")
     decision.drop = [str(d) for d in decision.drop]
@@ -66,6 +70,13 @@ def request_approval(ctx: Any, gate: str, proposal: dict, actor: str) -> Decisio
 # ---------------------------------------------------------------------------------------------- reviewers
 def _split(answer: str) -> list[str]:
     return [p.strip() for p in answer.replace(";", ",").split(",") if p.strip()]
+
+
+def _limit(seconds: float | None) -> str:
+    """A time limit as an adjective: '30-minute' for 1800 seconds, '0.05-second' for 0.05."""
+    if seconds and seconds >= 60 and seconds % 60 == 0:
+        return f"{int(seconds // 60)}-minute"
+    return f"{seconds:g}-second"
 
 
 class ConsoleApprover:
@@ -99,7 +110,8 @@ class ApprovalBroker:
     """Hands a gate from the study's thread to a user interface thread (the dashboard) and waits for the answer.
 
     The study calls the broker like any approver and blocks; the interface sees `pending`, shows the proposal and
-    calls `decide()`. With a timeout, an unanswered gate approves automatically and says so.
+    calls `decide()`. With a timeout, a gate nobody answers in time stops the study and says so: the broker never
+    approves on the reviewer's behalf.
     """
 
     def __init__(self, reviewer: str = "dashboard reviewer", timeout: float | None = None):
@@ -115,7 +127,9 @@ class ApprovalBroker:
             self._answered.clear()
         answered = self._answered.wait(self.timeout)
         with self._lock:
-            decision = self._decision if answered and self._decision else Decision(True, "auto (no answer in time)")
+            decision = self._decision if answered and self._decision else Decision(
+                False, reviewer=f"the {_limit(self.timeout)} time limit",
+                comment="no reviewer answered, so the study stopped instead of going ahead unreviewed")
             self.pending = None
         return decision
 

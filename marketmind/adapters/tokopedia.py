@@ -17,6 +17,10 @@ and a JSON copy. The importer:
 
 Fields the source does not have are marked, never invented: reviewer skin type, halal and BPOM status, launch month
 and pack size are null unless the product name states them, and the region is the seller's shop location.
+
+Privacy: no reviewer names or account IDs are read (reviewer_id is a new running number), and e-mail addresses,
+phone numbers and @handles inside review text are masked as they are imported (core/privacy.py), so they never
+reach data/real/.
 """
 from __future__ import annotations
 
@@ -29,6 +33,8 @@ from collections import Counter
 from pathlib import Path
 
 import pandas as pd
+
+from ..core.privacy import mask_personal
 
 SOURCE = ("Tokopedia Product and Review Dataset (Kaggle: musabiam/tokopedia-product-and-review-dataset, "
           "scraped 2025)")
@@ -247,7 +253,7 @@ def convert(products: pd.DataFrame, brand_map: dict[str, str] | None = None, min
             date = review_date(field["review_timestamp"][k], field["review_time"][k])
             if pd.isna(rating) or not 1 <= int(rating) <= 5 or date is None:
                 continue
-            text = str(field["message"][k] or "").strip()
+            text = mask_personal(str(field["message"][k] or "").strip())
             likes = pd.to_numeric(field["review_like"][k], errors="coerce")
             rid = f"R{len(rows) + 1:06d}"
             rows.append(dict(review_id=rid, review_date=date, brand=p.brand, sku_id=p.sku_id, product_name=str(p.name).strip(),

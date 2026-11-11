@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 import requests
 
 from ..config import CACHE_DIR, env
+from .redact import scrub
 
 # Default model and fallback per provider. Each can be overridden in .env with <PROVIDER>_MODEL and
 # <PROVIDER>_FALLBACK_MODEL (for example OPENROUTER_MODEL), or for every provider with LLM_MODEL and LLM_FALLBACK_MODEL.
@@ -86,11 +87,21 @@ class LLMClient:
         self.use_cache = use_cache
         self.cache_dir = CACHE_DIR / "llm"
         self.stats = LLMStats()
-        self.last_error: str | None = None
+        self._last_error: str | None = None
         self._lock = threading.Lock()
         self._last_call = 0.0
         self._anthropic = None
         self._configure()
+
+    @property
+    def last_error(self) -> str | None:
+        """Why the last call failed. Shown in the dashboard and the trace, so it is scrubbed of credentials as it is
+        set: a provider that echoes a key back in an error message passes it no further."""
+        return self._last_error
+
+    @last_error.setter
+    def last_error(self, value: str | None) -> None:
+        self._last_error = scrub(value) if value else value
 
     # ------------------------------------------------------------------ setup
     @staticmethod

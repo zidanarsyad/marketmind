@@ -78,7 +78,7 @@ A study has two approval gates. The first comes after the Research Director has 
 | Plan | the study runs as planned | leave modules out (for example `pricing,forecast`); their questions go. Leaving out segmentation also leaves out pricing | the study stops with status `rejected` and no report |
 | Recommendations | all of them go into the report | drop some by ID (for example `R2,R5`); the rest are renumbered, and the report lists the dropped ones under its limitations | the study stops with status `rejected` and no report |
 
-With `python run.py --approve`, the terminal shows each proposal and waits: press Enter to approve, type `n` to reject, or type the modules or IDs to drop; you can add a comment. In the dashboard, switch on **Review the plan and recommendations myself** before **Run study**: the live panel pauses at each gate with a form, and the study resumes when you press **Approve** or **Reject the study**. A gate left unanswered in the dashboard for 30 minutes approves automatically.
+With `python run.py --approve`, the terminal shows each proposal and waits: press Enter to approve, type `n` to reject, or type the modules or IDs to drop; you can add a comment. In the dashboard, switch on **Review the plan and recommendations myself** before **Run study**: the live panel pauses at each gate with a form, and the study resumes when you press **Approve** or **Reject the study**. A gate left unanswered for 30 minutes stops the study: once you have been asked, nothing goes ahead without your answer.
 
 Without a reviewer, both gates approve automatically, and the report says that no reviewer was asked. Every decision, with the reviewer, the time, what was dropped and the comment, is kept in the report's Appendix D, in the Agents tab and in `run_meta.json`.
 
@@ -114,9 +114,9 @@ Open <http://localhost:8000>. It opens on the newest run with a report. In the s
 3. **Saved runs** lists the latest studies with their QA score; **All** opens the full list, which you can filter by client, run or LLM. Switching runs keeps the view you are on.
 4. **LLM** shows the active provider, and **Test LLM connection** sends a short test request. The three buttons at the bottom choose a light, system or dark theme.
 
-The study runs on the server, not in the page. Reloading the page, closing it, or opening the app in another tab finds it again under **Study running** (or **Waiting for your approval**) at the top of the sidebar. A gate left unanswered for 30 minutes approves automatically, as in the dashboard. One study runs at a time.
+The study runs on the server, not in the page. Reloading the page, closing it, or opening the app in another tab finds it again under **Study running** (or **Waiting for your approval**) at the top of the sidebar. As in the dashboard, a gate left unanswered for 30 minutes stops the study. One study runs at a time.
 
-The app only answers on this computer. `python -m api --host 0.0.0.0` shares it on your network; anyone who can reach it can then read the runs and start studies, but API keys stay in `.env` on your computer and are never sent to a browser. `python -m api --port 8080` uses another port. The Streamlit dashboard keeps working beside it, on its own port.
+The app only answers on this computer. `python -m api --host 0.0.0.0` shares it on your network behind an access token: it prints a link ending in `?token=...` (it makes the token up, or uses `MARKETMIND_ACCESS_TOKEN` from `.env`). Give the link only to people who should use the app; on another computer, put your computer's network address in place of `localhost`. Opening the link once lets that browser in; without it the app shows nothing. Anyone with the token can read the runs and start studies, but API keys stay in `.env` on your computer and are never sent to a browser. The connection is not encrypted, so share only on a network you trust ([SECURITY.md](SECURITY.md)). `python -m api --port 8080` uses another port. The Streamlit dashboard keeps working beside it, on its own port.
 
 ## 4. Writing a good brief
 
@@ -272,6 +272,8 @@ Old runs are never deleted automatically. Delete a run's folder under `outputs/r
 | The web app says "The web app has not been built yet" | Build it once: `npm --prefix frontend install`, then `npm --prefix frontend run build`, and reload the page. |
 | Port 8000 is already in use | `python -m api --port 8080` |
 | The web app says a study "is not running on the server" | The server was restarted while the study ran, so the study stopped. Saved runs are not affected; start the study again. |
-| The web app answers "This server only answers on this computer" | You opened it under a name other than `localhost` or `127.0.0.1`. Use <http://localhost:8000>, or start it with `--host 0.0.0.0` to share it. |
-| Colleagues on your network cannot open the dashboard or the web app | By design: both only answer on this machine. To share them, run `streamlit run app/dashboard.py --server.address 0.0.0.0` or `python -m api --host 0.0.0.0`. |
+| The web app answers "This server only answers on this computer" | You opened it under a name other than `localhost` or `127.0.0.1`. Use <http://localhost:8000>, or start it with `--host 0.0.0.0` to share it behind an access token. |
+| Colleagues on your network cannot open the dashboard or the web app | By design: both only answer on this machine. To share the web app, run `python -m api --host 0.0.0.0` and give them the link it prints. To share the dashboard, set `MARKETMIND_ACCESS_TOKEN` in `.env`, run `streamlit run app/dashboard.py --server.address 0.0.0.0`, and give them the token. |
+| The web app says "Access token needed", or the dashboard asks for one | It is shared on a network. Open the link with `?token=...` that `python -m api` printed (or type the dashboard's token), or ask whoever started it. |
+| A study stopped at an approval gate "by the 30-minute time limit" | Nobody answered the gate within 30 minutes, so the study stopped instead of going ahead unreviewed. Start it again and answer the gate, or run it without review. |
 | `python -m pytest` takes a minute or two | The end-to-end tests run the whole pipeline. That is expected. |

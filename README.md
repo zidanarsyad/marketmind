@@ -1,6 +1,7 @@
 # MarketMind - a multi-agent market research system
 
 [![tests](https://github.com/zidanarsyad/marketmind/actions/workflows/tests.yml/badge.svg)](https://github.com/zidanarsyad/marketmind/actions/workflows/tests.yml)
+[![audit](https://github.com/zidanarsyad/marketmind/actions/workflows/audit.yml/badge.svg)](https://github.com/zidanarsyad/marketmind/actions/workflows/audit.yml)
 
 MarketMind runs a complete market research study end to end: a **Research Director** agent turns a business brief into a research plan, specialist agents collect and clean data, analyse the market, competitors and consumers (with **deep learning** and **machine learning**), forecast demand, build a strategy, write the report, and a **Critic** agent fact-checks every number before the report is released. Everything is visible in an interactive **Streamlit dashboard**, or in the new **web app** (Vue 3 on a small FastAPI layer): the same twelve views, responsive down to phone width, in light and dark.
 
@@ -13,9 +14,10 @@ The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 -
 | **Machine learning** | K-Means segmentation, gradient-boosting demand forecasting, NMF topic mining, Poisson anomaly detection, fixed-effects price elasticity |
 | **LLM** | Optional - free Gemini / Groq / OpenRouter / local Ollama, or Claude. Fully functional offline. |
 | **Quality gate** | Critic agent verifies numeric grounding, coverage, citations and evidence; failed reports go back for revision |
-| **Human in the loop** | Approval gates on the research plan and the recommendations (terminal: `run.py --approve`, or the dashboard); without a reviewer they approve automatically and the report says so |
+| **Human in the loop** | Approval gates on the research plan and the recommendations (terminal: `run.py --approve`, or the dashboard); without a reviewer they approve automatically and the report says so, and a gate nobody answers within 30 minutes stops the study |
 | **Real-data ready** | `scripts/import_tokopedia.py` turns the Tokopedia 2025 review dataset into MarketMind's formats; `run.py --data-dir` studies it, running the modules the data supports and disclosing the source and its caveats |
 | **Adaptive and bounded** | The Research Director sends analysts back for questions the report leaves open; every agent is retried once and has a time limit; each run has an LLM budget |
+| **Trust and security** | API keys redacted from every trace, saved file and response; servers on this computer only, behind an access token when shared; personal details masked in review text; dependencies audited every week ([docs/SECURITY.md](docs/SECURITY.md)) |
 | **Effectiveness** | 24 / 25 planted ground-truth insights recovered on the reference data; 23.6 / 25 on average over five more data seeds (see [Evaluation](#evaluation)) |
 
 ---
@@ -56,7 +58,7 @@ Then open <http://localhost:8000>. `python -m api` serves the API and the built 
 
 The simulated datasets are in the repository (`python scripts/generate_data.py` regenerates them identically). `run.py` prints the live agent trace and saves everything to `outputs/runs/<run_id>/` (report.html, report.md, findings, tables, trace). The first run trains the deep-learning model (3-4 minutes on a laptop CPU); later runs reuse it (1-2 minutes). Add `--approve` to review the research plan and the recommendations yourself before the study goes on. In the dashboard you can also launch new studies with your own brief, watch the agents work live, and approve the plan and recommendations in a form. For the exact package versions the tests last passed with, install `requirements-lock.txt` instead.
 
-Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`, or just the fast ones with `python -m pytest -q -m "not slow"`. The tests cover each agent's core logic, end-to-end runs, the Critic's revision loop, the approval gates, retries, time limits and the Director's follow-ups, the schema contracts, failure paths, the dashboard and the web API; `npm --prefix frontend test` runs the web app's component tests. GitHub Actions runs the linter and the tests, with coverage, and type-checks, tests and builds the web app on every push.
+Optional: copy `.env.example` to `.env` and add **one free API key** to switch on LLM planning, narrative and chat (see [LLM setup](#llm-setup)). Check the code with `python -m ruff check .` and run the tests with `python -m pytest -q`, or just the fast ones with `python -m pytest -q -m "not slow"`. The tests cover each agent's core logic, end-to-end runs, the Critic's revision loop, the approval gates, retries, time limits and the Director's follow-ups, the schema contracts, failure paths, the dashboard and the web API; `npm --prefix frontend test` runs the web app's component tests. GitHub Actions runs the linter and the tests, with coverage, and type-checks, tests and builds the web app on every push; a second workflow checks the dependencies for known vulnerabilities on every push and every Monday.
 
 ---
 
@@ -71,6 +73,7 @@ Optional: copy `.env.example` to `.env` and add **one free API key** to switch o
 | [Data dictionary](docs/DATA_DICTIONARY.md) | Every column of the seven datasets |
 | [Real data sources](docs/DATA_SOURCES.md) | Public datasets and statistics to replace, validate or calibrate the simulated data, with licences |
 | [Evaluation report](docs/EVALUATION.md) | Ground-truth checks, model metrics, data quality, governance, timings, threats to validity |
+| [Trust and security](docs/SECURITY.md) | What keeps the results trustworthy and the system safe, where it lives in the code, and the limits that remain |
 | [Developer guide](docs/DEVELOPER_GUIDE.md) | Core APIs, adding agents, tools, charts, datasets and LLM providers, testing and debugging |
 | [Diagram gallery](docs/diagrams/gallery.html) | All 14 diagrams on one page, with SVG and PNG export |
 
@@ -222,7 +225,8 @@ Beyond one run: `scripts/multi_seed.py` regenerates the market with five more se
 
 ```
 marketmind/
-  core/        agent base class, blackboard, tracer, LLM client, workflow engine, run store
+  core/        agent base class, blackboard, tracer, LLM client, workflow engine, run store, approval gates,
+               credential redaction, access token, privacy masking
   agents/      the 11 pipeline agents + analyst chat
   ml/          text normalisation, sentiment (PyTorch), topics, segmentation, forecasting, pricing, calendar
   reporting/   shared Plotly chart library + HTML report renderer

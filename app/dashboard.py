@@ -26,8 +26,10 @@ import streamlit.components.v1 as components  # noqa: E402
 
 from marketmind.config import (DATA_RAW, DATASETS, DEFAULT_BRIEF, DEFAULT_CLIENT, DEFAULT_REAL_BRIEF,  # noqa: E402
                                MODELS_DIR, data_manifest)
+from marketmind.core.access import access_token, is_local, token_matches  # noqa: E402
 from marketmind.core.approval import ApprovalBroker, Decision  # noqa: E402
 from marketmind.core.llm import LLMClient  # noqa: E402
+from marketmind.core.redact import scrub  # noqa: E402
 from marketmind.core.store import list_runs, load_run  # noqa: E402
 from marketmind.reporting.charts import CHARTS, TableSource  # noqa: E402
 
@@ -44,6 +46,40 @@ st.markdown("""<style>
 .mm-kpi .v{font-size:1.35rem;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
 .mm-kpi .n{font-size:.8rem;opacity:.75}
 </style>""", unsafe_allow_html=True)
+
+
+def require_access() -> None:
+    """Opened from another computer (or with MARKETMIND_ACCESS_TOKEN set), ask for the access token before anything.
+
+    .streamlit/config.toml keeps the dashboard on this computer; someone who shares it on a network with
+    --server.address 0.0.0.0 must also set MARKETMIND_ACCESS_TOKEN, or the dashboard refuses visitors. The token comes
+    as ?token=... in the link (removed from the address bar once accepted) or is typed in, once per browser session.
+    """
+    token = access_token()
+    try:
+        host = st.context.headers.get("Host") or "localhost"
+    except Exception:   # no request headers (tests): this computer
+        host = "localhost"
+    if (is_local(host) and not token) or st.session_state.get("mm-access"):
+        return
+    st.title("MarketMind")
+    if not token:
+        st.error("This dashboard was opened from another computer, but no access token is set, so it stays closed. "
+                 "To share it on your network, set MARKETMIND_ACCESS_TOKEN in .env and restart the dashboard.")
+        st.stop()
+    given = st.query_params.get("token") or st.text_input(
+        "Access token", type="password", help="The value of MARKETMIND_ACCESS_TOKEN where the dashboard runs.")
+    if token_matches(given, token):
+        st.session_state["mm-access"] = True
+        if "token" in st.query_params:
+            del st.query_params["token"]
+        st.rerun()
+    if given:
+        st.error("That access token is not right.")
+    st.stop()
+
+
+require_access()
 
 
 # ============================================================================ helpers
@@ -135,7 +171,7 @@ def guard(section: str):
     try:
         yield
     except Exception as exc:
-        st.error(f"{section} could not be rendered: {type(exc).__name__}: {exc}")
+        st.error(scrub(f"{section} could not be rendered: {type(exc).__name__}: {exc}"))
 
 
 def kpi_tiles(items: list[tuple[str, str, str]]) -> None:
@@ -183,7 +219,8 @@ def start_run(brief: str, client: str, use_llm: bool, retrain: bool, parallel: b
     from marketmind.system import MarketResearchSystem
     if "active_run" in st.session_state:   # one study at a time per browser session
         return
-    # a gate left unanswered for 30 minutes approves automatically (and says so), so no study waits forever
+    # a gate left unanswered for 30 minutes stops the study (and says so): no study waits forever, and none goes
+    # ahead without the reviewer who was asked
     broker = ApprovalBroker(reviewer="dashboard reviewer", timeout=1800) if review else None
     system = MarketResearchSystem(brief=brief, client=client, use_llm=use_llm, force_retrain=retrain, parallel=parallel,
                                   llm=get_llm(), sentiment_data=sentiment_data, approver=broker)
@@ -193,7 +230,7 @@ def start_run(brief: str, client: str, use_llm: bool, retrain: bool, parallel: b
         try:
             holder["result"] = system.run()
         except Exception as exc:  # surfaced in the UI below
-            holder["error"] = f"{type(exc).__name__}: {exc}"
+            holder["error"] = scrub(f"{type(exc).__name__}: {exc}")
 
     th = threading.Thread(target=target, daemon=True)
     th.start()
@@ -309,7 +346,8 @@ with st.sidebar:
         parallel = st.toggle("Run analysis agents in parallel", value=True)
         review = st.toggle("Review the plan and recommendations myself", value=False,
                            help="The study pauses twice for your approval: after planning, and before the report is "
-                                "written. Without review, both gates approve automatically and the report says so.")
+                                "written. A gate left unanswered for 30 minutes stops the study. Without review, both "
+                                "gates approve automatically and the report says so.")
         busy = "active_run" in st.session_state
         start = st.button("Run study", type="primary", width="stretch", disabled=not data_ok or busy)
     st.divider()
@@ -354,7 +392,7 @@ llm_chip = (meta.get("llm", {}).get("description", "") if meta.get("options", {}
             else "LLM off (deterministic run)")
 chips = [f"Run {run.run_id}", f"{meta.get('seconds')}s", llm_chip,
          f"QA {qa.get('score')}/100 {'passed' if qa.get('passed') else 'not passed'}" if qa.get("score") is not None
-         else "stopped by the reviewer" if meta.get("status") == "rejected" else "QA not run - unverified",
+         else "stopped at an approval gate" if meta.get("status") == "rejected" else "QA not run - unverified",
          f"{len(run.findings)} findings", f"{len(run.json('strategy.recommendations', []) or [])} recommendations"]
 st.markdown("".join(f'<span class="mm-chip">{html.escape(str(c))}</span>' for c in chips if c), unsafe_allow_html=True)
 if meta.get("status") == "unverified":

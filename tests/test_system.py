@@ -19,7 +19,7 @@ from marketmind.config import DATA_RAW, DATASETS  # noqa: E402
 from marketmind.core.llm import LLMClient, parse_json  # noqa: E402
 from marketmind.core.orchestrator import Task, Workflow  # noqa: E402
 from marketmind.core.agent import BaseAgent  # noqa: E402
-from marketmind.ml.calendar_id import month_features  # noqa: E402
+from marketmind.ml.calendar_id import eid_date, month_features  # noqa: E402
 from marketmind.ml.text import detect_aspects, normalize, split_clauses  # noqa: E402
 
 DATA_READY = all((DATA_RAW / v["file"]).exists() for v in DATASETS.values())
@@ -61,8 +61,11 @@ def test_text_normalisation_and_aspects():
 
 
 def test_ramadan_calendar_features():
-    f = month_features("2026-03-01")  # Ramadan 2026 ends 19 March, Eid 20 March
-    assert f["ramadan_share"] > 0.5 and f["post_eid_share"] > 0
+    # Ramadan 2026 runs 18 February - 19 March and Eid is 20 March. Of March's 31 days, 19 fall in Ramadan,
+    # 14 of them in the two weeks before Eid (6-19 March), and 7 in the Eid holiday week (20-26 March).
+    f = month_features("2026-03-01")
+    assert (f["ramadan_share"], f["pre_eid_share"], f["post_eid_share"]) == (19 / 31, 14 / 31, 7 / 31)
+    assert eid_date(2026).date().isoformat() == "2026-03-20"
 
 
 def test_parse_json_tolerates_fences():

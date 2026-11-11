@@ -25,12 +25,12 @@ def month_features(month: pd.Timestamp | str) -> dict:
     for d in days:
         for start, end in RAMADAN.values():
             s, e = pd.Timestamp(start), pd.Timestamp(end)
-            eid = e + pd.Timedelta(days=1)
+            eid = e + pd.Timedelta(1, unit="D")
             if s <= d <= e:
                 ram += 1
                 if (eid - d).days <= 14:
                     pre += 1
-            elif eid <= d <= eid + pd.Timedelta(days=6):
+            elif eid <= d <= eid + pd.Timedelta(6, unit="D"):
                 post += 1
     n = len(days)
     return dict(month_of_year=m.month, days_in_month=n, ramadan_share=ram / n, pre_eid_share=pre / n,
@@ -43,4 +43,4 @@ def calendar_frame(months) -> pd.DataFrame:
 
 
 def eid_date(year: int) -> pd.Timestamp:
-    return pd.Timestamp(RAMADAN[year][1]) + pd.Timedelta(days=1)
+    return pd.Timestamp(RAMADAN[year][1]) + pd.Timedelta(1, unit="D")

@@ -324,7 +324,7 @@ def client_aspect_trend(df: pd.DataFrame, anomalies: pd.DataFrame | None, client
                         line=dict(color=t["series"][i], width=2), hovertemplate=f"{a}: %{{y:.1f}} per 100 reviews<extra></extra>")
     if anomalies is not None and len(anomalies):
         for ep in anomalies[anomalies["brand"] == client].head(3).itertuples():
-            fig.add_vrect(x0=pd.Timestamp(ep.start) - pd.Timedelta(days=14), x1=pd.Timestamp(ep.end) + pd.Timedelta(days=14),
+            fig.add_vrect(x0=pd.Timestamp(ep.start) - pd.Timedelta(14, unit="D"), x1=pd.Timestamp(ep.end) + pd.Timedelta(14, unit="D"),
                           fillcolor=t["band"], line_width=0, layer="below",
                           annotation_text=f"{ep.aspect_label} spike", annotation_position="top left",
                           annotation_font=dict(color=t["text2"], size=11))

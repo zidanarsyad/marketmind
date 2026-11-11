@@ -138,11 +138,11 @@ def festive_factor(m: pd.Period) -> tuple[float, float]:
         f = 1.0
         for start, end in RAMADAN.values():
             s, e = pd.Timestamp(start), pd.Timestamp(end)
-            eid = e + pd.Timedelta(days=1)
+            eid = e + pd.Timedelta(1, unit="D")
             if s <= d <= e:
                 f = 1.40 if (eid - d).days <= 14 else 1.12
                 in_ramadan += 1
-            elif eid <= d <= eid + pd.Timedelta(days=6):
+            elif eid <= d <= eid + pd.Timedelta(6, unit="D"):
                 f = 0.80
         mult.append(f)
     return float(np.mean(mult)), in_ramadan / len(days)
@@ -967,7 +967,7 @@ def build_survey(rng: np.random.Generator, pyr: random.Random, n: int = 2400) ->
             if vw[j] <= vw[j - 1]:
                 vw[j] = vw[j - 1] + 5000
         rows.append(dict(
-            respondent_id=f"S{i + 1:05d}", survey_date=(pd.Timestamp("2026-08-03") + pd.Timedelta(days=int(rng.integers(0, 42)))).date().isoformat(),
+            respondent_id=f"S{i + 1:05d}", survey_date=(pd.Timestamp("2026-08-03") + pd.Timedelta(int(rng.integers(0, 42)), unit="D")).date().isoformat(),
             age=age, gender=gender, region=draw(pyr, SURVEY_REGIONS),
             city_tier=pyr.choices(["Tier 1", "Tier 2", "Tier 3"], weights=[0.45, 0.35, 0.20])[0],
             occupation=draw(pyr, s["occupation"]), income_bracket=INCOME_BRACKETS[inc_i],

@@ -18,6 +18,10 @@ ignore = ["E501"]   # the code keeps long lines on purpose; line-length above ap
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: runs the whole pipeline or the dashboard (minutes); skip with -m \"not slow\""]
+# numpy 2.5 deprecates timedelta64 values without a unit, and a later numpy will raise an error for them. pandas 2.3
+# builds one for pd.Timedelta(days=n) and pd.Timedelta("nD"), so the code writes pd.Timedelta(n, unit="D"). This filter
+# fails the tests if the deprecated form comes back (CI installs the newest numpy).
+filterwarnings = ["error:The 'generic' unit for NumPy timedelta:DeprecationWarning"]
 
 [tool.coverage.run]
 source = ["marketmind", "api"]

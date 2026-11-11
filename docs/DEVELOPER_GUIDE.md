@@ -241,6 +241,8 @@ def test_promotion_finding(offline_run):
 
 To test LLM behaviour without a network, subclass `LLMClient` as `FakeLLM` does in `tests/test_system.py`: override `available` and `complete` to return scripted text based on the prompt.
 
+Write a number of days as `pd.Timedelta(n, unit="D")`, not `pd.Timedelta(days=n)`. Under pandas 2.3 the keyword form creates a numpy timedelta without a unit, which numpy 2.5 deprecates and a later numpy will refuse. `pyproject.toml` turns that warning into a test failure, so the keyword form fails the tests on numpy 2.5 or later, the version CI installs.
+
 Useful commands:
 
 ```bash

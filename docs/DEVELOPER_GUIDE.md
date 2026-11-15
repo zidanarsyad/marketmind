@@ -248,7 +248,7 @@ def test_promotion_finding(offline_run):
 
 To test LLM behaviour without a network, subclass `LLMClient` as `FakeLLM` does in `tests/test_system.py`: override `available` and `complete` to return scripted text based on the prompt.
 
-Write a number of days as `pd.Timedelta(n, unit="D")`, not `pd.Timedelta(days=n)`. Under pandas 2.3 the keyword form creates a numpy timedelta without a unit, which numpy 2.5 deprecates and a later numpy will refuse. `pyproject.toml` turns that warning into a test failure, so the keyword form fails the tests on numpy 2.5 or later, the version CI installs.
+Give every `pd.Timedelta` an explicit unit: `pd.Timedelta(n, unit="D")` for days, `pd.Timedelta(86_399, unit="s")` for 23:59:59, never the keyword form (`days=`, `hours=`, `minutes=` ...). Under pandas 2.3 the keyword form creates a numpy timedelta without a unit, which numpy 2.5 deprecates and a later numpy will refuse. `pyproject.toml` turns that warning into a test failure, but only numpy 2.5 or later (the version CI installs) emits it, so `test_timedeltas_carry_an_explicit_unit` also scans the code for the keyword form and catches it on any numpy.
 
 Useful commands:
 
@@ -346,7 +346,7 @@ Open <http://localhost:5173>. Set `MARKETMIND_API` to point the dev server at an
 
 ### The front end (`frontend/`)
 
-Vue 3 with `<script setup>` and TypeScript, Vite, Vue Router, Pinia, PrimeVue 4 (the Aura theme recoloured to the chart palette in `src/preset.ts`) and plotly.js (the cartesian bundle, loaded on demand). PrimeVue is pinned to 4.5.5, the last MIT-licensed release; PrimeVue 5 needs a licence key.
+Vue 3 with `<script setup>` and TypeScript, Vite, Vue Router, Pinia, PrimeVue 4 (the Aura theme recoloured to the app's jade and mineral palette in `src/preset.ts`; the charts keep their own palette) and plotly.js (the cartesian bundle, loaded on demand). One typeface, Archivo, self-hosted as a variable font (`@fontsource-variable/archivo`), whose width axis sets the titles. PrimeVue is pinned to 4.5.5, the last MIT-licensed release; PrimeVue 5 needs a licence key.
 
 ```
 src/main.ts, App.vue         app shell: sidebar (a drawer below 1024 px), top bar on small screens, toasts
@@ -354,14 +354,17 @@ src/router.ts                routes; RUN_VIEWS lists the twelve run views in the
 src/api.ts, src/types.ts     typed API client and response types
 src/stores/app.ts            config, saved runs, the studies on the server (polled every 3 s while one runs)
 src/stores/run.ts            the run on screen: summary, findings, recommendations, SWOT (cached per run)
-src/views/                   Home, Runs, NewStudy, Study (live view), RunLayout (header + tabs), NotFound
+src/views/                   Home, Runs (a ledger of runs), NewStudy, Study (live view), RunLayout (the run's header:
+                             client, brief, QA seal, facts; then the tabs in four groups), NotFound
 src/views/run/               Overview, Agents, Market, Competition, Consumers, Segments, Forecast, Strategy,
                              Report, Ask, Evaluation, Data
-src/components/              PlotlyChart, DataGrid, TableCard, FindingsList, KpiTiles, ApprovalForm, AnalystChat,
-                             SentimentTester, WorkflowGraph, SkippedNotice, RunStatus, AppSidebar, ThemeToggle
+src/components/              PlotlyChart, DataGrid, TableCard, FindingsList, FindingRow, KpiTiles, QaSeal,
+                             ApprovalForm, AnalystChat, DataAgent, SentimentTester, WorkflowGraph, SkippedNotice,
+                             RunStatus, AppSidebar, ThemeToggle, BrandMark
 src/lib/                     format.ts, kpis.ts (tiles, model card, price simulator), theme.ts, markdown.ts,
                              storage.ts (chat history), tables.ts, chat.ts
-src/styles/main.css          layout, cards, tiles, chips; CSS variables for both themes
+src/styles/main.css          tokens for both themes (colour, type scale), layout, cards, the KPI ledger, the
+                             findings ledger and its evidence-ID stamps
 ```
 
 - **Charts.** `PlotlyChart` fetches a figure when it scrolls near the screen, moves the figure's title into the card heading (HTML wraps on a phone, a Plotly title does not), and fetches the dark or light figure again when the theme changes. Give dense charts `:min-width` so that they scroll sideways on a phone instead of shrinking. A chart without data in the run shows a short note, as the dashboard does.
@@ -369,6 +372,6 @@ src/styles/main.css          layout, cards, tiles, chips; CSS variables for both
 - **Themes.** `lib/theme.ts` keeps the choice (system, light or dark) in `localStorage` and sets the `app-dark` class on `<html>`, which switches the CSS variables in `main.css` and PrimeVue's dark tokens. An inline script in `index.html` applies it before the first paint.
 - **Lessons from the dashboard's dry run, built in.** A study belongs to the server, not to the tab that started it. A chat question is sent once, when asked, and the conversation is kept in `localStorage`, so a reload never asks the LLM again. A tile appears only when the study produced its value (`overviewTiles` skips the rest), and a view whose module the plan left out says so (`SkippedNotice`). Forecast labels use the run's `horizon_months`.
 
-**Adding a view.** Add a component under `src/views/run/`, an entry to `RUN_VIEWS` and to the `views` map in `src/router.ts`. Read the run from `useRunStore()` and draw charts with `PlotlyChart` and tables with `TableCard`. If the view needs an artefact the API does not serve yet, prefer the generic `tables/{key}` and `json/{key}` endpoints to a new one.
+**Adding a view.** Add a component under `src/views/run/`, an entry to `RUN_VIEWS` (with the tab group it belongs to) and to the `views` map in `src/router.ts`. Read the run from `useRunStore()` and draw charts with `PlotlyChart` and tables with `TableCard`. If the view needs an artefact the API does not serve yet, prefer the generic `tables/{key}` and `json/{key}` endpoints to a new one.
 
 **Tests.** `tests/test_api.py` covers the API (section 9). `npm --prefix frontend test` runs the Vitest tests (`src/**/*.test.ts`, jsdom, with stand-ins for `ResizeObserver` and `scrollIntoView` in `src/test-setup.ts`), and `npm --prefix frontend run typecheck` runs the type-check alone.

@@ -131,6 +131,11 @@ def fmt(v: Any) -> str:
     return str(v)
 
 
+# 23:59:59 with an explicit unit: pandas 2.3 builds pd.Timedelta(hours=..., minutes=...) from a unit-less numpy
+# timedelta, which numpy 2.5 deprecates (and pyproject.toml makes that warning a test error)
+END_OF_DAY = pd.Timedelta(86_399, unit="s")
+
+
 def period_bounds(spec: Any) -> tuple[pd.Timestamp, pd.Timestamp]:
     """'2025' -> the year, '2025-03' -> the month, '2024-07..2025-06' or [a, b] -> from the start of a to the end of b."""
     if isinstance(spec, (list, tuple)) and len(spec) == 2:
@@ -143,10 +148,10 @@ def period_bounds(spec: Any) -> tuple[pd.Timestamp, pd.Timestamp]:
         return pd.Timestamp(f"{s}-01-01"), pd.Timestamp(f"{s}-12-31 23:59:59")
     if re.fullmatch(r"\d{4}-\d{1,2}", s):
         start = pd.Timestamp(f"{s}-01")
-        return start, start + pd.offsets.MonthEnd(0) + pd.Timedelta(hours=23, minutes=59, seconds=59)
+        return start, start + pd.offsets.MonthEnd(0) + END_OF_DAY
     if re.fullmatch(r"\d{4}-\d{1,2}-\d{1,2}", s):
         day = pd.Timestamp(s)
-        return day, day + pd.Timedelta(hours=23, minutes=59, seconds=59)
+        return day, day + END_OF_DAY
     raise ToolError(f"cannot read the period {spec!r}; write 2025, 2025-03 or 2024-07..2025-06")
 
 

@@ -68,6 +68,27 @@ def test_ramadan_calendar_features():
     assert eid_date(2026).date().isoformat() == "2026-03-20"
 
 
+def test_timedeltas_carry_an_explicit_unit():
+    # Under pandas 2.3, pd.Timedelta(days=...) / (hours=...) builds a numpy timedelta without a unit, which numpy 2.5
+    # deprecates. pyproject.toml turns that warning into an error, but only numpy 2.5 or later (CI) emits it, so this
+    # scan catches the keyword form on any numpy.
+    import re
+
+    import pandas as pd
+
+    from marketmind.agents.data_tools import period_bounds
+
+    keyword_form = re.compile(r"Timedelta\(\s*(weeks|days|hours|minutes|seconds|milliseconds|microseconds)\s*=")
+    root = Path(__file__).resolve().parents[1]
+    offenders = [f"{path.relative_to(root)}:{n}" for folder in ("marketmind", "api", "app", "scripts")
+                 for path in sorted((root / folder).rglob("*.py"))
+                 for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+                 if keyword_form.search(line) and not line.lstrip().startswith("#")]
+    assert offenders == [], f"write pd.Timedelta(n, unit=...) instead: {offenders}"
+    assert period_bounds("2025-02") == (pd.Timestamp("2025-02-01"), pd.Timestamp("2025-02-28 23:59:59"))
+    assert period_bounds("2024-07..2025-06-30") == (pd.Timestamp("2024-07-01"), pd.Timestamp("2025-06-30 23:59:59"))
+
+
 def test_parse_json_tolerates_fences():
     assert parse_json('```json\n{"a": 1}\n```') == {"a": 1}
     assert parse_json('Sure! {"b": [1, 2]} hope this helps') == {"b": [1, 2]}

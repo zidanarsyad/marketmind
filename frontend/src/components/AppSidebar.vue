@@ -39,7 +39,7 @@ async function testLlm() {
       <BrandMark :size="34" />
       <span>
         <strong>MarketMind</strong>
-        <small>Multi-agent market research · Indonesian local skincare</small>
+        <small>Agentic market research on Indonesian local skincare</small>
       </span>
     </RouterLink>
 
@@ -56,7 +56,7 @@ async function testLlm() {
       <span class="pulse" />
       <span>
         <strong>{{ app.activeStudy.state === 'waiting' ? 'Waiting for your approval' : 'Study running' }}</strong>
-        <small>{{ app.activeStudy.client || 'Client from the brief' }} · run {{ app.activeStudy.id }}</small>
+        <small>{{ app.activeStudy.client || 'Client from the brief' }}, run {{ app.activeStudy.id }}</small>
       </span>
       <i class="pi pi-angle-right" />
     </RouterLink>
@@ -106,28 +106,35 @@ async function testLlm() {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px 16px 20px;
+  gap: 16px;
+  padding: 20px 16px 20px;
   min-height: 100%;
 }
 .brand {
   display: flex;
-  gap: 10px;
+  gap: 11px;
   align-items: center;
   color: var(--mm-text);
   text-decoration: none;
   padding-right: 36px;
 }
+.brand:hover {
+  text-decoration: none;
+}
 .brand strong {
   display: block;
-  font-size: 1.12rem;
-  letter-spacing: -0.01em;
+  font-size: 1.2rem;
+  font-weight: 760;
+  font-stretch: 118%;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 .brand small {
   display: block;
   color: var(--mm-muted);
   font-size: 0.74rem;
-  line-height: 1.3;
+  line-height: 1.35;
+  margin-top: 2px;
 }
 .w-full {
   width: 100%;
@@ -182,34 +189,44 @@ async function testLlm() {
   margin-top: 4px;
 }
 .runs-head h3 {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--mm-muted);
+  font-size: var(--mm-fs-sm);
   font-weight: 650;
+  font-stretch: 104%;
+  color: var(--mm-text-2);
 }
 .runs {
   list-style: none;
-  margin: -6px 0 0;
+  margin: -8px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 .runs a {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 10px;
-  border-radius: 8px;
+  padding: 8px 10px 8px 12px;
+  border-radius: var(--mm-radius-sm);
   color: var(--mm-text);
   text-decoration: none;
 }
 .runs a:hover {
   background: var(--mm-panel-2);
 }
+/* the open run: a jade rule at its edge, as a bookmark in the dossier */
 .runs a.current {
   background: var(--mm-accent-soft);
+}
+.runs a.current::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--mm-accent);
 }
 .run-main {
   flex: 1;

@@ -62,7 +62,7 @@ const sign = (x: number) => (x >= 0 ? `+${x.toFixed(0)}` : x.toFixed(0))
         <div class="share">{{ Math.round(p.share * 100) }}% of consumers</div>
         <p class="desc">{{ p.description }}</p>
         <p class="small">Drivers: <em>{{ p.drivers }}</em></p>
-        <p class="small">Concept intent: <strong>{{ Math.round(p.concept_t2b * 100) }}%</strong> · NPS {{ sign(p.nps_main_brand) }}</p>
+        <p class="small">Concept intent: <strong>{{ Math.round(p.concept_t2b * 100) }}%</strong>, NPS {{ sign(p.nps_main_brand) }}</p>
       </article>
     </div>
     <FindingsList areas="pricing" />

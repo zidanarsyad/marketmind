@@ -101,7 +101,7 @@ describe('AnalystChat', () => {
     expect(chat).toHaveBeenCalledTimes(1)
     expect(chat).toHaveBeenCalledWith('run-1', SUGGESTIONS[0], [])
     expect(w.findAll('.msg')).toHaveLength(2)
-    expect(w.text()).toContain('Sources: CON-03 (finding) · agentic RAG (offline)')
+    expect(w.text()).toContain('Sources: CON-03 (finding). Answered by agentic RAG (offline).')
     expect(JSON.parse(localStorage.getItem('mm-chat-run-1') as string)).toHaveLength(2)
   })
 
@@ -185,7 +185,7 @@ describe('DataAgent', () => {
     expect(askData).toHaveBeenCalledTimes(1)
     expect(askData).toHaveBeenCalledWith('run-1', DATA_SUGGESTIONS[0])
     expect(w.find('.result .md').text()).toContain('Shopee has the highest revenue in 2025')
-    expect(w.text()).toContain('ReAct with rule-based policy (offline) · verified · 0.2s')
+    expect(w.text()).toContain('Answered by ReAct with rule-based policy (offline) in 0.2 s. Numbers and citations checked against the data.')
     expect(w.find('details.steps summary').text()).toBe('Reasoning steps (1 tool call)')
     expect(w.find('.action code').text()).toBe('aggregate({"table":"sales","by":"channel"})')
     expect(w.find('pre.obs').text()).toContain('sum(revenue_idr)')

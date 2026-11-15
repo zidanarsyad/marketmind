@@ -53,7 +53,7 @@ onMounted(async () => {
     <Panel v-if="voices.length" header="Voice of the customer" toggleable collapsed>
       <blockquote v-for="(v, i) in voices" :key="i" class="voice">
         <p>{{ v.text }}</p>
-        <footer>{{ v.brand }} · {{ v.aspect }} · {{ v.type }}</footer>
+        <footer>{{ v.brand }}, on {{ v.aspect }} ({{ v.type }})</footer>
       </blockquote>
     </Panel>
     <SentimentTester v-if="card" :run-id="id" :note="card.real_text_note" />

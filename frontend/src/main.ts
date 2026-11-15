@@ -3,6 +3,7 @@ import PrimeVue from 'primevue/config'
 import ToastService from 'primevue/toastservice'
 import Tooltip from 'primevue/tooltip'
 import { createApp } from 'vue'
+import '@fontsource-variable/archivo/wdth.css' // Archivo with its weight and width axes, served with the app (works offline)
 import 'primeicons/primeicons.css'
 import App from './App.vue'
 import { initTheme } from './lib/theme'

@@ -89,6 +89,7 @@ watch(
 .shell-main {
   margin-left: var(--mm-sidebar);
   min-width: 0;
+  overflow-x: clip; /* nothing (a pressed-in seal, a long ID) can make the page scroll sideways; sticky still works */
 }
 .topbar {
   display: none;

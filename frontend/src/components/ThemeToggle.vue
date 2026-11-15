@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { type ThemePref, useTheme } from '@/lib/theme'
 
+// The full control (light, follow the system, dark) sits in the sidebar; the phone's top bar has room for one button
+// that flips between light and dark.
 defineProps<{ compact?: boolean }>()
-const { pref, setTheme } = useTheme()
+const { pref, mode, setTheme } = useTheme()
 const options: { value: ThemePref; icon: string; label: string }[] = [
   { value: 'light', icon: 'pi pi-sun', label: 'Light theme' },
   { value: 'system', icon: 'pi pi-desktop', label: 'Follow the system theme' },
@@ -11,7 +13,17 @@ const options: { value: ThemePref; icon: string; label: string }[] = [
 </script>
 
 <template>
-  <div class="theme-toggle" :class="{ compact }" role="group" aria-label="Colour theme">
+  <button
+    v-if="compact"
+    type="button"
+    class="theme-flip"
+    :aria-label="mode === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'"
+    :title="mode === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'"
+    @click="setTheme(mode === 'dark' ? 'light' : 'dark')"
+  >
+    <i :class="mode === 'dark' ? 'pi pi-sun' : 'pi pi-moon'" />
+  </button>
+  <div v-else class="theme-toggle" role="group" aria-label="Colour theme">
     <button
       v-for="o in options"
       :key="o.value"
@@ -30,6 +42,7 @@ const options: { value: ThemePref; icon: string; label: string }[] = [
 <style scoped>
 .theme-toggle {
   display: inline-flex;
+  align-self: flex-start;
   border: 1px solid var(--mm-border);
   border-radius: 999px;
   padding: 2px;
@@ -39,17 +52,13 @@ const options: { value: ThemePref; icon: string; label: string }[] = [
   border: 0;
   background: transparent;
   color: var(--mm-muted);
-  width: 32px;
-  height: 28px;
+  width: 36px;
+  height: 30px;
   border-radius: 999px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.theme-toggle.compact button {
-  width: 30px;
-  height: 26px;
 }
 .theme-toggle button:hover {
   color: var(--mm-text);
@@ -61,5 +70,24 @@ const options: { value: ThemePref; icon: string; label: string }[] = [
 }
 .theme-toggle i {
   font-size: 0.85rem;
+}
+.theme-flip {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mm-text-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.theme-flip:hover {
+  background: var(--mm-panel-2);
+  color: var(--mm-text);
+}
+.theme-flip i {
+  font-size: 1rem;
 }
 </style>

@@ -80,7 +80,7 @@ const call = (action?: string, args?: Record<string, unknown>) => `${action}(${J
       <p class="q">{{ asked }}</p>
       <!-- eslint-disable-next-line vue/no-v-html -- markdown-it escapes raw HTML (html: false) -->
       <div class="md" v-html="renderMarkdown(result.answer)" />
-      <p class="caption">{{ result.mode }} · {{ result.verified ? 'verified' : 'not verified' }} · {{ result.seconds }}s</p>
+      <p class="caption">Answered by {{ result.mode }} in {{ result.seconds }} s. {{ result.verified ? 'Numbers and citations checked against the data.' : 'Not verified against the data.' }}</p>
       <details class="steps">
         <summary>Reasoning steps ({{ toolCalls }} tool {{ toolCalls === 1 ? 'call' : 'calls' }})</summary>
         <ol>

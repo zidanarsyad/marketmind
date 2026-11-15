@@ -3,6 +3,7 @@
 import { computed } from 'vue'
 import { useRunStore } from '@/stores/run'
 import type { Finding } from '@/types'
+import FindingRow from './FindingRow.vue'
 
 const props = defineProps<{ areas: string | string[]; limit?: number; title?: string }>()
 const run = useRunStore()
@@ -17,19 +18,29 @@ const items = computed<Finding[]>(() => {
 <template>
   <section v-if="items.length" class="card findings">
     <h3 v-if="title">{{ title }}</h3>
-    <div v-for="f in items" :key="f.id" class="finding" :class="f.swot ? `swot-${f.swot}` : ''">
-      <b>{{ f.title }}</b>
-      <span class="meta">[{{ f.id }} · {{ f.agent }} · impact {{ f.impact }}/5 · confidence {{ Math.round(f.confidence * 100) }}%]</span>
-      <p>{{ f.statement }}</p>
+    <div class="finding-grid">
+      <FindingRow v-for="f in items" :key="f.id" :finding="f" show-agent />
     </div>
   </section>
 </template>
 
 <style scoped>
-.findings .finding:first-of-type {
-  margin-top: 4px;
+.findings {
+  container-type: inline-size;
 }
-.findings .finding:last-child {
-  margin-bottom: 2px;
+.findings h3 {
+  margin-bottom: 6px;
+}
+/* a wide card sets the ledger in two columns, so no line runs past a comfortable measure */
+@container (min-width: 880px) {
+  .finding-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 40px;
+  }
+  .finding-grid > :deep(.finding:nth-of-type(2)) {
+    border-top: 0;
+    padding-top: 4px;
+  }
 }
 </style>

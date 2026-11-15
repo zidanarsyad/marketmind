@@ -1,49 +1,63 @@
-/* MarketMind web app: layout, cards and type. Colours follow the chart palette (marketmind/reporting/charts.py). */
+/* MarketMind web app: the certified dossier.
+   A run reads like a research dossier the Critic has certified: a mineral-white page, jade ink, one typeface (Archivo,
+   whose width axis does the work of a second face: expanded titles, normal text, semi-condensed figures), and colour
+   kept for meaning: jade for the interface, reserved colours for status and SWOT, the chart palette for data. */
 :root {
-  --mm-bg: #f3f2ee;
-  --mm-panel: #fcfcfb;
-  --mm-panel-2: #f7f6f3;
-  --mm-border: #e1e0d9;
-  --mm-border-strong: #c3c2b7;
-  --mm-text: #0b0b0b;
-  --mm-text-2: #52514e;
-  --mm-muted: #6b6a65;
-  --mm-accent: #2a78d6;
-  --mm-accent-soft: rgba(42, 120, 214, 0.1);
-  --mm-good: #0b7f0b;
-  --mm-good-soft: rgba(12, 163, 12, 0.12);
-  --mm-bad: #c42f2f;
-  --mm-bad-soft: rgba(208, 59, 59, 0.12);
-  --mm-warn: #9a6700;
-  --mm-warn-soft: rgba(237, 161, 0, 0.16);
-  --mm-skip-soft: rgba(137, 135, 129, 0.16);
-  --mm-attn: 42, 120, 214;
-  --mm-shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 1px 1px rgba(11, 11, 11, 0.03);
-  --mm-radius: 12px;
-  --mm-sidebar: 280px;
-  --mm-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mm-bg: #f2f4f3; /* mineral */
+  --mm-panel: #ffffff; /* paper */
+  --mm-panel-2: #f6f8f7; /* inset paper */
+  --mm-border: #d6dedb; /* rule */
+  --mm-border-strong: #b4c1bc;
+  --mm-text: #102320; /* jade ink */
+  --mm-text-2: #3c504b;
+  --mm-muted: #5e716c;
+  --mm-accent: #0b6e5f; /* jade */
+  --mm-accent-strong: #08594d;
+  --mm-accent-soft: rgba(11, 110, 95, 0.09);
+  --mm-good: #1f7a3a;
+  --mm-good-soft: rgba(31, 122, 58, 0.11);
+  --mm-bad: #b42335;
+  --mm-bad-soft: rgba(180, 35, 53, 0.1);
+  --mm-warn: #8a5a00;
+  --mm-warn-soft: rgba(214, 150, 20, 0.16);
+  --mm-skip-soft: rgba(94, 113, 108, 0.14);
+  --mm-attn: 11, 110, 95;
+  --mm-shadow: none;
+  --mm-radius: 10px;
+  --mm-radius-sm: 6px;
+  --mm-sidebar: 264px;
+  --mm-font: 'Archivo Variable', 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* the type scale, about 1.2 apart */
+  --mm-fs-xs: 0.78rem;
+  --mm-fs-sm: 0.87rem;
+  --mm-fs-md: 1rem;
+  --mm-fs-lg: 1.15rem;
+  --mm-fs-xl: 1.38rem;
+  --mm-fs-2xl: 1.72rem;
+  --mm-fs-3xl: 2.3rem;
   color-scheme: light;
 }
 
 :root.app-dark {
-  --mm-bg: #121211;
-  --mm-panel: #1a1a19;
-  --mm-panel-2: #20201f;
-  --mm-border: #2c2c2a;
-  --mm-border-strong: #383835;
-  --mm-text: #f0efec;
-  --mm-text-2: #c3c2b7;
-  --mm-muted: #a3a29a;
-  --mm-accent: #3987e5;
-  --mm-accent-soft: rgba(57, 135, 229, 0.16);
-  --mm-good: #3fc23f;
-  --mm-good-soft: rgba(12, 163, 12, 0.2);
-  --mm-bad: #e66767;
-  --mm-bad-soft: rgba(230, 103, 103, 0.18);
-  --mm-warn: #e0a72e;
-  --mm-warn-soft: rgba(201, 133, 0, 0.22);
-  --mm-skip-soft: rgba(137, 135, 129, 0.22);
-  --mm-attn: 57, 135, 229;
+  --mm-bg: #0b1513;
+  --mm-panel: #111d1a;
+  --mm-panel-2: #16241f;
+  --mm-border: #22322e;
+  --mm-border-strong: #33473f;
+  --mm-text: #e4edea;
+  --mm-text-2: #b5c4bf;
+  --mm-muted: #8da19b;
+  --mm-accent: #3fbfa4;
+  --mm-accent-strong: #6fd3bd;
+  --mm-accent-soft: rgba(63, 191, 164, 0.13);
+  --mm-good: #5bcb7e;
+  --mm-good-soft: rgba(91, 203, 126, 0.14);
+  --mm-bad: #f07a86;
+  --mm-bad-soft: rgba(240, 122, 134, 0.15);
+  --mm-warn: #e6b04a;
+  --mm-warn-soft: rgba(230, 176, 74, 0.16);
+  --mm-skip-soft: rgba(141, 161, 155, 0.16);
+  --mm-attn: 63, 191, 164;
   --mm-shadow: none;
   color-scheme: dark;
 }
@@ -63,8 +77,17 @@ body {
   font-family: var(--mm-font);
   font-size: 15px;
   line-height: 1.55;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
+}
+
+/* form controls take the page's typeface instead of the browser's default */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 a {
@@ -73,26 +96,39 @@ a {
 }
 a:hover {
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 h1,
 h2,
 h3,
 h4 {
-  line-height: 1.25;
+  line-height: 1.2;
   margin: 0;
   color: var(--mm-text);
   font-weight: 650;
-}
-h1 {
-  font-size: 1.6rem;
+  font-stretch: 108%;
   letter-spacing: -0.01em;
 }
+h1 {
+  font-size: var(--mm-fs-2xl);
+  font-weight: 720;
+  font-stretch: 116%;
+  letter-spacing: -0.018em;
+}
 h2 {
-  font-size: 1.2rem;
+  font-size: var(--mm-fs-lg);
 }
 h3 {
-  font-size: 1.02rem;
+  font-size: var(--mm-fs-md);
+}
+
+/* figures line up in columns everywhere numbers are compared */
+.num,
+.tile .value,
+.p-datatable td,
+.ledger-value {
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 code {
@@ -109,17 +145,21 @@ code {
   outline-offset: 2px;
 }
 
+::selection {
+  background: rgba(var(--mm-attn), 0.22);
+}
+
 /* ------------------------------------------------------------------ layout */
 .page {
-  max-width: 1480px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 24px 28px 64px;
+  padding: 28px 36px 72px;
 }
 
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 /* a wide table or chart scrolls inside its card instead of widening the page */
 .stack > *,
@@ -136,21 +176,21 @@ code {
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
-  gap: 16px;
+  gap: 18px;
   align-items: start;
 }
 
 .grid-3 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  gap: 16px;
+  gap: 18px;
   align-items: start;
 }
 
 .split {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 18px;
   align-items: start;
 }
 
@@ -159,22 +199,23 @@ code {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin: 8px 0 2px;
+  margin: 10px 0 0;
 }
 .section-title h2 {
-  font-size: 1.12rem;
+  font-size: var(--mm-fs-lg);
 }
 .section-title .hint {
   color: var(--mm-muted);
-  font-size: 0.85rem;
+  font-size: var(--mm-fs-sm);
 }
 
+/* panels are paper on the mineral page: a rule, no shadow; nested items sit on inset paper */
 .card {
   background: var(--mm-panel);
   border: 1px solid var(--mm-border);
   border-radius: var(--mm-radius);
   box-shadow: var(--mm-shadow);
-  padding: 16px 18px;
+  padding: 18px 20px;
   min-width: 0;
 }
 .card.tight {
@@ -182,18 +223,18 @@ code {
 }
 .card > h3:first-child,
 .card > h2:first-child {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .muted {
   color: var(--mm-muted);
 }
 .small {
-  font-size: 0.86rem;
+  font-size: var(--mm-fs-sm);
 }
 .caption {
   color: var(--mm-muted);
-  font-size: 0.85rem;
+  font-size: var(--mm-fs-sm);
   margin: 0;
 }
 
@@ -202,7 +243,7 @@ code {
   -webkit-overflow-scrolling: touch;
 }
 
-/* ------------------------------------------------------------------ chips, badges, tiles */
+/* ------------------------------------------------------------------ chips and status */
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -214,8 +255,9 @@ code {
   gap: 5px;
   border: 1px solid var(--mm-border-strong);
   border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 0.8rem;
+  padding: 1px 10px;
+  font-size: var(--mm-fs-xs);
+  font-weight: 520;
   color: var(--mm-text-2);
   background: var(--mm-panel);
   white-space: nowrap;
@@ -241,89 +283,193 @@ code {
   color: var(--mm-accent);
 }
 
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-  gap: 12px;
+/* an evidence ID (CMP-02, R1, REV-...): the same stamp wherever evidence is cited */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 650;
+  font-stretch: 92%;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--mm-accent);
+  background: var(--mm-accent-soft);
+  border-radius: var(--mm-radius-sm);
+  padding: 1px 6px;
+  line-height: 1.5;
+  white-space: nowrap;
 }
-.tile {
+.stamp.swot-S {
+  color: var(--mm-good);
+  background: var(--mm-good-soft);
+}
+.stamp.swot-W {
+  color: var(--mm-bad);
+  background: var(--mm-bad-soft);
+}
+.stamp.swot-T {
+  color: var(--mm-warn);
+  background: var(--mm-warn-soft);
+}
+
+/* ------------------------------------------------------------------ KPI ledger */
+/* one panel ruled into cells, instead of a card per number; KpiTiles picks the column count so rows come out even,
+   and the panel's own width (not the window's) decides when to fold to fewer columns */
+.tiles-wrap {
+  container-type: inline-size;
+}
+.tiles {
+  --cols: 3;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   background: var(--mm-panel);
   border: 1px solid var(--mm-border);
   border-radius: var(--mm-radius);
-  padding: 12px 16px;
+  overflow: hidden;
+}
+.tiles[data-cols='1'] {
+  --cols: 1;
+}
+.tiles[data-cols='2'] {
+  --cols: 2;
+}
+.tiles[data-cols='4'] {
+  --cols: 4;
+}
+.tiles[data-cols='5'] {
+  --cols: 5;
+}
+@container (max-width: 860px) {
+  .tiles[data-cols='5'] {
+    --cols: 3;
+  }
+}
+@container (max-width: 640px) {
+  .tiles[data-cols='4'] {
+    --cols: 2;
+  }
+}
+@container (max-width: 520px) {
+  .tiles:not([data-cols='1']) {
+    --cols: 2;
+  }
+  .tiles:not([data-cols='1']) .tile:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+.tile {
+  padding: 14px 18px 15px;
   min-width: 0;
+  box-shadow: -1px 0 0 var(--mm-border), 0 -1px 0 var(--mm-border); /* hairlines between cells, whatever wraps */
 }
 .tile .label {
-  font-size: 0.8rem;
+  font-size: var(--mm-fs-xs);
+  font-weight: 520;
   color: var(--mm-muted);
 }
 .tile .value {
-  font-size: 1.38rem;
-  font-weight: 650;
-  line-height: 1.3;
+  font-size: var(--mm-fs-xl);
+  font-weight: 680;
+  font-stretch: 104%;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   overflow-wrap: anywhere;
-  margin: 2px 0;
-  font-variant-numeric: tabular-nums;
+  margin: 4px 0 2px;
 }
 .tile .note {
-  font-size: 0.8rem;
+  font-size: var(--mm-fs-xs);
   color: var(--mm-text-2);
 }
 
-/* ------------------------------------------------------------------ findings and lists */
+/* ------------------------------------------------------------------ findings ledger */
 .finding {
-  border-left: 3px solid var(--mm-accent);
-  padding: 2px 0 2px 12px;
-  margin: 10px 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start; /* beside a longer neighbour, a short entry keeps its lines together */
+  column-gap: 12px;
+  row-gap: 2px;
+  padding: 12px 0;
+  border-top: 1px solid var(--mm-border);
 }
-.finding .meta {
-  font-size: 0.78rem;
-  color: var(--mm-muted);
-  margin-left: 4px;
-  font-weight: 400;
+.finding:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
 }
-.finding p {
-  margin: 2px 0 0;
-  color: var(--mm-text-2);
+.finding > .stamp {
+  grid-row: 1 / span 3;
+  align-self: start;
+  justify-content: center;
+  min-width: 3.9rem; /* one column of IDs down the ledger, whatever their length */
+  margin-top: 2px;
 }
 .finding b {
-  font-weight: 620;
+  font-weight: 640;
+  font-stretch: 104%;
 }
-.finding.swot-W,
-.finding.swot-T {
-  border-left-color: var(--mm-bad);
+.finding p {
+  margin: 0;
+  max-width: 76ch;
+  color: var(--mm-text-2);
 }
-.finding.swot-S {
-  border-left-color: var(--mm-good);
+.finding .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: var(--mm-fs-xs);
+  color: var(--mm-muted);
+}
+.pips {
+  display: inline-flex;
+  gap: 2px;
+  vertical-align: middle;
+}
+.pips i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mm-border-strong);
+}
+.pips i.on {
+  background: var(--mm-accent);
 }
 
 .empty {
   color: var(--mm-muted);
   font-size: 0.9rem;
-  font-style: italic;
 }
 
 /* ------------------------------------------------------------------ PrimeVue touches */
+.p-component {
+  font-family: var(--mm-font);
+}
 .p-datatable {
-  font-size: 0.86rem;
+  font-size: var(--mm-fs-sm);
 }
 .p-datatable .p-datatable-thead > tr > th {
   white-space: nowrap;
   font-weight: 600;
+  font-stretch: 96%;
 }
 .p-datatable .num {
   text-align: right;
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.p-panel {
+  border-radius: var(--mm-radius);
+}
 .p-panel .p-panel-header {
-  padding: 10px 14px;
+  padding: 10px 16px;
 }
 .p-panel .p-panel-content {
-  padding: 0 14px 14px;
+  padding: 0 16px 14px;
 }
 .p-message {
   margin: 0;
+}
+.p-button {
+  font-weight: 600;
 }
 
 /* ------------------------------------------------------------------ responsive */
@@ -339,23 +485,28 @@ code {
     font-size: 14.5px;
   }
   .page {
-    padding: 16px 16px 48px;
+    padding: 18px 16px 48px;
   }
   h1 {
-    font-size: 1.3rem;
+    font-size: var(--mm-fs-xl);
   }
   .card {
-    padding: 14px;
-  }
-  .tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    padding: 14px 15px;
   }
   .tile {
-    padding: 10px 12px;
+    padding: 11px 13px;
+  }
+  /* a phone keeps the ID beside the title and gives the claim the full width */
+  .finding > .stamp {
+    grid-row: auto;
+    min-width: 0;
+  }
+  .finding > p,
+  .finding > .meta {
+    grid-column: 1 / -1;
   }
   .tile .value {
-    font-size: 1.12rem;
+    font-size: var(--mm-fs-lg);
   }
 }
 

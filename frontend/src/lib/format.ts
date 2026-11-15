@@ -53,3 +53,8 @@ export function seconds(x: unknown): string {
 export function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
+
+/** A range in text with an en dash: "0-3 months" -> "0–3 months". */
+export function range(s: string): string {
+  return s.replace(/(\d)\s*-\s*(\d)/g, '$1–$2')
+}

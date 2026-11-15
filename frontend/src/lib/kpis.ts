@@ -117,11 +117,11 @@ export function modelTiles(card: ModelCard): Tile[] {
       value: MODEL_NAMES[card.selected] ?? card.selected,
       note: `vocabulary ${fmtInt(card.vocab_size ?? 0)} tokens`,
     },
-    { label: 'Test macro-F1', value: head.macro_f1.toFixed(3), note: `accuracy ${head.accuracy.toFixed(3)} · ${basis}` },
+    { label: 'Test macro-F1', value: head.macro_f1.toFixed(3), note: `accuracy ${head.accuracy.toFixed(3)} on ${basis}` },
     {
       label: 'Training data',
       value: `${fmtInt(card.n_train)} reviews`,
-      note: `${SENTIMENT_DATA[mode] ?? mode} · test set ${fmtInt(card.n_test)}`,
+      note: `${SENTIMENT_DATA[mode] ?? mode}, test set of ${fmtInt(card.n_test)}`,
     },
     {
       label: 'Social transfer macro-F1',

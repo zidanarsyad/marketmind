@@ -1,12 +1,13 @@
 <script setup lang="ts">
-// A saved run: its header (client, chips, warnings) and the twelve views as tabs. A study stopped at an approval gate
-// (by the reviewer, or by the time limit when nobody answered) shows who or what stopped it and why, and no tabs: it
-// released no report.
+// A saved run, set out as a dossier: the client and the study's question, the Critic agent's seal, the run's facts,
+// and the twelve views as tabs in four groups. A study stopped at an approval gate (by the reviewer, or by the time
+// limit when nobody answered) shows who or what stopped it and why, and no tabs: it released no report.
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import DataGrid from '@/components/DataGrid.vue'
+import QaSeal from '@/components/QaSeal.vue'
 import { runDate, seconds } from '@/lib/format'
 import { RUN_VIEWS } from '@/router'
 import { useRunStore } from '@/stores/run'
@@ -27,29 +28,40 @@ const qa = computed(() => meta.value?.qa)
 const rejected = computed(() => meta.value?.status === 'rejected')
 const stop = computed(() => meta.value?.approvals?.find((a) => !a.approved))
 
-const chips = computed(() => {
+// the study's question: the brief's first sentence, with the whole brief a click away
+const brief = computed(() => (meta.value?.brief ?? '').trim())
+const lede = computed(() => {
+  const flat = brief.value.replace(/\s+/g, ' ')
+  const first = /^(.+?[.!?])(\s|$)/.exec(flat)?.[1] ?? flat
+  return first.length > 240 ? `${first.slice(0, 237).trimEnd()}…` : first
+})
+const briefHasMore = computed(() => brief.value.replace(/\s+/g, ' ').length > lede.value.length + 1)
+const showBrief = ref(false)
+watch(
+  () => props.id,
+  () => (showBrief.value = false),
+)
+
+const facts = computed(() => {
   const m = meta.value
   const b = run.bundle
   if (!m || !b) return []
   const useLlm = (m.options?.use_llm ?? true) as boolean
-  const out: { text: string; cls?: string; icon: string }[] = [
-    { text: `Run ${m.run_id}`, icon: 'pi pi-hashtag' },
-    { text: runDate(m.run_id, m.started), icon: 'pi pi-calendar' },
-    { text: seconds(m.seconds), icon: 'pi pi-stopwatch' },
-    { text: useLlm ? m.llm?.description || 'LLM' : 'LLM off (deterministic run)', icon: 'pi pi-sparkles', cls: useLlm ? 'accent' : '' },
+  const { findings, recommendations } = b.summary.counts
+  return [
+    { label: 'Run', value: m.run_id },
+    { label: 'Started', value: runDate(m.run_id, m.started) },
+    { label: 'Took', value: seconds(m.seconds) || 'n/a' },
+    { label: 'Language model', value: useLlm ? m.llm?.description || 'On' : 'Off, a deterministic run' },
+    {
+      label: 'Output',
+      value: `${findings} finding${findings === 1 ? '' : 's'}, ${recommendations} recommendation${recommendations === 1 ? '' : 's'}`,
+    },
   ]
-  if (qa.value?.score !== null && qa.value?.score !== undefined)
-    out.push({
-      text: `QA ${qa.value.score}/100 ${qa.value.passed ? 'passed' : 'not passed'}`,
-      icon: 'pi pi-verified',
-      cls: qa.value.passed ? 'good' : 'warn',
-    })
-  else if (rejected.value) out.push({ text: 'stopped at an approval gate', icon: 'pi pi-ban', cls: 'bad' })
-  else out.push({ text: 'QA not run - unverified', icon: 'pi pi-exclamation-triangle', cls: 'warn' })
-  out.push({ text: `${b.summary.counts.findings} findings`, icon: 'pi pi-lightbulb' })
-  out.push({ text: `${b.summary.counts.recommendations} recommendations`, icon: 'pi pi-list-check' })
-  return out
 })
+
+// a rule opens each group of tabs after the first
+const tabList = RUN_VIEWS.map((v, i) => ({ ...v, opensGroup: i > 0 && RUN_VIEWS[i - 1].group !== v.group }))
 
 const approvalRows = computed(() =>
   (meta.value?.approvals ?? []).map((a) => ({
@@ -61,7 +73,7 @@ const approvalRows = computed(() =>
   })),
 )
 
-// keep the active tab in view on a phone, where the tab strip scrolls sideways
+// keep the active tab in view where the tab strip scrolls sideways
 watch(
   () => route.name,
   async () => {
@@ -83,15 +95,32 @@ watch(
 
     <template v-else-if="meta && run.bundle">
       <header class="run-head">
-        <h1>{{ meta.client || 'Unknown client' }} · Market Research</h1>
-        <div class="chips">
-          <span v-for="c in chips" :key="c.text" class="chip" :class="c.cls"><i :class="c.icon" style="font-size: 0.72rem" />{{ c.text }}</span>
+        <h1>{{ meta.client || 'Unknown client' }}</h1>
+        <div v-if="lede" class="lede">
+          <p id="run-brief" :class="{ full: showBrief }">{{ showBrief ? brief : lede }}</p>
+          <button
+            v-if="briefHasMore"
+            type="button"
+            class="brief-toggle"
+            aria-controls="run-brief"
+            :aria-expanded="showBrief"
+            @click="showBrief = !showBrief"
+          >
+            {{ showBrief ? 'Show less' : 'Read the full brief' }}
+          </button>
         </div>
-        <Message v-if="meta.status === 'unverified'" severity="warn" class="head-msg">
-          The Critic agent did not complete in this run, so the report's numbers, citations and coverage were not checked.
-          The Agents view shows the error.
-        </Message>
+        <QaSeal class="seal" :status="meta.status" :score="qa?.score" :passed="qa?.passed" :revisions="qa?.revisions" />
+        <dl class="facts">
+          <div v-for="f in facts" :key="f.label">
+            <dt>{{ f.label }}</dt>
+            <dd>{{ f.value }}</dd>
+          </div>
+        </dl>
       </header>
+      <Message v-if="meta.status === 'unverified'" severity="warn" class="head-msg">
+        The Critic agent did not complete in this run, so the report's numbers, citations and coverage were not checked.
+        The Agents view shows the error.
+      </Message>
 
       <section v-if="rejected" class="stack">
         <Message severity="error">
@@ -105,8 +134,14 @@ watch(
 
       <template v-else>
         <nav ref="tabs" class="tabs" aria-label="Views of this run">
-          <RouterLink v-for="v in RUN_VIEWS" :key="v.name" :to="{ name: v.name, params: { id } }" class="tab">
-            <i :class="v.icon" />{{ v.label }}
+          <RouterLink
+            v-for="v in tabList"
+            :key="v.name"
+            :to="{ name: v.name, params: { id } }"
+            class="tab"
+            :class="{ 'opens-group': v.opensGroup }"
+          >
+            {{ v.label }}
           </RouterLink>
         </nav>
         <RouterView v-slot="{ Component }">
@@ -123,44 +158,143 @@ watch(
   justify-content: center;
   padding: 80px 0;
 }
+
+/* ------------------------------------------------------------------ the dossier's cover */
 .run-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'title seal'
+    'lede seal'
+    'facts facts';
+  column-gap: 32px;
+  align-items: start;
+  padding-top: 4px;
+}
+.run-head h1 {
+  grid-area: title;
+  font-size: clamp(1.75rem, 1.1rem + 1.6vw, 2.5rem);
+  font-weight: 740;
+  font-stretch: 122%;
+  letter-spacing: -0.024em;
+  line-height: 1.06;
+  overflow-wrap: anywhere;
+}
+.lede {
+  grid-area: lede;
+  margin-top: 10px;
+  max-width: 66ch;
+}
+.lede p {
+  margin: 0;
+  color: var(--mm-text-2);
+  font-size: var(--mm-fs-md);
+  line-height: 1.5;
+}
+.lede p.full {
+  white-space: pre-line;
+}
+.brief-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mm-accent);
+  font: inherit;
+  font-size: var(--mm-fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.brief-toggle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.seal {
+  grid-area: seal;
+  align-self: center;
+  margin-right: 4px;
+}
+.facts {
+  grid-area: facts;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px 36px;
+  margin: 20px 0 0;
+  padding: 13px 0 14px;
+  border-top: 1px solid var(--mm-border);
+}
+.facts div {
+  min-width: 0;
+}
+.facts dt {
+  font-size: var(--mm-fs-xs);
+  font-weight: 520;
+  color: var(--mm-muted);
+}
+.facts dd {
+  margin: 1px 0 0;
+  font-size: var(--mm-fs-sm);
+  font-weight: 560;
+  color: var(--mm-text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .head-msg {
-  margin-top: 4px;
+  margin-bottom: 14px;
 }
+
+/* ------------------------------------------------------------------ tabs: one row, four groups */
 .tabs {
   position: sticky;
   top: 0;
   z-index: 5;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 2px;
-  margin: 0 -28px 18px;
-  padding: 0 28px;
+  align-items: stretch;
+  margin: 0 -36px 22px;
+  padding: 0 30px;
   background: color-mix(in srgb, var(--mm-bg) 94%, transparent);
   backdrop-filter: blur(8px);
+  border-top: 1px solid var(--mm-border);
   border-bottom: 1px solid var(--mm-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* when the row is wider than the page it scrolls sideways, fading at the edges */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 24px), transparent 100%);
+}
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 .tab {
+  position: relative;
+  flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 11px 12px 10px;
+  min-height: 44px;
+  padding: 0 10px;
   color: var(--mm-text-2);
   text-decoration: none;
   white-space: nowrap;
-  font-size: 0.9rem;
-  font-weight: 550;
+  font-size: var(--mm-fs-sm);
+  font-weight: 560;
+  font-stretch: 97%;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
-.tab i {
-  font-size: 0.85rem;
-  opacity: 0.8;
+.tab.opens-group {
+  margin-left: 13px;
+}
+.tab.opens-group::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 14px;
+  bottom: 14px;
+  width: 1px;
+  background: var(--mm-border-strong);
 }
 .tab:hover {
   color: var(--mm-text);
@@ -168,30 +302,60 @@ watch(
 }
 .tab.router-link-active {
   color: var(--mm-accent);
+  font-weight: 650;
   border-bottom-color: var(--mm-accent);
 }
+.tab:focus-visible {
+  outline-offset: -3px;
+  border-radius: 4px;
+}
+
 @media (max-width: 1023px) {
-  /* one row that scrolls sideways, fading at the edges, under the sticky top bar */
+  /* under the sticky top bar */
   .tabs {
     top: 49px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 28px), transparent 100%);
-    mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 28px), transparent 100%);
-  }
-  .tabs::-webkit-scrollbar {
-    display: none;
   }
 }
 @media (max-width: 720px) {
+  .run-head {
+    grid-template-areas:
+      'title seal'
+      'lede lede'
+      'facts facts';
+    column-gap: 16px;
+    padding-top: 0;
+  }
+  .run-head h1 {
+    align-self: center;
+  }
+  .lede {
+    margin-top: 12px;
+  }
+  .lede p {
+    font-size: var(--mm-fs-sm);
+  }
+  .brief-toggle {
+    min-height: 44px;
+    margin-top: 0;
+  }
+  .seal {
+    margin-right: 0;
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    margin-top: 16px;
+  }
+  .facts div:last-child {
+    grid-column: 1 / -1;
+  }
   .tabs {
-    margin: 0 -16px 14px;
-    padding: 0 12px;
+    margin: 0 -16px 16px;
+    padding: 0 10px;
   }
   .tab {
-    padding: 10px 10px 9px;
-    font-size: 0.86rem;
+    padding: 0 9px;
   }
 }
 </style>

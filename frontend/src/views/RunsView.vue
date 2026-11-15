@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Every saved run, newest first, with a filter. Each card opens the run's Overview.
+// Every saved run, newest first, with a filter: a ledger with one row per run. Each row opens the run's Overview.
 import Button from 'primevue/button'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
@@ -56,24 +56,28 @@ const shown = computed(() => {
     <p v-if="app.runsError" class="caption">{{ app.runsError }}</p>
     <p v-else-if="app.runsLoaded && !shown.length" class="empty">No runs match.</p>
 
-    <ul class="run-grid">
-      <li v-for="r in shown" :key="r.run_id">
-        <RouterLink :to="`/runs/${r.run_id}/overview`" class="card run-card">
-          <div class="top">
-            <strong>{{ r.client || 'Unknown client' }}</strong>
-            <RunStatus :status="r.status" :qa="r.qa_score" />
-          </div>
-          <div class="when">{{ runDate(r.run_id, r.started) }}<span v-if="r.seconds"> · {{ seconds(r.seconds) }}</span></div>
-          <div class="chips">
-            <span class="chip"><i class="pi pi-hashtag" style="font-size: 0.7rem" />{{ r.run_id }}</span>
-            <span class="chip" :class="r.use_llm ? 'accent' : ''">
-              <i class="pi pi-sparkles" style="font-size: 0.7rem" />{{ r.use_llm ? `LLM: ${r.llm}` : 'LLM off' }}
-            </span>
-            <span v-if="r.review" class="chip"><i class="pi pi-user-edit" style="font-size: 0.7rem" />reviewed</span>
-          </div>
-        </RouterLink>
-      </li>
-    </ul>
+    <div v-if="shown.length" class="card ledger">
+      <div class="row head-row" aria-hidden="true">
+        <span>Client and run</span>
+        <span>Started</span>
+        <span>Took</span>
+        <span>Language model</span>
+        <span>Approvals</span>
+        <span class="outcome">Outcome</span>
+      </div>
+      <ul>
+        <li v-for="r in shown" :key="r.run_id">
+          <RouterLink :to="`/runs/${r.run_id}/overview`" class="row">
+            <span class="client"><strong>{{ r.client || 'Unknown client' }}</strong><small>Run {{ r.run_id }}</small></span>
+            <span class="cell"><span class="cell-label">Started </span>{{ runDate(r.run_id, r.started) }}</span>
+            <span class="cell num"><span class="cell-label">Took </span>{{ r.seconds ? seconds(r.seconds) : 'n/a' }}</span>
+            <span class="cell"><span class="cell-label">LLM </span>{{ r.use_llm ? r.llm || 'On' : 'Off' }}</span>
+            <span class="cell"><span class="cell-label">Approvals </span>{{ r.review ? 'Reviewer' : 'Automatic' }}</span>
+            <RunStatus class="outcome" :status="r.status" :qa="r.qa_score" />
+          </RouterLink>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -95,41 +99,107 @@ const shown = computed(() => {
   flex: 1 1 260px;
   max-width: 420px;
 }
-.run-grid {
+/* one ruled row per run, the same facts in the same column, instead of a card per run */
+.ledger {
+  padding: 0;
+  overflow: hidden;
+}
+.ledger ul {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+.row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-  gap: 12px;
-}
-.run-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-  color: var(--mm-text);
-  text-decoration: none;
-  transition:
-    border-color 0.15s,
-    transform 0.15s;
-}
-.run-card:hover {
-  border-color: var(--mm-accent);
-  text-decoration: none;
-}
-.top {
-  display: flex;
+  grid-template-columns: minmax(170px, 1.3fr) minmax(150px, 1fr) minmax(84px, 0.6fr) minmax(110px, 1fr) minmax(104px, 0.8fr) minmax(130px, 0.9fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 14px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--mm-border);
+  color: var(--mm-text);
+  font-size: var(--mm-fs-sm);
+  text-decoration: none;
 }
-.top strong {
-  font-size: 1.02rem;
-}
-.when {
+.head-row {
+  border-top: 0;
+  padding-top: 11px;
+  padding-bottom: 10px;
+  background: var(--mm-panel-2);
   color: var(--mm-muted);
-  font-size: 0.85rem;
+  font-size: var(--mm-fs-xs);
+  font-weight: 560;
+}
+a.row:hover {
+  background: var(--mm-panel-2);
+  text-decoration: none;
+}
+a.row:hover .client strong {
+  color: var(--mm-accent);
+}
+a.row:focus-visible {
+  outline-offset: -2px;
+}
+.client strong {
+  display: block;
+  font-size: var(--mm-fs-md);
+  font-weight: 620;
+}
+.client small {
+  display: block;
+  color: var(--mm-muted);
+  font-size: var(--mm-fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+.cell {
+  color: var(--mm-text-2);
+  overflow-wrap: anywhere;
+}
+/* the column headings say what each cell is; a phone, which has no headings, shows these instead */
+.cell-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.outcome {
+  justify-self: end;
+}
+@media (max-width: 860px) {
+  .row.head-row {
+    display: none;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    padding: 12px 16px;
+  }
+  .client {
+    flex: 1 1 60%;
+    min-width: 0;
+    margin-bottom: 2px;
+  }
+  .outcome {
+    order: -1;
+    margin-left: auto;
+  }
+  .client {
+    order: -2;
+  }
+  .cell {
+    font-size: var(--mm-fs-xs);
+  }
+  .cell-label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    color: var(--mm-muted);
+  }
 }
 @media (max-width: 720px) {
   .toolbar :deep(.p-selectbutton) {

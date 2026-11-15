@@ -27,6 +27,9 @@ const heading = ref('')
 const height = ref(props.height ?? 380)
 const label = computed(() => props.name.replace(/_/g, ' '))
 
+// the app's own typeface on axes, labels and tooltips (the static HTML report keeps the system font)
+const APP_FONT = "'Archivo Variable', 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif"
+
 let plotly: Plotly | null = null
 let seen = false
 let token = 0
@@ -55,6 +58,10 @@ function layoutFor(fig: PlotlyFigure): Record<string, unknown> {
     margin.r = Math.max(margin.r ?? 0, 64)
     layout.margin = margin
   }
+  const font = (fig.layout.font as Record<string, unknown> | undefined) ?? {}
+  layout.font = { ...font, family: APP_FONT }
+  const hover = (fig.layout.hoverlabel as Record<string, unknown> | undefined) ?? {}
+  layout.hoverlabel = { ...hover, font: { ...((hover.font as Record<string, unknown> | undefined) ?? {}), family: APP_FONT } }
   if (props.height) layout.height = props.height
   height.value = (layout.height as number) ?? 380
   delete layout.width
@@ -78,6 +85,8 @@ async function render() {
     await nextTick()
     if (mine !== token || !plotEl.value) return
     const narrow = (root.value?.clientWidth ?? 800) < 560
+    await document.fonts?.ready // Plotly measures its labels: measure them in the app's font, not a fallback
+    if (mine !== token || !plotEl.value) return
     await P.react(plotEl.value, fig.data, layout, {
       displaylogo: false,
       responsive: true,

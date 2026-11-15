@@ -17,7 +17,7 @@ const items = computed(() =>
     : props.pending.proposal.recommendations.map((r) => ({
         id: r.id,
         label: `${r.id}. ${r.title}`,
-        detail: `${r.horizon} · priority ${r.priority.toFixed(2)} · evidence ${r.evidence.join(', ')}`,
+        detail: `${r.horizon}, priority ${r.priority.toFixed(2)}, evidence ${r.evidence.join(', ')}`,
       })),
 )
 
@@ -61,7 +61,7 @@ function reject() {
 
     <template v-if="pending.gate === 'plan'">
       <p class="caption">
-        Horizon {{ pending.proposal.horizon_months }} months<template v-if="pending.proposal.concept"> · concept: {{ pending.proposal.concept }}</template>
+        Horizon of {{ pending.proposal.horizon_months }} months.<template v-if="pending.proposal.concept"> Concept: {{ pending.proposal.concept }}.</template>
       </p>
       <ol class="questions">
         <li v-for="q in pending.proposal.questions" :key="q.id">

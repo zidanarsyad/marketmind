@@ -82,8 +82,8 @@ const agentLlm = computed(() =>
       <p v-else-if="error" class="caption">{{ error }}</p>
       <template v-else-if="preview">
         <p class="caption">
-          {{ preview.description }} · source: {{ preview.source }}
-          <template v-if="preview.available"> · showing the first {{ preview.data.length.toLocaleString('en-US') }} rows</template>
+          {{ preview.description }}. Source: {{ preview.source }}.
+          <template v-if="preview.available">Showing the first {{ preview.data.length.toLocaleString('en-US') }} rows.</template>
         </p>
         <DataGrid v-if="preview.available" :columns="previewGrid.columns" :rows="previewGrid.rows" scroll-height="380px" :paginate="100" />
         <p v-else class="empty">{{ preview.file }} is not in the data folder this run studied.</p>

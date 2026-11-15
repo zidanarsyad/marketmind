@@ -48,7 +48,7 @@ async function ask(question: string) {
   try {
     const out = await api.chat(runId, q, before)
     const sources = out.sources.length
-      ? `Sources: ${out.sources.map((s) => `${s.id} (${s.kind})`).join(', ')} · ${out.mode}`
+      ? `Sources: ${out.sources.map((s) => `${s.id} (${s.kind})`).join(', ')}. Answered by ${out.mode}.`
       : ''
     const next: ChatMessage[] = [
       ...before,

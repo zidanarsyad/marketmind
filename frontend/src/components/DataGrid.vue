@@ -3,7 +3,7 @@
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import { computed } from 'vue'
-import { fmtCell } from '@/lib/format'
+import { fmtCell, titleCase } from '@/lib/format'
 import type { Scalar } from '@/types'
 
 export interface GridColumn {
@@ -30,7 +30,9 @@ const cols = computed<GridColumn[]>(() =>
   props.columns.map((c) => {
     const col = typeof c === 'string' ? { field: c } : c
     const sample = props.rows.find((r) => r[col.field] !== null && r[col.field] !== undefined)?.[col.field]
-    return { header: col.field, numeric: typeof sample === 'number', ...col }
+    // plain lower-case keys read as sentence-case headers ("tool calls" -> "Tool calls"); data keys stay as they are
+    const header = /^[a-z][^_]*$/.test(col.field) ? titleCase(col.field) : col.field
+    return { header, numeric: typeof sample === 'number', ...col }
   }),
 )
 

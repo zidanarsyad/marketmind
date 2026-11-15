@@ -1,19 +1,20 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
-/** The twelve views of a saved run, in the order of the Streamlit dashboard's tabs. */
+/** The twelve views of a saved run, in the order of the Streamlit dashboard's tabs, grouped as the tab strip shows
+ * them: the study at a glance, the analyses, the conclusions, and the audit trail. */
 export const RUN_VIEWS = [
-  { name: 'overview', label: 'Overview', icon: 'pi pi-home' },
-  { name: 'agents', label: 'Agents', icon: 'pi pi-sitemap' },
-  { name: 'market', label: 'Market', icon: 'pi pi-chart-bar' },
-  { name: 'competition', label: 'Competition', icon: 'pi pi-flag' },
-  { name: 'consumers', label: 'Consumers', icon: 'pi pi-users' },
-  { name: 'segments', label: 'Segments', icon: 'pi pi-th-large' },
-  { name: 'forecast', label: 'Forecast & pricing', icon: 'pi pi-chart-line' },
-  { name: 'strategy', label: 'Strategy', icon: 'pi pi-compass' },
-  { name: 'report', label: 'Report', icon: 'pi pi-file' },
-  { name: 'ask', label: 'Ask the analyst', icon: 'pi pi-comments' },
-  { name: 'evaluation', label: 'Evaluation', icon: 'pi pi-check-square' },
-  { name: 'data', label: 'Data', icon: 'pi pi-database' },
+  { name: 'overview', label: 'Overview', group: 'glance' },
+  { name: 'agents', label: 'Agents', group: 'glance' },
+  { name: 'market', label: 'Market', group: 'analyses' },
+  { name: 'competition', label: 'Competition', group: 'analyses' },
+  { name: 'consumers', label: 'Consumers', group: 'analyses' },
+  { name: 'segments', label: 'Segments', group: 'analyses' },
+  { name: 'forecast', label: 'Forecast & pricing', group: 'analyses' },
+  { name: 'strategy', label: 'Strategy', group: 'conclusions' },
+  { name: 'report', label: 'Report', group: 'conclusions' },
+  { name: 'ask', label: 'Ask the analyst', group: 'conclusions' },
+  { name: 'evaluation', label: 'Evaluation', group: 'audit' },
+  { name: 'data', label: 'Data', group: 'audit' },
 ] as const
 
 const views: Record<string, () => Promise<unknown>> = {

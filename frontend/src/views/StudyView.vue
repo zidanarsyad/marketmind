@@ -83,7 +83,7 @@ async function finished() {
   await app.loadRuns()
   if (!sawRunning) return // opened after the study had ended: stay and show how it ended
   if (s.saved && s.state !== 'failed' && s.state !== 'error') {
-    const qa = s.result?.qa_score !== null && s.result?.qa_score !== undefined ? ` · QA ${s.result.qa_score}/100` : ''
+    const qa = s.result?.qa_score !== null && s.result?.qa_score !== undefined ? `, QA ${s.result.qa_score}/100` : ''
     toast.add({ severity: s.state === 'rejected' ? 'warn' : 'success', summary: `Study ${s.state}`, detail: `Run ${s.id}${qa}`, life: 5000 })
     await router.push(`/runs/${s.id}/overview`)
   }
@@ -183,10 +183,9 @@ onBeforeUnmount(() => {
           <div>
             <h1>{{ headline }}</h1>
             <p class="caption">
-              Run {{ id }}<template v-if="snapshot?.client"> · {{ snapshot.client }}</template>
-              <template v-if="elapsed"> · {{ elapsed }}</template>
-              <template v-if="snapshot?.review"> · you review the plan and recommendations</template>
-              <template v-if="connection === 'lost'"> · reconnecting…</template>
+              Run {{ id }}<template v-if="snapshot?.client"> for {{ snapshot.client }}</template><template v-if="elapsed">, {{ elapsed }} {{ snapshot?.finished ? 'in all' : 'so far' }}</template>.
+              <template v-if="snapshot?.review">You review the plan and the recommendations.</template>
+              <template v-if="connection === 'lost'">Reconnecting…</template>
             </p>
           </div>
         </div>

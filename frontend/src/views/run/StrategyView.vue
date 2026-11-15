@@ -6,7 +6,7 @@ import AccordionPanel from 'primevue/accordionpanel'
 import { computed } from 'vue'
 import PlotlyChart from '@/components/PlotlyChart.vue'
 import TableCard from '@/components/TableCard.vue'
-import { fmtIdr } from '@/lib/format'
+import { fmtIdr, range } from '@/lib/format'
 import { useRunStore } from '@/stores/run'
 
 const run = useRunStore()
@@ -20,12 +20,12 @@ const quadrant: Record<string, string> = { Strengths: 'S', Weaknesses: 'W', Oppo
   <div class="stack">
     <div v-if="swot.length" class="swot">
       <section v-for="[name, items] in swot" :key="name" class="card quad" :class="`q-${quadrant[name] ?? 'x'}`">
-        <h3>{{ name }}</h3>
-        <ul>
-          <li v-for="it in items" :key="it.id">
-            <strong>{{ it.title }}</strong> — {{ it.statement }} <code>{{ it.id }}</code>
-          </li>
-        </ul>
+        <h3><span class="q-mark" aria-hidden="true" />{{ name }}</h3>
+        <article v-for="it in items" :key="it.id" class="finding">
+          <span class="stamp" :class="`swot-${quadrant[name] ?? 'x'}`">{{ it.id }}</span>
+          <b>{{ it.title }}</b>
+          <p>{{ it.statement }}</p>
+        </article>
         <p v-if="!items.length" class="empty">None identified.</p>
       </section>
     </div>
@@ -36,9 +36,9 @@ const quadrant: Record<string, string> = { Strengths: 'S', Weaknesses: 'W', Oppo
       <AccordionPanel v-for="r in recs" :key="r.id" :value="r.id">
         <AccordionHeader>
           <span class="rec-head">
-            <span class="rid">{{ r.id }}</span>
+            <span class="stamp">{{ r.id }}</span>
             <span class="rec-title">{{ r.title }}</span>
-            <span class="rec-meta">{{ r.horizon }} · priority {{ r.priority.toFixed(2) }}</span>
+            <span class="rec-meta">{{ r.horizon }}, priority {{ r.priority.toFixed(2) }}</span>
           </span>
         </AccordionHeader>
         <AccordionContent>
@@ -47,16 +47,16 @@ const quadrant: Record<string, string> = { Strengths: 'S', Weaknesses: 'W', Oppo
             <dd>{{ r.action }}</dd>
             <dt>Why</dt>
             <dd>{{ r.rationale }}</dd>
-            <dt>KPI</dt>
+            <dt>Target</dt>
             <dd>{{ r.kpi }}</dd>
-            <dt>Owner / timeline</dt>
-            <dd>{{ r.owner }} · {{ r.timeline }} · {{ r.effort }} effort</dd>
+            <dt>Owner and timeline</dt>
+            <dd>{{ r.owner }}, over {{ range(r.timeline) }}, {{ r.effort.toLowerCase() }} effort</dd>
             <template v-if="r.value_idr">
               <dt>Indicative value</dt>
               <dd>{{ fmtIdr(r.value_idr) }}</dd>
             </template>
             <dt>Evidence</dt>
-            <dd class="chips"><code v-for="e in r.evidence" :key="e">{{ e }}</code></dd>
+            <dd class="chips"><span v-for="e in r.evidence" :key="e" class="stamp">{{ e }}</span></dd>
           </dl>
         </AccordionContent>
       </AccordionPanel>
@@ -71,33 +71,35 @@ const quadrant: Record<string, string> = { Strengths: 'S', Weaknesses: 'W', Oppo
 .swot {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
-  gap: 14px;
+  gap: 18px;
 }
-.quad {
-  border-top: 3px solid var(--mm-border-strong);
+/* each quadrant keyed by the colour its evidence stamps carry */
+.quad h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 6px;
 }
-.quad.q-S {
-  border-top-color: var(--mm-good);
+.q-mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--mm-border-strong);
 }
-.quad.q-W {
-  border-top-color: var(--mm-bad);
+.q-S .q-mark {
+  background: var(--mm-good);
 }
-.quad.q-O {
-  border-top-color: var(--mm-accent);
+.q-W .q-mark {
+  background: var(--mm-bad);
 }
-.quad.q-T {
-  border-top-color: var(--mm-warn);
+.q-O .q-mark {
+  background: var(--mm-accent);
 }
-.quad ul {
-  margin: 0;
-  padding-left: 18px;
+.q-T .q-mark {
+  background: var(--mm-warn);
 }
-.quad li {
-  margin: 6px 0;
-  color: var(--mm-text-2);
-}
-.quad li strong {
-  color: var(--mm-text);
+.quad .finding p {
+  font-size: var(--mm-fs-sm);
 }
 .recs {
   border: 1px solid var(--mm-border);
@@ -111,14 +113,6 @@ const quadrant: Record<string, string> = { Strengths: 'S', Weaknesses: 'W', Oppo
   gap: 10px;
   flex-wrap: wrap;
   text-align: left;
-}
-.rid {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--mm-accent);
-  background: var(--mm-accent-soft);
-  border-radius: 6px;
-  padding: 1px 6px;
 }
 .rec-title {
   font-weight: 620;

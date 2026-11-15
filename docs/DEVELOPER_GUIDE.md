@@ -54,7 +54,9 @@ marketmind/
                              forecasting, pricing, calendar_id
   reporting/
     charts.py                Plotly chart functions, TableSource and the CHARTS registry
-    html_report.py           self-contained HTML report
+    html_report.py           self-contained HTML report in the web app's design: inline Plotly.js, the QA seal,
+                             evidence IDs as stamps; it typesets the Markdown the Critic checked, never rewords it
+    assets/                  the Archivo typeface the report inlines (latin subset, SIL Open Font License, OFL-Archivo.txt)
 scripts/                     generate_data.py, evaluate_agents.py, export_sqlite.py, build_diagram_gallery.py,
                              validate_on_real_data.py, multi_seed.py, ablations.py, llm_runs.py, import_tokopedia.py
 tests/                       conftest.py (shared offline run), test_system.py, test_schemas.py

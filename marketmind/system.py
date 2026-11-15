@@ -118,14 +118,13 @@ class MarketResearchSystem:
         if not self.blackboard.has("report.markdown"):
             return
         if not qa:  # the Critic did not finish: say so in the report rather than staying silent
-            from .reporting.html_report import qa_not_verified_html
+            from .reporting.html_report import qa_not_verified_html, qa_seal_html
             note = ("\n\n## QA Certificate\n\nVerdict: **NOT VERIFIED** - the Critic agent did not complete, so the numbers, "
                     "citations and coverage of this report were not checked. The run trace records the error.")
             self.blackboard.put("report.markdown", self.blackboard.get("report.markdown") + note, "System", "Report + QA notice")
             html = self.blackboard.get("report.html")
             if html:
-                html = html.replace("<!--QA-CERTIFICATE-->", qa_not_verified_html()).replace(
-                    "<!--QA-BADGE-->", '<span class="badge fail">QA not run - unverified</span>')
+                html = html.replace("<!--QA-CERTIFICATE-->", qa_not_verified_html()).replace("<!--QA-SEAL-->", qa_seal_html(None))
                 self.blackboard.put("report.html", html, "System")
             return
         checks = qa.get("checks", {})
@@ -138,8 +137,6 @@ class MarketResearchSystem:
         self.blackboard.put("report.markdown", self.blackboard.get("report.markdown") + cert, "System", "Report + QA certificate")
         html = self.blackboard.get("report.html")
         if html:
-            from .reporting.html_report import qa_certificate_html
-            badge = (f'<span class="badge {"pass" if qa.get("passed") else "fail"}">QA {"passed" if qa.get("passed") else "not passed"}'
-                     f' - {qa.get("score")}/100</span>')
-            html = html.replace("<!--QA-CERTIFICATE-->", qa_certificate_html(qa)).replace("<!--QA-BADGE-->", badge)
+            from .reporting.html_report import qa_certificate_html, qa_seal_html
+            html = html.replace("<!--QA-CERTIFICATE-->", qa_certificate_html(qa)).replace("<!--QA-SEAL-->", qa_seal_html(qa))
             self.blackboard.put("report.html", html, "System")

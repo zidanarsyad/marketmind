@@ -89,6 +89,21 @@ def test_timedeltas_carry_an_explicit_unit():
     assert period_bounds("2024-07..2025-06-30") == (pd.Timestamp("2024-07-01"), pd.Timestamp("2025-06-30 23:59:59"))
 
 
+def test_html_report_stamps_evidence_and_carries_the_qa_seal():
+    # the HTML report typesets the Markdown the Critic checked, without changing its words
+    from marketmind.reporting.html_report import _font_face, _present, qa_certificate_html, qa_seal_html
+
+    html = _present("<h2>11. Recommendations</h2><h3>R1. Fix it</h3>"
+                    "<p>Spike [CON-03]; see [CMP-08, SEG-02] and <code>[CON-09]</code>, worth Rp 8.7 bn.</p>")
+    assert '<span class="sec-num">11</span>Recommendations' in html and '<span class="stamp">R1</span>Fix it' in html
+    assert html.count('class="stamp"') == 5 and "[" not in html and "Rp&nbsp;8.7&nbsp;bn" in html
+    assert "QA not run" in qa_seal_html(None) and ">96<" in qa_seal_html({"score": 95.6, "passed": True})
+    cert = qa_certificate_html({"score": 88.0, "passed": False, "revision": 2, "numbers_grounded": 9, "numbers_checked": 10,
+                                "checks": {"grounding": {"score": 0.9}}, "issues": [{"severity": "major", "message": "<b>x</b>"}]})
+    assert "Not passed." in cert and "after 2 revisions" in cert and "width:90%" in cert and "&lt;b&gt;x&lt;/b&gt;" in cert
+    assert _font_face().startswith("@font-face{font-family:Archivo")   # the typeface ships with the code
+
+
 def test_parse_json_tolerates_fences():
     assert parse_json('```json\n{"a": 1}\n```') == {"a": 1}
     assert parse_json('Sure! {"b": [1, 2]} hope this helps') == {"b": [1, 2]}

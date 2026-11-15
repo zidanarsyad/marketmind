@@ -423,4 +423,6 @@ class ReportWriterAgent(BaseAgent):
         return md_table(pd.DataFrame(rows)) if rows else ""
 
     def _render(self, sections: list[dict]) -> str:
-        return render_html(sections, self.bb, title=f"{self.client} - Market Research Report", run_id=self.ctx.run_id)
+        used = self.llm.available and self.options.get("use_llm", True)
+        return render_html(sections, self.bb, title=f"{self.client} - Market Research Report", run_id=self.ctx.run_id,
+                           llm=self.llm.describe() if used else "")

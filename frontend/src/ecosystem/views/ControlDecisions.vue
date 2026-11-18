@@ -59,7 +59,8 @@ const KIND: Record<string, string> = { disruption: 'bad', recovery: 'good', camp
               <span class="stamp">{{ weekLabel(e.week) }}</span>
               <div>
                 <p><span class="chip" :class="KIND[e.kind]">{{ e.kind }}</span> <b>{{ e.title }}</b></p>
-                <p class="small muted">{{ e.detail }}<template v-if="e.target && e.kind !== 'campaign'"> Hits {{ entName(e.target) }}.</template></p>
+                <p v-if="e.kind === 'recovery'" class="small muted">{{ entName(e.target) }} is back to normal.</p>
+                <p v-else class="small muted">{{ e.detail }}<template v-if="e.kind === 'disruption'"> Hits {{ entName(e.target) }}.</template></p>
               </div>
             </li>
           </ul>

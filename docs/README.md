@@ -13,6 +13,7 @@ The [design proposal](https://claude.ai/artifact/QY1WcVtyNZYJ5pHcy2nUEB), a Clau
 | [EVALUATION.md](EVALUATION.md) | See how well the system works: 25 ground-truth checks, model metrics, robustness across data seeds, ablations, real-LLM runs, data quality, governance, timings and threats to validity (raw results in `results/`) | Reviewers, lecturers |
 | [SECURITY.md](SECURITY.md) | See what keeps the results trustworthy and the system safe: grounding, the QA gate, approval gates, the audit trail, credential redaction, local-only servers and the access token, input checks, privacy, dependency audits, and the limits that remain | Reviewers, lecturers, developers |
 | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Extend MarketMind: core APIs, adding agents, tools, charts, datasets and LLM providers, testing, debugging | Developers |
+| [ECOSYSTEM.md](ECOSYSTEM.md) | See the multi-enterprise ecosystem: six heterogeneous enterprises on their own servers, the Global Agentic Control Center, the message contract, negotiation, models, the joint plan, schema mapping, scenarios and results | Reviewers, lecturers, developers |
 | [schemas/](schemas/) | The machine-readable contracts: 15 JSON Schemas and `database.sql` | Tools and tests |
 | [diagrams/gallery.html](diagrams/gallery.html) | All 16 diagrams on one page, with SVG and PNG export (open it in a browser) | Everyone |
 
@@ -32,8 +33,9 @@ The [design proposal](https://claude.ai/artifact/QY1WcVtyNZYJ5pHcy2nUEB), a Clau
 | Deployment | flowchart | [ARCHITECTURE §8](ARCHITECTURE.md#8-deployment) |
 | BiGRU sentiment model; demand forecaster; Critic grounding check | flowcharts | [ARCHITECTURE §9](ARCHITECTURE.md#9-model-architectures) |
 | Relational model | ER diagram | [SCHEMAS §5](SCHEMAS.md#5-relational-model) |
+| The multi-enterprise ecosystem: six servers, their messages, the governance gates, the Control Center's plan loop | Excalidraw (`.excalidraw` + PNG) | [ECOSYSTEM.md](ECOSYSTEM.md), [diagrams/ecosystem-architecture.excalidraw](diagrams/ecosystem-architecture.excalidraw) |
 
-The diagrams are Mermaid code blocks, so they render on GitHub and in VS Code and are versioned with the code. After editing one, run `python scripts/build_diagram_gallery.py` to refresh the gallery.
+The diagrams are Mermaid code blocks, so they render on GitHub and in VS Code and are versioned with the code. After editing one, run `python scripts/build_diagram_gallery.py` to refresh the gallery. The Excalidraw diagrams (`diagrams/*.excalidraw`) open at excalidraw.com or in the VS Code Excalidraw extension; their PNGs sit beside them.
 
 ## Keeping the documents true
 

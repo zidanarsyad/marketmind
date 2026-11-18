@@ -19,6 +19,7 @@ The demo scenario is the **Indonesian local facial-skincare market** (Jan 2023 -
 | **Adaptive and bounded** | The Research Director sends analysts back for questions the report leaves open; every agent is retried once and has a time limit; each run has an LLM budget |
 | **Trust and security** | API keys redacted from every trace, saved file and response; servers on this computer only, behind an access token when shared; personal details masked in review text; dependencies audited every week ([docs/SECURITY.md](docs/SECURITY.md)) |
 | **Effectiveness** | 24 / 25 planted ground-truth insights recovered on the reference data; 23.6 / 25 on average over five more data seeds (see [Evaluation](#evaluation)) |
+| **Multi-enterprise ecosystem** | Six enterprises (the brand, its contract manufacturer, packaging maker, logistics company, marketplace and the research agency), each its own server, database, agents and governance, negotiate and plan the moisturizer's launch under a Global Agentic Control Center; ecosystem intelligence serves 96.4% of orders against 75.6% when each decides alone, through four disruptions ([docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)) |
 
 ---
 
@@ -75,6 +76,7 @@ Optional: copy `.env.example` to `.env` and add **one free API key** to switch o
 | [Evaluation report](docs/EVALUATION.md) | Ground-truth checks, model metrics, data quality, governance, timings, threats to validity |
 | [Trust and security](docs/SECURITY.md) | What keeps the results trustworthy and the system safe, where it lives in the code, and the limits that remain |
 | [Developer guide](docs/DEVELOPER_GUIDE.md) | Core APIs, adding agents, tools, charts, datasets and LLM providers, testing and debugging |
+| [Multi-enterprise ecosystem](docs/ECOSYSTEM.md) | Six heterogeneous enterprises and the Global Agentic Control Center: enterprise models, message contract, negotiation, predictive models, the joint plan, schema mapping, scenarios, results, dashboards, tests |
 | [Diagram gallery](docs/diagrams/gallery.html) | All 16 diagrams on one page, with SVG and PNG export |
 
 The design proposal is a separate Claude Doc. Four scripts support the documents and the real-data work:
@@ -207,6 +209,8 @@ The system is complete without an LLM. With one, the Director refines the plan, 
 
 **Streamlit dashboard.** `streamlit run app/dashboard.py` - tabs: **Overview** (KPIs, key findings, priority actions) · **Agents** (workflow graph, roster, messages, approvals and follow-ups, full trace explorer) · **Market** · **Competition** · **Consumers (DL)** (model card, confusion matrix, aspect heatmap, complaint spikes, live model tester) · **Segments** (PCA small multiples, personas, concept test, Van Westendorp) · **Forecast & pricing** (forecasts with intervals, backtest, drivers, elasticities, price simulator) · **Strategy** (SWOT, recommendations, sized opportunities) · **Report** (embedded HTML + downloads) · **Ask the analyst** (agentic-RAG chat, with the steps behind each answer) · **Evaluation** (ground-truth scorecard) · **Data** (Ask the data: the ReAct agent; datasets and quality scorecard).
 
+**Multi-enterprise ecosystem.** `python -m marketmind.ecosystem up` starts seven more servers from the same build: the Global Agentic Control Center on <http://localhost:8100> and six enterprises on ports 8101 to 8106, each with its own database and dashboard (role sign-in, data explorer, messages, negotiations, decisions). The Control Center plays a season with local or ecosystem intelligence, or both on the same customers, and shows the plans, the agents' messages, the negotiations and the disruptions. `python -m marketmind.ecosystem run` plays every scenario in one process. See [docs/ECOSYSTEM.md](docs/ECOSYSTEM.md).
+
 ---
 
 ## Evaluation
@@ -232,6 +236,8 @@ marketmind/
   agents/      the 11 pipeline agents + the agentic-RAG analyst chat and the ReAct data agent (with its data tools)
   ml/          text normalisation, sentiment (PyTorch), topics, segmentation, forecasting, pricing, calendar
   reporting/   shared Plotly chart library + HTML report renderer
+  ecosystem/   the multi-enterprise ecosystem: six enterprises (enterprises/), message protocol, governance, stores,
+               negotiation, predictive models, the joint planner, the Control Center and the servers (python -m marketmind.ecosystem)
   evaluation.py  ground-truth scoring
   sql_export.py  loads clean data and runs into the SQL model
   system.py    MarketResearchSystem entry point

@@ -61,6 +61,8 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
 
 const get = <T>(path: string) => request<T>('GET', path)
 const post = <T>(path: string, body?: unknown) => request<T>('POST', path, body)
+// the ecosystem dashboards (src/ecosystem) call their own server's routes with the same guards and error handling
+export { get as getJson, post as postJson }
 const enc = encodeURIComponent
 
 export const api = {

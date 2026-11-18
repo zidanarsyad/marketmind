@@ -103,7 +103,7 @@ Agents of different enterprises talk only through messages (`protocol.Message`),
 }
 ```
 
-The performatives are borrowed from FIPA ACL: `REQUEST_PROPOSAL` (a call for proposals, or the start of a negotiation), `PROPOSE`, `COUNTER_PROPOSAL`, `ACCEPT_PROPOSAL`, `REJECT_PROPOSAL` (closing without agreement, or refusing a plan with a constraint), `REQUEST`, `AGREE` (possibly in part), `REFUSE`, `INFORM`, `CONFIRM` and `FAILURE`. Message ids are numbered per enterprise (`KIR-0001`, `MAK-0001`, `CON-0001`), so a run is reproducible message for message.
+The performatives are borrowed from FIPA ACL: `REQUEST_PROPOSAL` (a call for proposals, or the start of a negotiation), `PROPOSE`, `COUNTER_PROPOSAL`, `ACCEPT_PROPOSAL`, `REJECT_PROPOSAL` (closing without agreement, or refusing a plan with a constraint), `REQUEST`, `AGREE` (possibly in part), `REFUSE`, `INFORM`, `CONFIRM` and `FAILURE`. Each node numbers the messages it sends under a prefix of its own (`KIR-0001` is Kirana's first message, `KRC-0001` KirimCepat's, `MAK-0001` MaklonNusa's, `CON-0001` the Control Center's), so a run is reproducible message for message and no two messages in the ecosystem share an id. A conversation takes the id of the message that opened it.
 
 Every server publishes an **Agent Card** in the shape of the A2A protocol's (`name`, `description`, `url`, `version`, `capabilities`, `defaultInputModes`, `skills`), with one skill per agent and the enterprise model under `x-enterprise`. The contract is a simulation of A2A, not the full wire protocol: there is no JSON-RPC envelope, task lifecycle or streaming, because the point is that independent enterprises talk only through such messages, each over its own server.
 
@@ -217,7 +217,7 @@ Every server uses MarketMind's guards ([SECURITY.md](SECURITY.md)): it answers o
 - governance: more is shared in ecosystem mode, partners see less than the Control Center, private records never leave, roles open only their datasets, and every enterprise has a role that reads a dataset with a field masked;
 - negotiation: the price negotiation converges inside both private limits with each side only conceding; Boulware holds out and Conceder gives way; no overlap means no deal; the Contract Net picks the route that gets through;
 - the planner: whole batches within capacity and lanes, a rejection's limit respected and the plan moved, the terminal stock value, and the weights changing the decision;
-- the season: ecosystem intelligence beats local intelligence on the stress scenario and every enterprise gains; all four negotiations agree; every message follows the contract; a season is reproducible;
+- the season: ecosystem intelligence beats local intelligence on the stress scenario and every enterprise gains; all four negotiations agree; every message follows the contract and has an id no other message in the season shares; a season is reproducible;
 - adaptation: the defect forecast changes the packaging order and the terms, the flood warning reroutes, the breakdown forecast makes MaklonNusa reject the plan without showing why, the traffic surge reaches Kirana and the Coordinator the same morning, and every disruption triggers a replan that changes the plan;
 - the servers: an enterprise server's card, A2A endpoint and governed data API; a whole season over HTTP, each enterprise behind its own app and database, gives the same result as in process; the Control Center runs and compares a scenario; the command line.
 

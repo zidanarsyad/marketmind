@@ -8,6 +8,7 @@ customers, no enterprise is worse off for joining, and every disruption measurab
 from __future__ import annotations
 
 import time
+from collections import Counter
 
 import httpx
 import pytest
@@ -24,7 +25,7 @@ from marketmind.ecosystem.enterprises.maklonnusa import PRICE_TACTIC as MAKLON_P
 from marketmind.ecosystem.governance import Governance, Role, visible_row
 from marketmind.ecosystem.negotiation import Tactic, alternating_offers, rank_options
 from marketmind.ecosystem.planner import PlanInput, solve
-from marketmind.ecosystem.protocol import PERFORMATIVES, Message, MessageFactory, agent_card
+from marketmind.ecosystem.protocol import PERFORMATIVES, Message, MessageFactory, agent_card, enterprise_of
 from marketmind.ecosystem.world import BATCH, EVENTS, WEEKS, World, iso_week
 
 
@@ -263,6 +264,18 @@ def test_every_message_follows_the_contract(stress):
     tasks = {m["task"] for m in local["messages"]}
     assert "plan" not in tasks and "shared_view" not in tasks       # local intelligence: no coordinator, no sharing
     assert {"plan", "shared_view", "defect_risk", "flood_risk", "capacity_risk"} <= {m["task"] for m in eco["messages"]}
+
+
+def test_no_two_messages_in_a_season_share_an_id(stress):
+    """Every node numbers its messages under a prefix of its own (Kirana and KirimCepat once both used KIR), so an id
+    names one message in the whole season, and so does a conversation id, the id of the message that opened it."""
+    _, eco = stress
+    ids = Counter(m["message_id"] for m in eco["messages"])
+    assert [i for i, n in ids.items() if n > 1] == []
+    senders: dict[str, set[str]] = {}
+    for m in eco["messages"]:
+        senders.setdefault(m["message_id"].split("-")[0], set()).add(enterprise_of(m["sender"]))
+    assert len(senders) == len(ORDER) + 1 and all(len(s) == 1 for s in senders.values()), senders   # 7 nodes, 7 prefixes
 
 
 def test_a_season_is_reproducible():

@@ -65,11 +65,21 @@ def enterprise_of(address: str) -> str:
     return address.split(".", 1)[0]
 
 
-class MessageFactory:
-    """Numbers an enterprise's outgoing messages (``KIR-0001``...), so a run is reproducible message for message."""
+# Each node numbers the messages it sends under a prefix of its own, so a message id names one message in the whole
+# ecosystem, and so does a conversation id (the id of the message that opened the conversation). The first three
+# letters of the key would not do: Kirana and KirimCepat would both be KIR.
+MESSAGE_PREFIXES = {"control": "CON", "kirana": "KIR", "maklonnusa": "MAK", "kemasprima": "KEM", "kirimcepat": "KRC",
+                    "pasarnusa": "PAS", "research": "RES"}
 
-    def __init__(self, prefix: str):
-        self.prefix = prefix.upper()[:3]
+
+class MessageFactory:
+    """Numbers one node's outgoing messages under its prefix (``KIR-0001``, ``KRC-0001``...), so a run is reproducible
+    message for message and no two messages in the ecosystem share an id."""
+
+    def __init__(self, node: str):
+        if node not in MESSAGE_PREFIXES:
+            raise ValueError(f"{node!r} has no message prefix: give it one in MESSAGE_PREFIXES")
+        self.prefix = MESSAGE_PREFIXES[node]
         self.n = 0
 
     def _next(self) -> str:

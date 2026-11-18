@@ -264,7 +264,7 @@ npm --prefix frontend test                           # the web app's component t
 python scripts/evaluate_agents.py                    # ground-truth score of the latest run
 ```
 
-**Continuous integration.** `.github/workflows/tests.yml` runs ruff, the fast tests and then the full suite with coverage, and type-checks, tests and builds the web app, on every push to `main` and every pull request. It installs the newest versions `requirements.txt` allows, not the lock file, so a new library release can break it without any change here (numpy 2.5 once did). `.github/workflows/audit.yml` checks the dependencies for known vulnerabilities with `pip-audit` and `npm audit`, on every push and every Monday ([SECURITY.md](SECURITY.md#dependencies)). Check both after pushing.
+**Continuous integration.** `.github/workflows/tests.yml` runs ruff, the fast tests and then the full suite with coverage, and type-checks, tests and builds the web app, on every push to `main` and every pull request. It installs the newest versions `requirements.txt` allows, not the lock file, so a new library release can break it without any change here (numpy 2.5 once did). `.github/workflows/audit.yml` checks the dependencies for known vulnerabilities with `pip-audit` and `npm audit`, on every push and every Monday ([SECURITY.md](SECURITY.md#dependencies)); `npm --prefix frontend run audit:gate` runs the front end's check here. Check both after pushing.
 
 **Evaluation studies.** Four scripts measure more than one run can ([EVALUATION.md](EVALUATION.md) reports their results):
 

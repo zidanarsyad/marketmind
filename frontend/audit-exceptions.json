@@ -1,0 +1,8 @@
+[
+  {
+    "advisory": "GHSA-fc5q-39xc-vjpf",
+    "package": "picomatch",
+    "until": "2027-01-31",
+    "reason": "No fixed release yet: every picomatch up to 4.0.7, the latest on 18 November 2026, is affected. Only the build and dev tools use it (vite, vitest, vue-tsc, vue-router's build plugin), on the project's own glob patterns, and the built app contains none of it. See docs/SECURITY.md."
+  }
+]

@@ -13,6 +13,7 @@ Run these from the repository root (Node.js 20.19 or newer):
 | `npm --prefix frontend run dev` | Development server on <http://localhost:5173> with hot reload; start `python -m api --reload` beside it |
 | `npm --prefix frontend test` | Component tests (Vitest) |
 | `npm --prefix frontend run typecheck` | Type-check only (`vue-tsc`) |
+| `npm --prefix frontend run audit:gate` | Known vulnerabilities in the locked packages, as the audit workflow checks them; the exceptions are in `audit-exceptions.json` |
 
 Stack: Vite, TypeScript, Vue Router, Pinia, PrimeVue 4.5.5 (pinned: the last MIT-licensed release) and plotly.js
 (cartesian bundle). The developer guide (`docs/DEVELOPER_GUIDE.md`, section 12) describes the structure, the API and

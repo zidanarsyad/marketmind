@@ -46,6 +46,8 @@ jobs:
         with:
           node-version: "22"
 
-      # reads package-lock.json, no install needed; fails on high or critical advisories (moderate ones are listed)
+      # reads package-lock.json, no install needed. Fails on high or critical advisories (moderate ones are listed),
+      # except one listed in frontend/audit-exceptions.json, and that only while `npm audit fix` cannot fix it and
+      # until its date (frontend/scripts/audit-gate.mjs)
       - name: Audit the front end's dependencies
-        run: npm audit --audit-level=high
+        run: npm run audit:gate

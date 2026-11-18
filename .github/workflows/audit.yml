@@ -27,8 +27,8 @@ jobs:
       - name: Audit the newest versions requirements.txt allows
         run: pip-audit -r requirements.txt --progress-spinner off
 
-      # The exact versions the evaluation ran under. Some have known vulnerabilities with fixes in newer releases;
-      # refreshing the lock file means re-running the test suite and the evaluation, so for now this only reports.
+      # The exact versions the evaluation ran under. New advisories against pinned versions keep appearing, and
+      # refreshing the lock file means re-running the test suite and the evaluation, so this only reports.
       - name: Audit the pinned versions in requirements-lock.txt (report only)
         continue-on-error: true
         run: pip-audit -r requirements-lock.txt --no-deps --disable-pip --progress-spinner off

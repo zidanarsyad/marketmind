@@ -29,7 +29,7 @@ One run on one dataset is a single sample, so the report also measures how the r
 
 ## 2. Method
 
-**Reference run.** Run `20261110-182213`: the default brief (Kirana Beauty, all six modules), offline (no LLM), with cached sentiment models and parallel analysis agents, on an 8-thread laptop CPU with Python 3.12. The figures in sections 3 to 6 come from that run's `evaluation.json`, model cards and tables. Section 11 explains how to reproduce them.
+**Reference run.** Run `20261110-182213`: the default brief (Kirana Beauty, all six modules), offline (no LLM), with cached sentiment models and parallel analysis agents, on an 8-thread laptop CPU with Python 3.12. The figures in sections 3 to 6 come from that run's `evaluation.json`, model cards and tables. Section 12 explains how to reproduce them. The code has changed since that run. An offline run of the same brief on 18 November 2026 reproduced every figure that sections 3 to 5 take from the reference run. Its report had 445 numbers to check instead of the 438 in sections 1 and 6, all of them grounded, and the two approval gates, added later, raised its trace to 53 tool calls and 180 events, against the 51 and 174 in section 11.
 
 **Data version.** The simulator was recalibrated on 10 November 2026 against real Indonesian benchmarks: online channel shares, the importance of a halal claim, and Lazada as a preferred channel ([DATA_SOURCES.md §7](DATA_SOURCES.md#7-how-the-simulated-data-compares)). The planted effects that the checks look for did not change, but every dataset was regenerated, so the numbers here differ from earlier versions of this report.
 
@@ -46,7 +46,7 @@ One run on one dataset is a single sample, so the report also measures how the r
 9. **On-demand agents.** `scripts/benchmark_assistants.py` asks the ReAct Data Agent and the agentic-RAG chat 12 questions each, with known answers, offline and with an LLM (section 10).
 10. **Efficiency.** Time per agent and per run, taken from the trace (section 11).
 
-**Test plan.** Every level below runs automatically with `python -m pytest -q`: 115 tests that cover 92% of the lines in `marketmind/` (and 90% of the web API in `api/`). The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
+**Test plan.** Every level below runs automatically with `python -m pytest -q`, together with the 33 tests of the multi-enterprise ecosystem ([ECOSYSTEM.md §14](ECOSYSTEM.md#14-testing)): 150 tests in all, which cover 92% of the lines in `marketmind/` (and 90% of the web API in `api/`). The acceptance checks can also be run on any saved run with `scripts/evaluate_agents.py` or from the dashboard.
 
 | Level | What is tested | How | Pass criterion |
 |---|---|---|---|
@@ -307,7 +307,7 @@ Free model line-ups change often: the OpenRouter models first configured for thi
 
 ## 10. On-demand agents: ReAct and agentic RAG
 
-`scripts/benchmark_assistants.py` asks each on-demand agent 12 questions, offline and with Groq (`qwen/qwen3.8-27b`). The runs were on 11 November 2026, with the chat questions asked about the reference run (`20261110-222212`).
+`scripts/benchmark_assistants.py` asks each on-demand agent 12 questions, offline and with Groq (`qwen/qwen3.8-27b`). The runs were on 11 November 2026, with the chat questions asked about run `20261110-222212`, a study of the default brief made with Groq.
 
 **ReAct Data Agent.** The questions ask for rankings, a change between two years, shares, a count of reviews that mention a topic, and a market total on the bundled datasets. The right answer to each is computed in the script directly with pandas. An answer counts as correct when it names the right brand, channel, category or region, and states the right number at the precision it is written at.
 

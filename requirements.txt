@@ -20,6 +20,7 @@ jinja2>=3.1,<4
 markdown-it-py>=3.0,<5
 
 # Web app: the API behind the Vue front end in frontend/ (python -m api); httpx runs its tests (FastAPI's TestClient)
+# and carries the multi-enterprise ecosystem's calls between its servers (python -m marketmind.ecosystem up)
 fastapi>=0.115,<1
 uvicorn>=0.30,<1
 httpx>=0.27,<1
